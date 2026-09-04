@@ -1,0 +1,35 @@
+{
+  "name": "hermes-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "db:migrate": "bun scripts/migrate.ts migrate",
+    "db:status": "bun scripts/migrate.ts status",
+    "db:rollback": "bun scripts/migrate.ts rollback",
+    "test:integration": "bun --env-file=.env.test test tests/database.integration.test.ts",
+    "format": "biome format --write",
+    "format:check": "biome format",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
+    "organize-imports": "biome check --write --formatter-enabled=false --linter-enabled=false",
+    "check": "biome check",
+    "fix": "biome check --write",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "verify": "bun run check && bun run typecheck && bun run test"
+  },
+  "dependencies": {
+    "@logtape/logtape": "^2.3.3",
+    "@logtape/redaction": "^2.3.3",
+    "hono": "^4.13.5",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@types/bun": "^1.4.1",
+    "typescript": "^7.0.2"
+  }
+}

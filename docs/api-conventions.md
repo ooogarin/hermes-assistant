@@ -1,0 +1,43 @@
+# Hermes API Conventions
+
+- Mount application routes below `/api/v1` and use plural, lowercase resource paths.
+- `GET` reads, `POST` creates or performs an explicit command, `PATCH` partially updates, and `DELETE` removes.
+- Validate every body, query, path parameter, and relevant header with Zod.
+- Use `camelCase` JSON, ISO 8601 date/timestamps, and UUID strings for public identifiers unless a feature design explicitly says otherwise.
+- Authenticate application endpoints with `Authorization: Bearer <INTERNAL_API_KEY>`. `GET /health` and `GET /health/ready` are explicitly public.
+
+## Response envelope
+
+```json
+{ "success": true, "data": {} }
+```
+
+Collections may add `meta`, for example `{ "page": 1, "limit": 20, "total": 0 }`.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "Resource not found",
+    "details": null
+  },
+  "requestId": "req_123"
+}
+```
+
+`data` appears only on success. Error codes use stable `SCREAMING_SNAKE_CASE`; messages are safe for callers. Do not return SQL, stack traces, secrets, or dependency internals.
+
+## Status codes
+
+| Condition | Status |
+| --- | ---: |
+| Read/update succeeded | 200 |
+| Created | 201 |
+| No response body | 204 |
+| Invalid request | 400 |
+| Unauthenticated / unauthorized | 401 / 403 |
+| Not found / conflict | 404 / 409 |
+| Unexpected / unavailable dependency | 500 / 503 |
+
+Paginate only when a collection needs it. Validate limits and allow-list filter/sort fields before they reach SQL.
