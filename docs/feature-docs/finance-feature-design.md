@@ -327,6 +327,8 @@ Hiburan             Rp50.000
 
 The Finance API is mounted below `/api/v1/finance` and requires the internal bearer token.
 
+Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `POST` | `/api/v1/finance/transactions` | Create one or more final, category-resolved transactions in one batch. The backend creates the internal `batch_id` and each `daily_number`. |
@@ -356,4 +358,4 @@ The batch-create payload contains values already cleaned by Hermes. `amount` is 
 }
 ```
 
-`dailyNumber` is an integer shown without zero-padding, for example `3`; the stable route reference is `/api/v1/finance/transactions/2026-07-14/3`. `displayNumber` is a temporary sequential integer in a date list and can change after insertions or deletions.
+Response field `daily_number` is an integer shown without zero-padding, for example `3`; the stable route reference is `/api/v1/finance/transactions/2026-07-14/3`. Response field `display_number` is a temporary sequential integer in a date list and can change after insertions or deletions.

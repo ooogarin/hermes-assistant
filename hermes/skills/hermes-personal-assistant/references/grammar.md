@@ -33,12 +33,12 @@ Create session body:
 }
 ```
 
-For scheduled practice, fetch settings first, use `defaultLevel` and exactly `dailyQuestionCount`, set `mode: "practice"` and `source: "cron"`. For on-request work use `source: "request"`. Avoid recent repetition when conversation or API-visible context makes that possible.
+For scheduled practice, fetch settings first, read `default_level` and exactly `daily_question_count` from the response, then create a request with `mode: "practice"` and `source: "cron"`. For on-request work use `source: "request"`. Avoid recent repetition when conversation or API-visible context makes that possible.
 
 ## Answers
 
 - Practice: evaluate immediately, then PUT `userAnswer`, `result` (`correct|partial|incorrect`), and optional concise `feedback`. Do not show the full explanation unless requested.
-- Exam: PUT each `userAnswer` without result/feedback. After every question is answered, evaluate all answers once through `/evaluate`; then fetch `/report` for authoritative score and breakdown.
+- Exam: PUT each `userAnswer` without result/feedback. After every question is answered, evaluate all answers once through `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and breakdown.
 - Explanation requests must use the explanation endpoint. A deeper conversational explanation need not be persisted.
 
 Use an explicit `GR-...` code and question number when provided. If a delayed answer could belong to multiple sessions or questions, ask before saving or grading. Ordinary session responses deliberately omit correct answers and explanations; never claim they came from that response.

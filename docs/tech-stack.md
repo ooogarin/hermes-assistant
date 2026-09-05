@@ -2,9 +2,11 @@
 
 ## Final decisions
 
-Hermes is a modular monolith:
+Hermes is a Bun workspace with a modular-monolith API and a separate report frontend:
 
 ```text
+React → Vite → Tailwind CSS
+                 ↓ (local development proxy)
 TypeScript → Bun → Hono → bun:sql → PostgreSQL
 ```
 
@@ -23,6 +25,7 @@ TypeScript → Bun → Hono → bun:sql → PostgreSQL
 | API version | `/api/v1` at the HTTP layer |
 | Authentication | Internal API key/token initially |
 | Deployment | One application and minimal infrastructure |
+| Web frontend | React, Vite, and Tailwind CSS; no React framework |
 
 ## Why this stack
 
@@ -43,4 +46,4 @@ The backend is the source of truth. The Hermes Agent understands intent, calls t
 
 ## Deliberately deferred
 
-MCP server, ORM tooling, microservices, Kubernetes, Redis, background queues, Kafka/RabbitMQ, Elasticsearch, object storage, dashboard frontend, and complex multi-user authorization are deferred until a concrete need exists.
+MCP server, ORM tooling, microservices, Kubernetes, Redis, background queues, Kafka/RabbitMQ, Elasticsearch, object storage, production frontend authentication, and complex multi-user authorization are deferred until a concrete need exists.

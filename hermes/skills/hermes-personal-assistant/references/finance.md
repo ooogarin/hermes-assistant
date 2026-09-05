@@ -43,6 +43,6 @@ Patch supports only `amount`, `categoryCode`, `name`, `location`, and `note`. Da
 
 ## Target Resolution
 
-`dailyNumber` is stable for a date; `displayNumber` is temporary and may change. When the user refers to a displayed number or “latest”, fetch the current list for that date immediately before the mutation and map it to `dailyNumber`. A single clearly resolved deletion may run immediately. Ask when multiple candidates remain.
+In API responses, `daily_number` is stable for a date; `display_number` is temporary and may change. When the user refers to a displayed number or “latest”, fetch the current list for that date immediately before the mutation and map it to `daily_number`. The route parameter remains the numeric value itself. A single clearly resolved deletion may run immediately. Ask when multiple candidates remain.
 
 For reports, call `/summary` and narrate returned totals. Never sum chat messages yourself.

@@ -360,4 +360,6 @@ Tags: technology, ai, formal-essay
 
 `/api/v1/writing` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, `GET /materials/:code/submissions/:submissionNumber`, and `GET /materials/:code/submissions/:submissionNumber/corrected-text`.
 
-The backend calculates submission `wordCount` from `originalText`. Each draft receives a stable `submissionNumber` scoped to its material. The submission `analysis` is validated against the documented structured JSON shape; ordinary submission detail may be used for full feedback, while the corrected text has a dedicated endpoint for on-demand Telegram delivery.
+Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+
+The backend calculates response field `word_count` from request field `originalText`. Each draft receives a stable response field `submission_number` scoped to its material. The submission `analysis` is validated against the documented structured JSON shape and recursively returned as `snake_case`; ordinary submission detail may be used for full feedback, while the corrected text has a dedicated endpoint for on-demand Telegram delivery.

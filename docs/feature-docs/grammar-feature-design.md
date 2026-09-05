@@ -496,6 +496,8 @@ Type "jelasin nomor X GR-20260726-002" to see a question explanation.
 
 The Grammar API is mounted below `/api/v1/grammar` and requires the internal bearer token.
 
+Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `GET` | `/api/v1/grammar/settings` | Read the persistent default level and daily question count. |
@@ -524,6 +526,6 @@ Hermes generates every question, correct answer, and explanation before calling 
 2. The backend stores the answer but keeps its evaluation fields null.
 3. After every question is answered, Hermes evaluates the full exam.
 4. Hermes calls the evaluate endpoint with every `questionNumber`, `result`, and optional feedback exactly once.
-5. The backend validates that all questions and answers are present, updates all evaluations in one transaction, computes `score` as the count of `correct` results, sets `maxScore` to the session question count, and marks the session `completed`.
+5. The backend validates that all questions and answers are present, updates all evaluations in one transaction, computes `score` as the count of `correct` results, sets response field `max_score` to the session question count, and marks the session `completed`.
 
 Exam results cannot be written through the individual answer endpoint, and a completed session cannot accept new answers or evaluations.
