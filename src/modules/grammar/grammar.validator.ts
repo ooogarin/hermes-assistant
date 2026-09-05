@@ -1,0 +1,63 @@
+import { z } from 'zod';
+
+const grammarModeSchema = z.enum(['practice', 'exam']);
+const grammarSourceSchema = z.enum(['cron', 'request']);
+const answerResultSchema = z.enum(['correct', 'partial', 'incorrect']);
+const textSchema = z.string().trim().min(1).max(20_000);
+
+const questionSchema = z.object({
+  questionType: z.string().trim().min(1).max(100),
+  grammarArea: z.string().trim().min(1).max(100),
+  grammarPoint: z.string().trim().min(1).max(200),
+  level: z.string().trim().min(1).max(32),
+  questionText: textSchema,
+  correctAnswer: textSchema,
+  explanation: textSchema,
+});
+
+export const createSessionSchema = z.object({
+  mode: grammarModeSchema,
+  source: grammarSourceSchema,
+  level: z.string().trim().min(1).max(32),
+  questions: z.array(questionSchema).min(1).max(100),
+});
+
+export const sessionCodeSchema = z.object({
+  code: z.string().regex(/^GR-\d{8}-\d{3,}$/),
+});
+
+export const questionReferenceSchema = sessionCodeSchema.extend({
+  questionNumber: z.coerce.number().int().positive(),
+});
+
+export const saveAnswerSchema = z
+  .object({
+    userAnswer: textSchema,
+    result: answerResultSchema.optional(),
+    feedback: z.string().trim().min(1).max(2_000).nullable().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.result === undefined && value.feedback !== undefined) {
+      context.addIssue({ code: 'custom', message: 'Feedback requires an evaluation result.', path: ['feedback'] });
+    }
+  });
+
+export const evaluateSessionSchema = z.object({
+  answers: z
+    .array(
+      z.object({
+        questionNumber: z.number().int().positive(),
+        result: answerResultSchema,
+        feedback: z.string().trim().min(1).max(2_000).nullable().optional().default(null),
+      }),
+    )
+    .min(1)
+    .max(100),
+});
+
+export const updateSettingsSchema = z
+  .object({
+    defaultLevel: z.string().trim().min(1).max(32).optional(),
+    dailyQuestionCount: z.number().int().min(1).max(100).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, 'At least one field must be provided.');

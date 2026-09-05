@@ -393,3 +393,21 @@ MVP focuses on saving, classifying, and searching lightweight URL/text-based jun
 | Search                   | Full-text keyword search + tag filtering                                                             |
 | Direct API               | Hermes sends cleaned parameters to REST API; API persists PostgreSQL                                 |
 | Delete behavior          | Soft delete using `deleted_at`                                                                       |
+
+---
+
+## 16. MVP API Contract
+
+The Junk API is mounted below `/api/v1/junk` and requires the internal bearer token.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `POST` | `/api/v1/junk` | Create a junk item. The backend generates the `code`. |
+| `GET` | `/api/v1/junk` | List/search active items. Optional filters: `q`, `tag`, `category`, `sourceUrl`, and `limit` (default `20`, maximum `100`). Filters combine with AND. |
+| `GET` | `/api/v1/junk/:code` | Fetch one active junk item. |
+| `PATCH` | `/api/v1/junk/:code` | Update supplied fields. A `tags` payload replaces the full tag list. `rawText` is preserved and cannot be changed. |
+| `DELETE` | `/api/v1/junk/:code` | Soft delete a junk item. |
+
+Codes are generated atomically by the backend in the format `JK-YYYYMMDD-###`, using the `Asia/Jakarta` calendar date. The daily suffix is sequential and codes are never reused.
+
+The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content text, category, and tags. This supports Indonesian and English terms without language-specific stemming.

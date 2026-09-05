@@ -320,3 +320,40 @@ Hiburan             Rp50.000
 | Delete/correction confirmation | Single item can execute after resolving target; multi-item/old-batch/large changes require confirmation |
 | Query default                  | "total hari ini" means total expenses; income/net balance must be requested explicitly                  |
 | Batch insert                   | 1x max lookup + 1x bulk insert inside a transaction with advisory lock per date                         |
+
+---
+
+## 10. MVP API Contract
+
+The Finance API is mounted below `/api/v1/finance` and requires the internal bearer token.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `POST` | `/api/v1/finance/transactions` | Create one or more final, category-resolved transactions in one batch. The backend creates the internal `batch_id` and each `daily_number`. |
+| `GET` | `/api/v1/finance/transactions?date=YYYY-MM-DD` | List active transactions for one date, ordered by insertion. |
+| `GET` | `/api/v1/finance/transactions/:date/:dailyNumber` | Fetch one active transaction by its date and stable daily number. |
+| `PATCH` | `/api/v1/finance/transactions/:date/:dailyNumber` | Update amount, category, name, location, or note. Transaction date, type, raw text, and daily number are immutable in MVP. |
+| `DELETE` | `/api/v1/finance/transactions/:date/:dailyNumber` | Soft delete one transaction. |
+| `GET` | `/api/v1/finance/categories?type=expense` | List active categories; `type` is optional. |
+| `GET` | `/api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=expense` | Return SQL-calculated expense, income, or net totals and category breakdown. |
+
+The batch-create payload contains values already cleaned by Hermes. `amount` is an integer amount in Rupiah, not the Telegram shorthand: `12` has already become `12000` before the API is called. Each item uses `categoryCode`; database category IDs remain internal.
+
+```json
+{
+  "date": "2026-07-14",
+  "type": "expense",
+  "rawText": "12, sarapan di warung A\n23, kopi",
+  "transactions": [
+    {
+      "amount": 12000,
+      "categoryCode": "food_drink",
+      "name": "Sarapan",
+      "location": "warung A",
+      "note": null
+    }
+  ]
+}
+```
+
+`dailyNumber` is an integer shown without zero-padding, for example `3`; the stable route reference is `/api/v1/finance/transactions/2026-07-14/3`. `displayNumber` is a temporary sequential integer in a date list and can change after insertions or deletions.

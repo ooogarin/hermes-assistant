@@ -14,7 +14,7 @@ If documents conflict, the newest explicit user decision wins. Update the affect
 
 - Use TypeScript, Bun, Hono, Zod, PostgreSQL, and native `bun:sql`.
 - Use parameterized raw SQL only. Do not add Prisma, Drizzle, an ORM, or a default query builder.
-- Keep the boundary: route → handler → validator → service → repository → PostgreSQL.
+- Keep the boundary: route → validator → handler → service → repository → PostgreSQL.
 - Only repositories access the database. Services own business rules and transaction boundaries; handlers own HTTP adaptation.
 - Validate every external input with Zod.
 - Never expose or log secrets, SQL internals, database details, or client-visible stack traces.

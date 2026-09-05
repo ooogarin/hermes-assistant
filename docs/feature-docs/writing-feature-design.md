@@ -17,7 +17,7 @@ Train active English writing through AI-generated prompts and detailed feedback.
 Writing uses persistent defaults plus one-off overrides, following the same pattern as Reading.
 
 ```text
-Persistent defaults: B1, 150 words, min 120, max 180
+Persistent defaults: A1, 150 words, min 120, max 180
         |
         +-- Daily cron -> uses defaults
         |
@@ -159,7 +159,7 @@ One row representing the current user defaults.
 | Column               | Type           | Notes                               |
 | -------------------- | -------------- | ----------------------------------- |
 | `id`                 | bigserial (PK) |                                     |
-| `default_level`      | text           | CEFR level, e.g. `B1`.              |
+| `default_level`      | text           | CEFR level, e.g. `A1`.              |
 | `default_word_count` | integer        | Default target word count.          |
 | `min_word_count`     | integer        | Default lower bound for generation. |
 | `max_word_count`     | integer        | Default upper bound for generation. |
@@ -288,7 +288,7 @@ Recommended status values:
 ```text
 ✏️ Writing WR-20260726-001 — 26 Jul 2026
 Topic: "Tell me about your work experience this week"
-Genre: Journal · Level B1 · Target ~150 words
+Genre: Journal · Level A1 · Target ~150 words
 Tags: work, reflection, journal
 ```
 
@@ -297,7 +297,7 @@ Tags: work, reflection, journal
 ```text
 ✅ Writing saved and analyzed — WR-20260726-001
 
-📊 Estimated level: B1 · 142 words
+📊 Estimated level: A1 · 142 words
 
 Grammar: 2 notes
 Vocab: "good" appears 4x; try alternatives like great, enjoyable, productive
@@ -353,3 +353,11 @@ Tags: technology, ai, formal-essay
 | Analysis storage             | One JSONB `analysis` column for narrative feedback, with `estimated_level` stored separately                                                             |
 | Review/correction response   | Offered first; full corrected text is stored and sent only when requested                                                                                |
 | Delete behavior              | Soft delete using `deleted_at` for materials and submissions                                                                                             |
+
+---
+
+## 10. MVP API Contract
+
+`/api/v1/writing` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, `GET /materials/:code/submissions/:submissionNumber`, and `GET /materials/:code/submissions/:submissionNumber/corrected-text`.
+
+The backend calculates submission `wordCount` from `originalText`. Each draft receives a stable `submissionNumber` scoped to its material. The submission `analysis` is validated against the documented structured JSON shape; ordinary submission detail may be used for full feedback, while the corrected text has a dedicated endpoint for on-demand Telegram delivery.

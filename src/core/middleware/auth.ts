@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { failureResponse } from '../../shared/response/api-response';
+import { failureResponse } from '../http/response';
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../http/app-env';
 
@@ -18,17 +18,15 @@ export const createAuthMiddleware = (apiKey: string): MiddlewareHandler<AppEnv> 
     const token = authorization?.startsWith('Bearer ') ? authorization.slice('Bearer '.length) : undefined;
 
     if (token === undefined || !hasMatchingToken(token, apiKey)) {
-      return context.json(
-        failureResponse(
-          {
-            code: 'UNAUTHENTICATED',
-            message: 'Authentication required',
-            details: null,
-          },
-          context.get('requestId'),
-        ),
-        401,
-      );
+      return failureResponse({
+        context,
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Authentication required',
+          details: null,
+        },
+        statusCode: 401,
+      });
     }
 
     await next();

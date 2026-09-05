@@ -1,8 +1,8 @@
 import type { DatabaseTransaction } from './database.types';
 
 export type MigrationDefinition = {
-  up: (transaction: DatabaseTransaction) => Promise<void> | void;
-  down: (transaction: DatabaseTransaction) => Promise<void> | void;
+  up: (trx: DatabaseTransaction) => Promise<void> | void;
+  down: (trx: DatabaseTransaction) => Promise<void> | void;
 };
 
 export type Migration = MigrationDefinition & {

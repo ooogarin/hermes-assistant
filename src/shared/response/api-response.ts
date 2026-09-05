@@ -18,7 +18,7 @@ export type ApiFailure = {
   requestId?: string;
 };
 
-export const successResponse = <T>(data: T, meta?: ApiMeta): ApiSuccess<T> => {
+export const createSuccessResponse = <T>(data: T, meta?: ApiMeta): ApiSuccess<T> => {
   if (meta === undefined) {
     return { success: true, data };
   }
@@ -26,7 +26,7 @@ export const successResponse = <T>(data: T, meta?: ApiMeta): ApiSuccess<T> => {
   return { success: true, data, meta };
 };
 
-export const failureResponse = (error: ApiErrorBody, requestId?: string): ApiFailure => {
+export const createFailureResponse = (error: ApiErrorBody, requestId?: string): ApiFailure => {
   if (requestId === undefined) {
     return { success: false, error };
   }

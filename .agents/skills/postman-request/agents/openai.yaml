@@ -1,0 +1,7 @@
+interface:
+  display_name: "Hermes Postman Requests"
+  short_description: "Sync Hermes API endpoints into Postman"
+  default_prompt: "Use $postman-request to sync the API endpoints from this change into the Hermes Postman collection."
+
+policy:
+  allow_implicit_invocation: false

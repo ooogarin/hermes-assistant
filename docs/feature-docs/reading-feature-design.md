@@ -17,14 +17,14 @@ Train reading comprehension through English passages with adjustable difficulty,
 Reading uses persistent defaults plus one-off overrides.
 
 ```text
-Persistent defaults: B1, 300 words, min 250, max 350
+Persistent defaults: A1, 300 words, min 250, max 350
         |
         +-- Daily cron -> uses defaults
         |
         +-- On-request -> may use one-off overrides
                 "kasih reading C1 sekitar 600 kata tentang space"
                 -> generate with C1 + 600-word target
-                -> defaults remain B1 / 300 words / min 250 / max 350
+                -> defaults remain A1 / 300 words / min 250 / max 350
                 -> next request without override returns to defaults
 ```
 
@@ -160,7 +160,7 @@ One row representing the current user defaults.
 | Column               | Type           | Notes                               |
 | -------------------- | -------------- | ----------------------------------- |
 | `id`                 | bigserial (PK) |                                     |
-| `default_level`      | text           | CEFR level, e.g. `B1`.              |
+| `default_level`      | text           | CEFR level, e.g. `A1`.              |
 | `default_word_count` | integer        | Default target word count.          |
 | `min_word_count`     | integer        | Default lower bound for generation. |
 | `max_word_count`     | integer        | Default upper bound for generation. |
@@ -234,7 +234,7 @@ One row per answered question.
 
 ```text
 📖 Reading RD-20260726-001 — 26 Jul 2026
-Topic: Earthquake in Japan (News) · Level B1 · ~280 words
+Topic: Earthquake in Japan (News) · Level A1 · ~280 words
 Tags: news, natural-disaster, japan
 
 [reading passage...]
@@ -306,3 +306,11 @@ Questions:
 | `target_word_count`      | Kept to compare intended generation length vs actual `word_count`                                      |
 | `reading_submissions`    | Kept as the parent session/attempt for grouped answers                                                 |
 | Delete behavior          | Soft delete using `deleted_at` for materials, questions, submissions, and answers                      |
+
+---
+
+## 10. MVP API Contract
+
+`/api/v1/reading` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, and `GET /materials/:code/expected-answers`.
+
+The backend calculates `wordCount` from the stored passage. A submission must contain every question exactly once; MVP permits one complete submission per material and returns `409 READING_SUBMISSION_ALREADY_EXISTS` for a repeated submission. Material detail excludes `expectedAnswer`; expected answers are retrieved only by the dedicated endpoint after submission or by explicit request.

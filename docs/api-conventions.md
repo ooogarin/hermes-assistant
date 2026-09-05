@@ -28,6 +28,8 @@ Collections may add `meta`, for example `{ "page": 1, "limit": 20, "total": 0 }`
 
 `data` appears only on success. Error codes use stable `SCREAMING_SNAKE_CASE`; messages are safe for callers. Do not return SQL, stack traces, secrets, or dependency internals.
 
+Framework HTTP exceptions use the same envelope and a safe server-defined message; their raw message and response body are never forwarded.
+
 ## Status codes
 
 | Condition | Status |

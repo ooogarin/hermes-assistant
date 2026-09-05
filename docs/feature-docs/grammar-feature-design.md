@@ -413,7 +413,7 @@ One row representing current user defaults.
 
 ```text
 📐 Grammar GR-20260726-001 — Practice · 26 Jul 2026
-Level B1 · 5 questions
+Level A1 · 5 questions
 
 1. Fill the blank: "She ___ (go) to school yesterday."
 2. Error correction: "He don't like coffee."
@@ -446,7 +446,7 @@ only the verb form needs correction.
 ```text
 User: "ujian grammar 50 soal"
 
-📝 Grammar Exam GR-20260726-002 — 50 questions · Level B1
+📝 Grammar Exam GR-20260726-002 — 50 questions · Level A1
 [all questions are sent]
 
 ...user answers all questions...
@@ -489,3 +489,41 @@ Type "jelasin nomor X GR-20260726-002" to see a question explanation.
 | Score                     | Aggregate score mainly for exam; daily/practice uses per-question result                               |
 | API architecture          | Hermes calls REST API; API stores and queries PostgreSQL                                               |
 | Delete behavior           | Soft delete using `deleted_at` for sessions, questions, and answers                                    |
+
+---
+
+## 14. MVP API Contract and Persistence Flow
+
+The Grammar API is mounted below `/api/v1/grammar` and requires the internal bearer token.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `GET` | `/api/v1/grammar/settings` | Read the persistent default level and daily question count. |
+| `PATCH` | `/api/v1/grammar/settings` | Update `defaultLevel` and/or `dailyQuestionCount`. |
+| `POST` | `/api/v1/grammar/sessions` | Save a generated practice or exam session with all questions, correct answers, and explanations. The backend generates the session code. |
+| `GET` | `/api/v1/grammar/sessions/:code` | Read a session, its questions, and saved user answers. Correct answers and explanations are deliberately excluded. |
+| `DELETE` | `/api/v1/grammar/sessions/:code` | Soft delete the session, questions, and answers together. |
+| `PUT` | `/api/v1/grammar/sessions/:code/questions/:questionNumber/answer` | Save or replace one user answer. Practice includes immediate evaluation; exam stores an unevaluated answer. |
+| `GET` | `/api/v1/grammar/sessions/:code/questions/:questionNumber/explanation` | Fetch the stored explanation only when Hermes/user explicitly requests it. |
+| `POST` | `/api/v1/grammar/sessions/:code/evaluate` | Save all exam results, calculate the score, and complete the session. |
+| `GET` | `/api/v1/grammar/sessions/:code/report` | Return score and result breakdown grouped by grammar area. |
+
+### Create session
+
+Hermes generates every question, correct answer, and explanation before calling the API. The backend stores the complete session and question batch in one transaction, generates `GR-YYYYMMDD-###` with the Jakarta calendar date, and then returns a safe session representation. `correctAnswer` and `explanation` are never included in the ordinary session response.
+
+### Practice answer flow
+
+1. Hermes evaluates the answer before calling the API.
+2. Hermes sends `userAnswer`, `result`, and optional concise `feedback` to the answer endpoint.
+3. The backend rejects a practice answer without `result`, stores the answer and evaluation, and leaves the session active.
+
+### Exam answer and evaluation flow
+
+1. Hermes sends each answer with `userAnswer` only; `result` and `feedback` are absent.
+2. The backend stores the answer but keeps its evaluation fields null.
+3. After every question is answered, Hermes evaluates the full exam.
+4. Hermes calls the evaluate endpoint with every `questionNumber`, `result`, and optional feedback exactly once.
+5. The backend validates that all questions and answers are present, updates all evaluations in one transaction, computes `score` as the count of `correct` results, sets `maxScore` to the session question count, and marks the session `completed`.
+
+Exam results cannot be written through the individual answer endpoint, and a completed session cannot accept new answers or evaluations.

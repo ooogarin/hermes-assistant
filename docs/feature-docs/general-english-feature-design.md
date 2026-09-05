@@ -41,7 +41,7 @@ Hermes should route structured practice requests to the dedicated feature instea
 | User intent                                | Route to                          |
 | ------------------------------------------ | --------------------------------- |
 | "Give me grammar exercises"                | Grammar                           |
-| "Generate a B1 reading passage"            | Reading                           |
+| "Generate a A1 reading passage"            | Reading                           |
 | "Correct this essay" / "Review my writing" | Writing                           |
 | "Start a speaking/listening practice"      | Future Speaking/Listening feature |
 

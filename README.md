@@ -1,6 +1,6 @@
 # Hermes Assistant
 
-Backend repository for Hermes, a personal assistant. The domain-independent backend foundation is ready; business modules are added only after their feature design is approved.
+Backend repository for Hermes, a personal assistant. It contains the passive REST API, PostgreSQL-backed MVP modules, and the source package for the Hermes Agent runtime skill.
 
 ## Local setup
 
@@ -11,14 +11,14 @@ bun install --frozen-lockfile
 cp .env.example .env
 ```
 
-Set `DATABASE_URL` and replace `INTERNAL_API_KEY` in `.env`, then apply pending migrations and start the application:
+Set a PostgreSQL `DATABASE_URL` and replace `INTERNAL_API_KEY` with a secret of at least 32 characters in `.env`, then apply pending migrations and start the application:
 
 ```sh
 bun run db:migrate
 bun run dev
 ```
 
-`GET /health` checks application liveness without querying PostgreSQL. `GET /health/ready` checks PostgreSQL readiness.
+`GET /health` checks application liveness without querying PostgreSQL. `GET /health/ready` checks PostgreSQL readiness and returns within `READINESS_TIMEOUT_MS`.
 
 ## Quality checks
 
@@ -60,4 +60,5 @@ The integration test helper resets its database schema before each test and acce
 
 - [Agent instructions](AGENTS.md)
 - [Engineering documentation](docs/README.md)
+- [Hermes Agent integration](docs/hermes-agent.md)
 - [Feature designs](docs/feature-docs/)

@@ -1,5 +1,7 @@
 import type { SQL } from 'bun';
 
 export type DatabaseClient = InstanceType<typeof SQL>;
-export type DatabaseConnection = DatabaseClient | Bun.ReservedSQL;
+export type DatabaseReservedConnection = Bun.ReservedSQL;
+export type DatabaseConnection = DatabaseClient | DatabaseReservedConnection;
 export type DatabaseTransaction = Bun.TransactionSQL;
+export type DatabaseExecutor = DatabaseConnection | DatabaseTransaction;

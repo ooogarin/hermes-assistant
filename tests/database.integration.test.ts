@@ -84,12 +84,12 @@ describe.skipIf(!hasTestDatabaseUrl)('PostgreSQL integration', () => {
   test('rolls back a failed migration and its tracking record together', async () => {
     const failedMigration: Migration = {
       name: '0001_failed_migration.ts',
-      up: async (transaction: DatabaseTransaction) => {
-        await transaction`CREATE TABLE failed_migration_records (id INTEGER PRIMARY KEY)`;
+      up: async (trx: DatabaseTransaction) => {
+        await trx`CREATE TABLE failed_migration_records (id INTEGER PRIMARY KEY)`;
         throw new Error('Intentional migration failure');
       },
-      down: async (transaction: DatabaseTransaction) => {
-        await transaction`DROP TABLE failed_migration_records`;
+      down: async (trx: DatabaseTransaction) => {
+        await trx`DROP TABLE failed_migration_records`;
       },
     };
     const databaseClient = getDatabase();
@@ -105,12 +105,12 @@ describe.skipIf(!hasTestDatabaseUrl)('PostgreSQL integration', () => {
   test('serializes concurrent migration runs', async () => {
     const concurrentMigration: Migration = {
       name: '0001_concurrent_migration.ts',
-      up: async (transaction: DatabaseTransaction) => {
-        await transaction`SELECT pg_sleep(0.05)`;
-        await transaction`CREATE TABLE concurrent_migration_records (id INTEGER PRIMARY KEY)`;
+      up: async (trx: DatabaseTransaction) => {
+        await trx`SELECT pg_sleep(0.05)`;
+        await trx`CREATE TABLE concurrent_migration_records (id INTEGER PRIMARY KEY)`;
       },
-      down: async (transaction: DatabaseTransaction) => {
-        await transaction`DROP TABLE concurrent_migration_records`;
+      down: async (trx: DatabaseTransaction) => {
+        await trx`DROP TABLE concurrent_migration_records`;
       },
     };
     const firstClient = getDatabase();
@@ -133,8 +133,8 @@ describe.skipIf(!hasTestDatabaseUrl)('PostgreSQL integration', () => {
     const databaseClient = getDatabase();
 
     await expect(
-      databaseClient.begin(async (transaction) => {
-        await transaction`CREATE TABLE transaction_test_records (id INTEGER PRIMARY KEY)`;
+      databaseClient.begin(async (trx) => {
+        await trx`CREATE TABLE transaction_test_records (id INTEGER PRIMARY KEY)`;
         throw new Error('Intentional transaction failure');
       }),
     ).rejects.toThrow('Intentional transaction failure');
