@@ -1,0 +1,70 @@
+import type { z } from 'zod';
+import type { createNoteSchema, noteCodeSchema, searchNotesSchema, updateNoteSchema } from './notes.validator';
+
+export const noteTypes = ['fact', 'personal', 'news', 'quote', 'idea', 'reminder'] as const;
+
+// ====================================================================================================
+// Request contracts
+// ====================================================================================================
+
+export type NoteType = (typeof noteTypes)[number];
+
+export type NoteCodeParams = z.infer<typeof noteCodeSchema>;
+export type CreateNoteRequest = z.infer<typeof createNoteSchema>;
+export type UpdateNoteRequest = z.infer<typeof updateNoteSchema>;
+export type ListNotesQuery = z.infer<typeof searchNotesSchema>;
+export type ListNotesRequest = ListNotesQuery;
+
+export type NoteReferenceRequest = {
+  code: string;
+};
+
+// ====================================================================================================
+// Service operations
+// ====================================================================================================
+
+export type Note = {
+  code: string;
+  title: string;
+  content: string;
+  type: NoteType;
+  category: string;
+  source: string | null;
+  sourceContext: string | null;
+  sourceReference: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+export type NotesService = {
+  create: (input: CreateNoteRequest) => Promise<Note>;
+  getDetail: (input: NoteReferenceRequest) => Promise<Note>;
+  list: (input: ListNotesRequest) => Promise<Note[]>;
+  update: (reference: NoteReferenceRequest, input: UpdateNoteRequest) => Promise<Note>;
+  remove: (input: NoteReferenceRequest) => Promise<void>;
+};
+
+// ====================================================================================================
+// Repository responses
+// ====================================================================================================
+
+export type NoteRow = {
+  code: string;
+  title: string;
+  content: string;
+  type: NoteType;
+  category: string;
+  source: string | null;
+  source_context: string | null;
+  source_reference: string | null;
+  tags: string[];
+  created_at: Date | string;
+  updated_at: Date | string;
+  deleted_at: Date | string | null;
+};
+
+export type NoteSequenceRow = {
+  sequence: number;
+};

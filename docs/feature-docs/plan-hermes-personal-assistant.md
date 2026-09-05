@@ -88,6 +88,8 @@ Hermes is the AI assistant layer.
 Hermes is responsible for:
 
 - understanding Telegram messages;
+- receiving and replying through its built-in Telegram gateway;
+- running scheduled learning jobs through Hermes cron;
 - extracting intent and cleaned parameters;
 - generating learning materials;
 - grading/evaluating where the feature requires it;
@@ -95,6 +97,8 @@ Hermes is responsible for:
 - calling the backend REST API.
 
 Hermes must not write directly to PostgreSQL.
+
+The backend stays passive: it does not implement a Telegram adapter, Telegram webhook, or application scheduler. Hermes calls its REST endpoints with `curl` through the runtime skill in `hermes/skills/hermes-personal-assistant`.
 
 ### Backend API and Database
 
@@ -105,7 +109,7 @@ Core stack:
 - TypeScript on Bun with Hono;
 - PostgreSQL through native `bun:sql` and parameterized raw SQL;
 - TypeScript `up` / `down` migrations;
-- modular monolith boundaries: route → handler → validator → service → repository → PostgreSQL.
+- modular monolith boundaries: route → validator → handler → service → repository → PostgreSQL.
 
 The REST API is the source of business validation and persistence. It will also be reusable by the personal website.
 
@@ -324,16 +328,16 @@ Recommended implementation order:
 
 1. Complete the domain-independent backend foundation
 2. Implement one approved feature schema, migration, and REST module at a time
-3. Integrate Telegram topic routing and Hermes API calls feature by feature
-4. Add feature prompts/skills after the relevant API exists
+3. Add the Hermes runtime skill and direct REST API calls
+4. Configure Telegram topic routing in the Hermes gateway
 5. Add end-to-end testing per feature
-6. Add scheduled jobs and personal website integration when their feature needs are concrete
+6. Configure scheduled jobs in Hermes cron after schedule times and Telegram topic IDs are known; add personal website integration when needed
 
 Reasoning:
 
 - database schema must come before API implementation;
 - API must exist before Hermes can persist data;
-- Telegram routing and Hermes behavior can be integrated feature by feature.
+- Telegram routing, Hermes behavior, and scheduling remain outside the passive API process.
 
 ---
 

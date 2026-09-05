@@ -37,7 +37,9 @@ The backend is the source of truth. The Hermes Agent understands intent, calls t
 - Bind every dynamic SQL value as a parameter; never concatenate user or agent input into SQL.
 - Use raw SQL for migrations as well as application queries.
 - Use Zod at every external input boundary.
+- Validate configuration before startup: accept PostgreSQL URLs only, require a non-placeholder internal API key of at least 32 characters, and bound readiness checks with a configured deadline.
 - Keep API versioning in routes/handlers; do not duplicate services or repositories solely for a URL version.
+- For a multi-write workflow, services use the shared explicit transaction helpers and pass one reserved connection to every participating repository write.
 
 ## Deliberately deferred
 

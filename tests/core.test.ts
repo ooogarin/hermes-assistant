@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import { AppError } from '../src/core/errors/app-error';
-import { failureResponse, successResponse } from '../src/shared/response/api-response';
+import { createFailureResponse, createSuccessResponse } from '../src/shared/response/api-response';
 
 test('creates a success response without empty metadata', () => {
-  expect(successResponse({ id: 'example' })).toEqual({
+  expect(createSuccessResponse({ id: 'example' })).toEqual({
     success: true,
     data: { id: 'example' },
   });
@@ -11,7 +11,7 @@ test('creates a success response without empty metadata', () => {
 
 test('creates an error response with a request ID', () => {
   expect(
-    failureResponse(
+    createFailureResponse(
       {
         code: 'EXAMPLE_ERROR',
         message: 'Example error',

@@ -9,7 +9,7 @@
     "db:migrate": "bun scripts/migrate.ts migrate",
     "db:status": "bun scripts/migrate.ts status",
     "db:rollback": "bun scripts/migrate.ts rollback",
-    "test:integration": "bun --env-file=.env.test test tests/database.integration.test.ts",
+    "test:integration": "bun --env-file=.env.test test tests/service-rules.test.ts && bun --env-file=.env.test test --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts tests",
     "format": "biome format --write",
     "format:check": "biome format",
     "lint": "biome lint",
@@ -18,12 +18,13 @@
     "check": "biome check",
     "fix": "biome check --write",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test tests/service-rules.test.ts && bun test --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts",
     "verify": "bun run check && bun run typecheck && bun run test"
   },
   "dependencies": {
     "@logtape/logtape": "^2.3.3",
     "@logtape/redaction": "^2.3.3",
+    "@hono/zod-validator": "^0.7.6",
     "hono": "^4.13.5",
     "zod": "^4.5.4"
   },

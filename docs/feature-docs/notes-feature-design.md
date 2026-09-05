@@ -372,3 +372,21 @@ MVP focuses on passive note capture and search.
 | Reminder behavior        | Passive note type only; no notification/due date in MVP                               |
 | Direct API               | Hermes sends cleaned parameters to REST API; API persists PostgreSQL                  |
 | Delete behavior          | Soft delete using `deleted_at`                                                        |
+
+---
+
+## 13. MVP API Contract
+
+The Notes API is mounted below `/api/v1/notes` and requires the internal bearer token.
+
+| Method | Path | Purpose |
+| ------ | ---- | ------- |
+| `POST` | `/api/v1/notes` | Create a note. The backend generates the `code`. |
+| `GET` | `/api/v1/notes` | List/search active notes. Optional filters: `q`, `tag`, `category`, and `limit` (default `20`, maximum `100`). Filters combine with AND. |
+| `GET` | `/api/v1/notes/:code` | Fetch one active note. |
+| `PATCH` | `/api/v1/notes/:code` | Update supplied fields. A `tags` payload replaces the full tag list. |
+| `DELETE` | `/api/v1/notes/:code` | Soft delete a note. |
+
+Codes are generated atomically by the backend in the format `NT-YYYYMMDD-###`, using the `Asia/Jakarta` calendar date. The daily suffix is sequential and codes are never reused.
+
+The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content, and tags. This supports Indonesian and English terms without language-specific stemming.

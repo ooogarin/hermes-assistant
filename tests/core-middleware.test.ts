@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { createApp } from '../src/app';
 import { AppError } from '../src/core/errors/app-error';
@@ -43,6 +44,17 @@ test('returns a safe unavailable response when PostgreSQL is unavailable', async
     },
     requestId: expect.any(String),
   });
+});
+
+test('bounds the readiness check with a timeout', async () => {
+  const app = createApp({
+    internalApiKey: 'test-api-key',
+    isDatabaseReady: () => new Promise<boolean>(() => undefined),
+    readinessTimeoutMs: 5,
+  });
+  const response = await app.request('http://localhost/health/ready');
+
+  expect(response.status).toBe(503);
 });
 
 test('rejects API routes without a valid bearer token', async () => {
@@ -124,6 +136,26 @@ test('maps Zod validation errors to safe field details', async () => {
       details: {
         fields: [{ path: 'name', message: 'Too small: expected string to have >=1 characters' }],
       },
+    },
+    requestId: expect.any(String),
+  });
+});
+
+test('maps Hono HTTP exceptions without exposing their message', async () => {
+  const app = createTestApp();
+  app.get('/test/http-error', () => {
+    throw new HTTPException(400, { message: 'Sensitive downstream detail' });
+  });
+
+  const response = await app.request('http://localhost/test/http-error');
+
+  expect(response.status).toBe(400);
+  expect(await response.json()).toEqual({
+    success: false,
+    error: {
+      code: 'BAD_REQUEST',
+      message: 'Bad request',
+      details: null,
     },
     requestId: expect.any(String),
   });

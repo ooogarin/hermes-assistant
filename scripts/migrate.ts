@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { loadDatabaseEnvironment } from '../src/core/config/env';
+import { EnvironmentConfigurationError, loadDatabaseEnvironment } from '../src/core/config/env';
 import { createDatabaseClient } from '../src/core/database/client';
 import {
   getMigrationStatus,
@@ -56,10 +56,17 @@ const run = async (): Promise<void> => {
     for (const status of statuses) {
       console.log(`${status.status}: ${status.name}`);
     }
-  } catch {
+  } catch (error) {
     process.exitCode = 1;
-    appLogger.error('Database migration command failed');
-    console.error('Database migration command failed. Check DATABASE_URL.');
+
+    if (error instanceof EnvironmentConfigurationError) {
+      console.error(error.message);
+    } else {
+      appLogger.error('Database migration command failed: {errorName}', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+      console.error(`Database migration ${command} failed.`);
+    }
   } finally {
     if (database !== undefined) {
       await database.close().catch(() => {

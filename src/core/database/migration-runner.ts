@@ -12,7 +12,7 @@ type MigrationTableRow = {
   exists: boolean;
 };
 
-const migrationNamePattern = /^(\d+)_[a-z0-9][a-z0-9_-]*\.ts$/;
+const migrationNamePattern = /^(\d{4})_[a-z0-9][a-z0-9_-]*\.ts$/;
 const migrationLockId = 724_093_239;
 
 const ensureMigrationTable = async (database: DatabaseConnection): Promise<void> => {
@@ -75,16 +75,28 @@ const withMigrationLock = async <T>(
   try {
     await connection`SELECT pg_advisory_lock(${migrationLockId}::BIGINT)`;
     lockAcquired = true;
+    let operationCompleted = false;
 
-    return await operation(connection);
-  } finally {
     try {
-      if (lockAcquired) {
-        await connection`SELECT pg_advisory_unlock(${migrationLockId}::BIGINT)`;
+      const result = await operation(connection);
+      operationCompleted = true;
+      await connection`SELECT pg_advisory_unlock(${migrationLockId}::BIGINT)`;
+      lockAcquired = false;
+
+      return result;
+    } catch (error) {
+      if (lockAcquired && !operationCompleted) {
+        try {
+          await connection`SELECT pg_advisory_unlock(${migrationLockId}::BIGINT)`;
+        } catch {
+          // Preserve the migration operation error when lock cleanup also fails.
+        }
       }
-    } finally {
-      connection.release();
+
+      throw error;
     }
+  } finally {
+    connection.release();
   }
 };
 
@@ -158,9 +170,9 @@ export const migrateDatabase = async (
     const pendingMigrations = migrations.filter((migration) => !appliedNameSet.has(migration.name));
 
     for (const migration of pendingMigrations) {
-      await connection.begin(async (transaction) => {
-        await migration.up(transaction);
-        await transaction`INSERT INTO _migrations (name) VALUES (${migration.name})`;
+      await connection.begin(async (trx) => {
+        await migration.up(trx);
+        await trx`INSERT INTO _migrations (name) VALUES (${migration.name})`;
       });
     }
 
@@ -188,9 +200,9 @@ export const rollbackLatestMigration = async (
       throw new Error('Unable to resolve the latest applied migration.');
     }
 
-    await connection.begin(async (transaction) => {
-      await migration.down(transaction);
-      await transaction`DELETE FROM _migrations WHERE name = ${migration.name}`;
+    await connection.begin(async (trx) => {
+      await migration.down(trx);
+      await trx`DELETE FROM _migrations WHERE name = ${migration.name}`;
     });
 
     return migration.name;

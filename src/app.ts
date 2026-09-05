@@ -1,17 +1,39 @@
 import { Hono } from 'hono';
 import { requestId } from 'hono/request-id';
+import { failureResponse, successResponse } from './core/http/response';
 import { createAuthMiddleware } from './core/middleware/auth';
 import { errorHandler } from './core/middleware/error-handler';
 import { requestContextMiddleware } from './core/middleware/request-context';
-import { failureResponse, successResponse } from './shared/response/api-response';
+import { createFinanceRoutes } from './modules/finance/finance.route';
+import { createGrammarRoutes } from './modules/grammar/grammar.route';
+import { createJunkRoutes } from './modules/junk/junk.route';
+import { createNotesRoutes } from './modules/notes/notes.route';
+import { createReadingRoutes } from './modules/reading/reading.route';
+import { createWritingRoutes } from './modules/writing/writing.route';
 import type { AppEnv } from './core/http/app-env';
 
 export type CreateAppOptions = {
   internalApiKey: string;
   isDatabaseReady: () => Promise<boolean>;
+  readinessTimeoutMs?: number;
 };
 
-export const createApp = ({ internalApiKey, isDatabaseReady }: CreateAppOptions) => {
+const checkDatabaseReadiness = async (check: () => Promise<boolean>, timeoutMs: number): Promise<boolean> => {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  const timeoutResult = new Promise<false>((resolve) => {
+    timeout = setTimeout(() => resolve(false), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([check().catch(() => false), timeoutResult]);
+  } finally {
+    if (timeout !== undefined) {
+      clearTimeout(timeout);
+    }
+  }
+};
+
+export const createApp = ({ internalApiKey, isDatabaseReady, readinessTimeoutMs = 2_000 }: CreateAppOptions) => {
   const app = new Hono<AppEnv>();
 
   app.use('*', requestId());
@@ -20,42 +42,45 @@ export const createApp = ({ internalApiKey, isDatabaseReady }: CreateAppOptions)
 
   app.onError(errorHandler);
   app.notFound((context) => {
-    return context.json(
-      failureResponse(
-        {
-          code: 'NOT_FOUND',
-          message: 'Resource not found',
-          details: null,
-        },
-        context.get('requestId'),
-      ),
-      404,
-    );
+    return failureResponse({
+      context,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'Resource not found',
+        details: null,
+      },
+      statusCode: 404,
+    });
   });
 
   app.get('/health', (context) => {
-    return context.json(successResponse({ status: 'ok' }));
+    return successResponse({ context, data: { status: 'ok' } });
   });
 
   app.get('/health/ready', async (context) => {
-    const isReady = await isDatabaseReady().catch(() => false);
+    const isReady = await checkDatabaseReadiness(isDatabaseReady, readinessTimeoutMs);
 
     if (!isReady) {
-      return context.json(
-        failureResponse(
-          {
-            code: 'SERVICE_UNAVAILABLE',
-            message: 'Service unavailable',
-            details: null,
-          },
-          context.get('requestId'),
-        ),
-        503,
-      );
+      return failureResponse({
+        context,
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Service unavailable',
+          details: null,
+        },
+        statusCode: 503,
+      });
     }
 
-    return context.json(successResponse({ status: 'ok' }));
+    return successResponse({ context, data: { status: 'ok' } });
   });
+
+  app.route('/api/v1/notes', createNotesRoutes());
+  app.route('/api/v1/junk', createJunkRoutes());
+  app.route('/api/v1/finance', createFinanceRoutes());
+  app.route('/api/v1/grammar', createGrammarRoutes());
+  app.route('/api/v1/reading', createReadingRoutes());
+  app.route('/api/v1/writing', createWritingRoutes());
 
   return app;
 };

@@ -1,5 +1,7 @@
 # Hermes Engineering Documentation
 
+- `hermes-agent.md` — Hermes gateway, runtime skill, Telegram, and cron ownership/setup.
+
 Read the relevant document before changing code or defining a feature.
 
 | Document | Purpose |
