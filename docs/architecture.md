@@ -1,8 +1,8 @@
 # Hermes Backend Architecture
 
-## Architectural style
+## Workspace and architectural style
 
-Hermes is a modular monolith: one Bun application, one PostgreSQL database, and modules organized by business capability. Module boundaries are code boundaries, not network calls.
+Hermes is a Bun workspace. `apps/api` is a modular monolith with one Bun application, one PostgreSQL database, and modules organized by business capability. Module boundaries are code boundaries, not network calls. `apps/web` is a separate React application for read-oriented reports.
 
 ## Key decisions
 
@@ -19,15 +19,17 @@ Hermes is a modular monolith: one Bun application, one PostgreSQL database, and 
 ## Layout
 
 ```text
-src/
-├── app.ts
-├── index.ts
-├── core/                    # config, database, errors, middleware
-├── modules/                 # business modules, added when needed
-└── shared/                  # small, dependency-neutral helpers
-migrations/                  # ordered raw-SQL migrations
-scripts/                     # operational scripts
-tests/
+apps/
+├── api/
+│   ├── src/                 # app, core, modules, shared
+│   ├── migrations/          # ordered raw-SQL migrations
+│   ├── scripts/             # operational scripts
+│   └── tests/
+└── web/
+    └── src/
+        ├── components/      # small reusable Tailwind components
+        ├── features/        # feature-specific views and hooks
+        └── lib/             # API client and formatting helpers
 docs/
 ```
 
@@ -49,6 +51,8 @@ Telegram topic → Hermes gateway → Hermes skill → authenticated REST reques
 
 No Telegram adapter, webhook, or scheduler runs inside this API.
 
+For local report development, browser requests use relative `/api` URLs. The Vite development server forwards them to the API and adds `Authorization: Bearer <INTERNAL_API_KEY>` from its server-side environment. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client. A production-facing frontend requires its own authentication or BFF design before deployment.
+
 Liveness does not depend on PostgreSQL; readiness may use a lightweight database check.
 
 `GET /health/ready` runs `SELECT 1` through the database health repository. It returns `503` when PostgreSQL is unavailable or the configured readiness deadline is reached, without exposing connection details.
@@ -65,7 +69,7 @@ src/modules/<module>/
 └── <module>.types.ts
 ```
 
-Small modules may combine files when responsibilities remain clear. HTTP DTOs, domain types, and database rows may have different shapes. Use `camelCase` in TypeScript/JSON and `snake_case` in PostgreSQL.
+Small modules may combine files when responsibilities remain clear. HTTP DTOs, domain types, and database rows may have different shapes. Use `camelCase` for TypeScript and request JSON. The shared HTTP response boundary recursively serializes response keys to `snake_case`, matching PostgreSQL naming without leaking database rows directly.
 
 Routes apply the shared `appValidator` wrapper around `@hono/zod-validator` before a handler runs. Handlers export named operations directly, read parsed input through `getBody`, `getParam`, or `getQuery` (which delegate to Hono's `request.valid(...)`), compose explicit `*Request` contracts from it and any request scope, then format the HTTP response with the core HTTP response helpers. Services export named operations directly and never receive a Hono context.
 

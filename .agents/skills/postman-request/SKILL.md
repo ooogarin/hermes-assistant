@@ -17,13 +17,20 @@ Create or update Postman requests for Hermes endpoints while preserving the esta
 
 Read [references/request-style.md](references/request-style.md) before constructing or modifying requests.
 
+## Hermes Postman conventions
+
+- Use the Postman environment named `Hermes` for `DOMAIN` and `INTERNAL_API_KEY`. Do not add collection-level environment variables that duplicate those values, and never place a real secret in the collection.
+- Put shared authentication on the nearest supported parent folder. Requests must not define their own auth or headers. Raw JSON bodies rely on Postman's generated content type header.
+- Do not create documentation pages, documentation sections, request descriptions, saved examples, test scripts, or pre-request scripts unless the user explicitly asks for them.
+- If the available Postman mutation API cannot set folder-level auth, use the nearest supported parent scope as a safe fallback and report that limitation; never put auth on every request.
+
 ## Preflight
 
 1. Derive the endpoint set from the current task or the user-specified diff. Compose each full path from the mount in `src/app.ts` and its module-relative route. Record method, full path, module, validator, request body, query parameters, and path parameters exactly once.
 2. Confirm that Postman collection read and request create/update tools are available. If they are unavailable, report the missing capability and stop without fabricating a successful sync.
 3. Resolve the target from a workspace or collection the user named. Otherwise, search accessible Postman collections for one clearly belonging to Hermes and use it only when the match is unique. If none or more than one match, ask the user for the collection; never guess.
 4. Fetch a minimal collection model first and locate the destination folder. Prefer the collection's established structure. For a new collection, use `V1 - API` › `<Module>` and add a resource subfolder when a module contains multiple resource families.
-5. Fetch one full reference request from the destination folder, or the closest sibling folder when it is empty. Match its header order, query presentation, description tone, raw-body formatting, and indentation where those choices do not conflict with the Hermes contract.
+5. Fetch one full reference request from the destination folder, or the closest sibling folder when it is empty. Match its query presentation and raw-body formatting where those choices do not conflict with the Hermes contract. Do not carry over docs or test sections.
 
 If the initiating request explicitly says to add, update, refresh, or sync Postman, it authorizes the matching request mutations. Otherwise, present the planned changes and obtain authorization before the first external mutation.
 

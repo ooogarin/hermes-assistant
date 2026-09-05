@@ -13,6 +13,8 @@ Writing creates prompts and stores structured feedback for multiple drafts per m
 
 Material body fields are `topic`, `promptText`, `level`, `genre`, `tags`, `targetWordCount`, and `source` (`cron|request`). For cron, fetch settings first, use defaults, set `source: "cron"`, and rotate topic/genre when possible. User-supplied level or length is a one-off override unless they explicitly update settings.
 
+Settings and material responses use fields such as `default_level`, `default_word_count`, `prompt_text`, `target_word_count`, and `is_override`. Submission responses recursively use snake_case, including `submission_number`, `word_count`, `estimated_level`, `corrected_text`, `overall_feedback`, and `next_steps`.
+
 Resolve the target from an explicit `WR-...` code or unambiguous active material before analyzing a draft. Ask if uncertain.
 
 Submission body fields:

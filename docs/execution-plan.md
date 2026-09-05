@@ -61,5 +61,5 @@ This plan covers the domain-independent backend foundation. Do not add business 
 ## Explicitly out of scope
 
 - Domain modules, domain schema, and feature endpoints.
-- MCP, dashboard frontend, queues, caches, microservices, and multi-user authentication.
+- MCP, queues, caches, microservices, and multi-user authentication. The React report frontend is now tracked in `frontend.md`.
 - Production deployment and operations automation.

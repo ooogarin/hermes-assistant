@@ -1,0 +1,36 @@
+{
+  "name": "@hermes/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --env-file=../../.env --watch src/index.ts",
+    "start": "bun --env-file=../../.env src/index.ts",
+    "db:migrate": "bun --env-file=../../.env scripts/migrate.ts migrate",
+    "db:status": "bun --env-file=../../.env scripts/migrate.ts status",
+    "db:rollback": "bun --env-file=../../.env scripts/migrate.ts rollback",
+    "test:integration": "bun --env-file=../../.env.test test tests/service-rules.test.ts && bun --env-file=../../.env.test test --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts tests",
+    "format": "biome format --write",
+    "format:check": "biome format",
+    "lint": "biome lint",
+    "lint:fix": "biome lint --write",
+    "organize-imports": "biome check --write --formatter-enabled=false --linter-enabled=false",
+    "check": "biome check",
+    "fix": "biome check --write",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test tests/service-rules.test.ts && bun test --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts",
+    "verify": "bun run check && bun run typecheck && bun run test"
+  },
+  "dependencies": {
+    "@logtape/logtape": "^2.3.3",
+    "@logtape/redaction": "^2.3.3",
+    "@hono/zod-validator": "^0.7.6",
+    "hono": "^4.13.5",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12",
+    "@types/bun": "^1.4.1",
+    "typescript": "^7.0.2"
+  }
+}

@@ -3,7 +3,7 @@
 ## General
 
 - Use strict TypeScript. Avoid `any`; use `unknown` and narrow external data safely.
-- Use `camelCase` in TypeScript and JSON, `PascalCase` for types/errors, and `snake_case` in PostgreSQL.
+- Use `camelCase` for TypeScript and request JSON, `PascalCase` for types/errors, and `snake_case` for response JSON and PostgreSQL. Convert response keys only at the shared HTTP response boundary; keep domain and service models independent of transport casing.
 - Prefer small, single-purpose functions, guard clauses, explicit types at boundaries, and comments that explain non-obvious reasoning.
 - Do not add a dependency, broad abstraction, or unrelated refactor without a concrete need.
 - Bind handler request types to their Zod schemas; do not let handlers assert arbitrary validated-input types.
@@ -13,7 +13,7 @@
 - Use Biome. TypeScript and JavaScript use two-space indentation, single quotes, semicolons, trailing commas, and a 120-character line width.
 - Let Biome organize imports. Keep imports in one contiguous block without manually inserted blank lines between groups.
 - Runtime import sources are ordered as Bun/Node built-ins, external packages, internal aliases, parent-relative paths, then sibling-relative paths. Type-only imports use `import type` and appear after every runtime import.
-- Use `bun run fix -- <path>` to apply safe formatting, lint, and import fixes to the repository or a specific file/directory. Use `bun run check -- <path>` to validate those rules without writing changes.
+- Use `bun run fix -- <path>` to apply safe formatting, lint, and import fixes to the repository or a specific file/directory. Use `bun run check -- <path>` to validate those rules without writing changes. API paths begin at `apps/api/`; frontend paths begin at `apps/web/`.
 - Use `bun run verify` before handoff for the full Biome check, TypeScript check, and test suite.
 
 ## Application layers

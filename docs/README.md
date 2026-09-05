@@ -10,6 +10,7 @@ Read the relevant document before changing code or defining a feature.
 | [tech-stack.md](tech-stack.md) | Chosen technology and deliberate exclusions |
 | [coding-conventions.md](coding-conventions.md) | Code, database, migration, and test conventions |
 | [api-conventions.md](api-conventions.md) | REST response and error contract |
+| [frontend.md](frontend.md) | React report frontend, local proxy, and security boundary |
 | [execution-plan.md](execution-plan.md) | Foundation implementation phases and completion criteria |
 | [feature-docs/](feature-docs/) | Product and domain designs |
 

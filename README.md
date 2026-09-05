@@ -1,6 +1,14 @@
 # Hermes Assistant
 
-Backend repository for Hermes, a personal assistant. It contains the passive REST API, PostgreSQL-backed MVP modules, and the source package for the Hermes Agent runtime skill.
+Hermes is a Bun workspace containing the passive REST API, a React report frontend, and the Hermes Agent runtime skill.
+
+```text
+apps/
+├── api/                  # Bun, Hono, PostgreSQL API
+└── web/                  # React, Vite, Tailwind report frontend
+docs/                     # Engineering and feature documentation
+hermes/                   # Hermes Agent runtime skill
+```
 
 ## Local setup
 
@@ -11,12 +19,20 @@ bun install --frozen-lockfile
 cp .env.example .env
 ```
 
-Set a PostgreSQL `DATABASE_URL` and replace `INTERNAL_API_KEY` with a secret of at least 32 characters in `.env`, then apply pending migrations and start the application:
+Set a PostgreSQL `DATABASE_URL` and replace `INTERNAL_API_KEY` with a secret of at least 32 characters in `.env`, then apply pending migrations and start the API:
 
 ```sh
 bun run db:migrate
-bun run dev
+bun run dev:api
 ```
+
+The API runs at `http://127.0.0.1:3000`. In another terminal, start the React frontend:
+
+```sh
+bun run dev:web
+```
+
+The frontend runs at `http://127.0.0.1:5173` and proxies `/api` requests to `API_PROXY_TARGET`. During local development, the Vite server—not browser code—adds the internal bearer key from `.env`. Do not add `INTERNAL_API_KEY` to a `VITE_*` variable.
 
 `GET /health` checks application liveness without querying PostgreSQL. `GET /health/ready` checks PostgreSQL readiness and returns within `READINESS_TIMEOUT_MS`.
 
@@ -25,14 +41,21 @@ bun run dev
 ```sh
 # Apply safe formatting, lint, and import fixes to all files or a target.
 bun run fix
-bun run fix -- src/core
+bun run fix -- apps/api/src/core
 
 # Check formatting, lint, and import ordering without modifying files.
 bun run check
-bun run check -- src/core/config/env.ts
+bun run check -- apps/api/src/core/config/env.ts
 
 # Run format, lint, type, and non-database tests.
 bun run verify
+```
+
+To type-check or build only the frontend:
+
+```sh
+bun run --filter @hermes/web typecheck
+bun run --filter @hermes/web build
 ```
 
 ## Database commands

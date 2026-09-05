@@ -29,10 +29,10 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 
 ## Authentication and headers
 
-- Hermes application endpoints use inherited Bearer authentication with `{{internal_api_key}}`.
-- Do not add a request-level `Authorization` header when the collection or parent folder demonstrably supplies that auth. If inherited auth is absent, stop and report the required collection setup rather than silently creating requests that cannot authenticate.
+- Hermes application endpoints use inherited Bearer authentication with `{{INTERNAL_API_KEY}}` from the Postman environment named `Hermes`.
+- Put Bearer auth on the nearest supported parent folder. Do not add request-level auth, `Authorization`, or other shared headers. Raw JSON bodies rely on Postman's automatic `Content-Type` handling.
+- If folder auth is not supported by the available MCP mutation, use the nearest supported parent scope and report the limitation rather than duplicating auth on requests.
 - Public health endpoints carry no auth when the user explicitly asks to include them.
-- Raw JSON bodies use `Content-Type: application/json` when Postman does not add it automatically.
 - Never place real API keys, credentials, or user data in the collection.
 
 ## JSON bodies
@@ -45,9 +45,11 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 - Do not put Postman variables such as `{{...}}` in JSON bodies.
 - Never copy credentials, production payloads, or sensitive values from logs or local environment files.
 
-## Descriptions
+## Documentation and scripts
 
-Use a concise verb-object sentence such as:
+Hermes collections do not need documentation sections, request descriptions, saved response examples, test scripts, or pre-request scripts. Leave them empty unless the user explicitly requests them.
+
+If documentation is explicitly requested, use a concise verb-object sentence such as:
 
 - `List notes using optional search filters.`
 - `Get a note by code.`
@@ -55,7 +57,7 @@ Use a concise verb-object sentence such as:
 - `Update a note by code.`
 - `Delete a note by code.`
 
-Do not include setup instructions such as “Set the variable first” in the description.
+Do not include setup instructions such as “Set the variable first” in documentation.
 
 ## Golden examples
 
@@ -67,8 +69,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
 {
   "name": "Get All",
   "method": "GET",
-  "url": "{{DOMAIN}}/api/v1/notes?q=advisory&tag=postgres&category=Tech%2FProgramming&limit=20",
-  "description": "List notes using optional search filters."
+  "url": "{{DOMAIN}}/api/v1/notes?q=advisory&tag=postgres&category=Tech%2FProgramming&limit=20"
 }
 ```
 
@@ -81,8 +82,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
   "url": "{{DOMAIN}}/api/v1/notes/:code",
   "pathVariables": {
     "code": "NT-20260905-001"
-  },
-  "description": "Get a note by code."
+  }
 }
 ```
 
@@ -102,8 +102,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
     "sourceContext": "Concurrency control",
     "sourceReference": "Chapter 13",
     "tags": ["postgres", "concurrency"]
-  },
-  "description": "Create a note."
+  }
 }
 ```
 
@@ -120,8 +119,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
   "body": {
     "title": "PostgreSQL advisory lock patterns",
     "tags": ["postgres", "concurrency"]
-  },
-  "description": "Update a note by code."
+  }
 }
 ```
 
@@ -134,8 +132,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
   "url": "{{DOMAIN}}/api/v1/notes/:code",
   "pathVariables": {
     "code": "NT-20260905-001"
-  },
-  "description": "Delete a note by code."
+  }
 }
 ```
 
@@ -143,7 +140,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
 
 - The method and composed path match `src/app.ts` plus the module route.
 - Body, query, and path fields match the applied Zod validators.
-- JSON uses `camelCase` and realistic sample literals.
+- Request JSON uses `camelCase` and realistic sample literals.
 - URL uses `{{DOMAIN}}`; dynamic segments retain their original names.
 - No unsupported pagination or filters were added.
 - Authentication is inherited and no real secret is present.
