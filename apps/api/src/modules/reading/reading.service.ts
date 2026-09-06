@@ -6,8 +6,10 @@ import * as readingRepository from './reading.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
   CreateReadingMaterialRequest,
+  ListReadingMaterialsRequest,
   ReadingExpectedAnswer,
   ReadingMaterial,
+  ReadingMaterialList,
   ReadingSettings,
   SaveReadingSubmissionRequest,
   UpdateReadingSettingsRequest,
@@ -56,6 +58,10 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
 
     throw error;
   }
+};
+
+export const listMaterials = (input: ListReadingMaterialsRequest): Promise<ReadingMaterialList> => {
+  return readingRepository.listMaterials(input);
 };
 
 export const getMaterial = async (code: string): Promise<ReadingMaterial> => {

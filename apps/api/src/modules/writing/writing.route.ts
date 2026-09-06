@@ -4,6 +4,7 @@ import * as writingHandler from './writing.handler';
 import {
   createMaterialSchema,
   createSubmissionSchema,
+  listMaterialsSchema,
   materialCodeSchema,
   submissionParamsSchema,
   updateSettingsSchema,
@@ -16,6 +17,7 @@ export const createWritingRoutes = () => {
   route.get('/settings', writingHandler.getSettings);
   route.patch('/settings', appValidator('json', updateSettingsSchema), writingHandler.updateSettings);
   route.post('/materials', appValidator('json', createMaterialSchema), writingHandler.createMaterial);
+  route.get('/materials', appValidator('query', listMaterialsSchema), writingHandler.listMaterials);
   route.get('/materials/:code', appValidator('param', materialCodeSchema), writingHandler.getMaterial);
   route.post(
     '/materials/:code/submissions',

@@ -74,6 +74,18 @@ export const materialCodeSchema = z.object({
   code: z.string().regex(/^WR-\d{8}-\d{3,}$/),
 });
 
+export const listMaterialsSchema = z
+  .object({
+    q: text(500).optional(),
+    status: z.enum(['unsubmitted', 'reviewed']).optional(),
+    level: text(32).optional(),
+    genre: text(100).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    sort: z.enum(['newest', 'oldest']).default('newest'),
+  })
+  .strict();
+
 export const submissionParamsSchema = materialCodeSchema.extend({
   submissionNumber: z.coerce.number().int().positive(),
 });

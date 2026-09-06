@@ -4,8 +4,13 @@ import type { DatabaseReservedConnection } from '../../core/database/database.ty
 import type {
   CreateWritingMaterialRequest,
   CreateWritingSubmissionRequest,
+  ListWritingMaterialsRequest,
   UpdateWritingSettingsRequest,
+  WritingCountRow,
   WritingMaterial,
+  WritingMaterialList,
+  WritingMaterialListItem,
+  WritingMaterialListRow,
   WritingMaterialRow,
   WritingSettings,
   WritingSettingsRow,
@@ -43,6 +48,21 @@ const toWritingSubmission = (row: WritingSubmissionRow): WritingSubmission => ({
   estimatedLevel: row.estimated_level,
   analysis: row.analysis,
   submittedAt: toIsoTimestamp(row.submitted_at),
+});
+
+const toWritingMaterialListItem = (row: WritingMaterialListRow): WritingMaterialListItem => ({
+  code: row.code,
+  topic: row.topic,
+  promptExcerpt: row.prompt_excerpt,
+  genre: row.genre,
+  level: row.level,
+  targetWordCount: row.target_word_count,
+  tags: row.tags,
+  source: row.source,
+  status: row.status,
+  submissionCount: Number(row.submission_count),
+  latestSubmissionNumber: row.latest_submission_number === null ? null : Number(row.latest_submission_number),
+  createdAt: toIsoTimestamp(row.created_at),
 });
 
 export const getSettings = async (): Promise<WritingSettings> => {
@@ -151,6 +171,117 @@ export const getMaterial = async (code: string): Promise<WritingMaterial | null>
     WHERE code = ${code} AND deleted_at IS NULL
   `;
   return row === undefined ? null : toWritingMaterial(row);
+};
+
+export const listMaterials = async (input: ListWritingMaterialsRequest): Promise<WritingMaterialList> => {
+  const database = getDatabaseClient();
+  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+  const offset = (input.page - 1) * input.limit;
+  const [rows, [count]] = await Promise.all([
+    database<WritingMaterialListRow[]>`
+      WITH material_summary AS (
+        SELECT
+          m.id,
+          m.code,
+          m.topic,
+          m.prompt_text,
+          m.genre,
+          m.level,
+          m.target_word_count,
+          m.tags,
+          m.source,
+          m.created_at,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM writing_submissions s
+            WHERE s.material_id = m.id AND s.deleted_at IS NULL
+          ) AS submission_count,
+          (
+            SELECT MAX(s.submission_number)
+            FROM writing_submissions s
+            WHERE s.material_id = m.id AND s.deleted_at IS NULL
+          ) AS latest_submission_number
+        FROM writing_materials m
+        WHERE m.deleted_at IS NULL
+      )
+      SELECT
+        code,
+        topic,
+        CASE
+          WHEN CHAR_LENGTH(prompt_text) > 200 THEN LEFT(prompt_text, 197) || '...'
+          ELSE prompt_text
+        END AS prompt_excerpt,
+        genre,
+        level,
+        target_word_count,
+        tags,
+        source,
+        CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END AS status,
+        submission_count,
+        latest_submission_number,
+        created_at
+      FROM material_summary
+      WHERE (${searchPattern}::TEXT IS NULL OR (
+        topic ILIKE ${searchPattern}
+        OR prompt_text ILIKE ${searchPattern}
+        OR genre ILIKE ${searchPattern}
+        OR code ILIKE ${searchPattern}
+        OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
+      ))
+        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
+        AND (${input.status}::TEXT IS NULL OR CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END = ${input.status})
+      ORDER BY
+        CASE WHEN ${input.sort} = 'oldest' THEN created_at END ASC,
+        CASE WHEN ${input.sort} = 'newest' THEN created_at END DESC,
+        CASE WHEN ${input.sort} = 'oldest' THEN id END ASC,
+        CASE WHEN ${input.sort} = 'newest' THEN id END DESC
+      LIMIT ${input.limit}
+      OFFSET ${offset}
+    `,
+    database<WritingCountRow[]>`
+      WITH material_summary AS (
+        SELECT
+          m.id,
+          m.code,
+          m.topic,
+          m.prompt_text,
+          m.genre,
+          m.level,
+          m.tags,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM writing_submissions s
+            WHERE s.material_id = m.id AND s.deleted_at IS NULL
+          ) AS submission_count
+        FROM writing_materials m
+        WHERE m.deleted_at IS NULL
+      )
+      SELECT COUNT(*)::INTEGER AS total
+      FROM material_summary
+      WHERE (${searchPattern}::TEXT IS NULL OR (
+        topic ILIKE ${searchPattern}
+        OR prompt_text ILIKE ${searchPattern}
+        OR genre ILIKE ${searchPattern}
+        OR code ILIKE ${searchPattern}
+        OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
+      ))
+        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
+        AND (${input.status}::TEXT IS NULL OR CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END = ${input.status})
+    `,
+  ]);
+  const total = Number(count?.total ?? 0);
+
+  return {
+    items: rows.map(toWritingMaterialListItem),
+    meta: {
+      page: input.page,
+      limit: input.limit,
+      total,
+      totalPages: Math.ceil(total / input.limit),
+    },
+  };
 };
 
 export const insertSubmission = async (

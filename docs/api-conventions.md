@@ -3,7 +3,7 @@
 - Mount application routes below `/api/v1` and use plural, lowercase resource paths.
 - `GET` reads, `POST` creates or performs an explicit command, `PATCH` partially updates, and `DELETE` removes.
 - Validate every body, query, path parameter, and relevant header with Zod.
-- Request bodies use `camelCase` to match validated TypeScript input contracts. Response JSON uses `snake_case` recursively, including nested objects, collection metadata, and error fields. Use ISO 8601 date/timestamps and UUID strings for public identifiers unless a feature design explicitly says otherwise.
+- Request bodies, query parameters, and path parameters use `camelCase` to match validated TypeScript input contracts. Response JSON uses `snake_case` recursively, including nested objects, collection metadata, and error fields. Use ISO 8601 date/timestamps and UUID strings for public identifiers unless a feature design explicitly says otherwise.
 - Authenticate application endpoints with `Authorization: Bearer <INTERNAL_API_KEY>`. `GET /health` and `GET /health/ready` are explicitly public.
 
 ## Response envelope

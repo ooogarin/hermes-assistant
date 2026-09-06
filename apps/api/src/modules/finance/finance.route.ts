@@ -19,18 +19,18 @@ export const createFinanceRoutes = () => {
   route.post('/transactions', appValidator('json', createTransactionsSchema), financeHandler.createTransactions);
   route.get('/transactions', appValidator('query', listTransactionsSchema), financeHandler.listTransactions);
   route.get(
-    '/transactions/:date/:daily_number',
+    '/transactions/:date/:dailyNumber',
     appValidator('param', transactionReferenceSchema),
     financeHandler.getTransaction,
   );
   route.patch(
-    '/transactions/:date/:daily_number',
+    '/transactions/:date/:dailyNumber',
     appValidator('param', transactionReferenceSchema),
     appValidator('json', updateTransactionSchema),
     financeHandler.updateTransaction,
   );
   route.delete(
-    '/transactions/:date/:daily_number',
+    '/transactions/:date/:dailyNumber',
     appValidator('param', transactionReferenceSchema),
     financeHandler.removeTransaction,
   );

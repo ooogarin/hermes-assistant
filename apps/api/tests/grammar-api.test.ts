@@ -115,7 +115,7 @@ test('reads and updates grammar settings', async () => {
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ default_level: 'B1', daily_question_count: 10 }),
+    body: JSON.stringify({ defaultLevel: 'B1', dailyQuestionCount: 10 }),
   });
 
   expect(getResponse.status).toBe(200);
@@ -137,12 +137,12 @@ test('creates a grammar session without exposing correct answers or explanations
       level: 'A1',
       questions: [
         {
-          question_type: 'fill_blank',
-          grammar_area: 'tenses',
-          grammar_point: 'simple past',
+          questionType: 'fill_blank',
+          grammarArea: 'tenses',
+          grammarPoint: 'simple past',
           level: 'A1',
-          question_text: 'She ___ (go) to school yesterday.',
-          correct_answer: 'went',
+          questionText: 'She ___ (go) to school yesterday.',
+          correctAnswer: 'went',
           explanation: 'Use the simple past form “went”.',
         },
       ],
@@ -208,7 +208,7 @@ test('passes an immediate practice evaluation to the grammar service', async () 
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ user_answer: 'went', result: 'correct' }),
+    body: JSON.stringify({ userAnswer: 'went', result: 'correct' }),
   });
 
   expect(response.status).toBe(200);
@@ -228,7 +228,7 @@ test('allows an exam answer to remain unevaluated at the API boundary', async ()
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ user_answer: 'went' }),
+    body: JSON.stringify({ userAnswer: 'went' }),
   });
 
   expect(response.status).toBe(200);
@@ -248,7 +248,7 @@ test('passes a complete exam evaluation to the grammar service', async () => {
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ answers: [{ question_number: 1, result: 'correct' }] }),
+    body: JSON.stringify({ answers: [{ questionNumber: 1, result: 'correct' }] }),
   });
 
   expect(response.status).toBe(200);

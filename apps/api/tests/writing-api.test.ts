@@ -7,6 +7,7 @@ import type {
   UpdateWritingSettingsRequest,
   WritingCorrectedText,
   WritingMaterial,
+  WritingMaterialList,
   WritingService,
   WritingSettings,
   WritingSubmission,
@@ -46,10 +47,31 @@ const correctedText: WritingCorrectedText = {
   correctedText: writingAnalysis.correctedText,
 };
 
+const materialList: WritingMaterialList = {
+  items: [
+    {
+      code: material.code,
+      topic: material.topic,
+      promptExcerpt: material.promptText,
+      genre: material.genre,
+      level: material.level,
+      targetWordCount: material.targetWordCount,
+      tags: material.tags,
+      source: material.source,
+      status: 'unsubmitted',
+      submissionCount: 0,
+      latestSubmissionNumber: null,
+      createdAt: '2026-09-05T10:00:00.000Z',
+    },
+  ],
+  meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+};
+
 const createWritingServiceStub = (overrides: Partial<WritingService> = {}): WritingService => ({
   getSettings: async () => settings,
   updateSettings: async () => settings,
   createMaterial: async () => material,
+  listMaterials: async () => materialList,
   getMaterial: async () => material,
   createSubmission: async () => submission,
   getSubmission: async () => submission,
@@ -63,6 +85,7 @@ mock.module('../src/modules/writing/writing.service', () => ({
   getSettings: () => activeWritingService.getSettings(),
   updateSettings: (input: UpdateWritingSettingsRequest) => activeWritingService.updateSettings(input),
   createMaterial: (input: CreateWritingMaterialRequest) => activeWritingService.createMaterial(input),
+  listMaterials: (input: Parameters<WritingService['listMaterials']>[0]) => activeWritingService.listMaterials(input),
   getMaterial: (code: string) => activeWritingService.getMaterial(code),
   createSubmission: (code: string, input: CreateWritingSubmissionRequest) =>
     activeWritingService.createSubmission(code, input),
@@ -100,13 +123,29 @@ test('reads and updates writing settings', async () => {
   const patchResponse = await app.request('http://localhost/api/v1/writing/settings', {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ default_level: 'B1' }),
+    body: JSON.stringify({ defaultLevel: 'B1' }),
   });
 
   expect(getResponse.status).toBe(200);
   expect(await getResponse.json()).toEqual({ success: true, data: toSnakeCaseJson(settings) });
   expect(patchResponse.status).toBe(200);
   expect(updateInput).toEqual({ defaultLevel: 'B1' });
+});
+
+test('lists writing materials with validated filters and pagination', async () => {
+  let listInput: Parameters<WritingService['listMaterials']>[0] | undefined;
+  const response = await createWritingApp({
+    listMaterials: async (input) => {
+      listInput = input;
+      return materialList;
+    },
+  }).request('http://localhost/api/v1/writing/materials?q=work&status=unsubmitted&page=1&limit=20&sort=newest', {
+    headers,
+  });
+
+  expect(response.status).toBe(200);
+  expect(listInput).toEqual({ q: 'work', status: 'unsubmitted', page: 1, limit: 20, sort: 'newest' });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
 });
 
 test('creates and reads a writing material', async () => {
@@ -122,11 +161,11 @@ test('creates and reads a writing material', async () => {
     headers,
     body: JSON.stringify({
       topic: material.topic,
-      prompt_text: material.promptText,
+      promptText: material.promptText,
       level: material.level,
       genre: material.genre,
       tags: material.tags,
-      target_word_count: material.targetWordCount,
+      targetWordCount: material.targetWordCount,
       source: material.source,
     }),
   });
@@ -157,9 +196,9 @@ test('validates structured writing analysis before calling the service', async (
     method: 'POST',
     headers,
     body: JSON.stringify({
-      original_text: submission.originalText,
-      estimated_level: submission.estimatedLevel,
-      analysis: { corrected_text: writingAnalysis.correctedText },
+      originalText: submission.originalText,
+      estimatedLevel: submission.estimatedLevel,
+      analysis: { correctedText: writingAnalysis.correctedText },
     }),
   });
 
@@ -178,9 +217,9 @@ test('creates a writing submission with validated analysis', async () => {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      original_text: submission.originalText,
-      estimated_level: submission.estimatedLevel,
-      analysis: toSnakeCaseJson(writingAnalysis),
+      originalText: submission.originalText,
+      estimatedLevel: submission.estimatedLevel,
+      analysis: writingAnalysis,
     }),
   });
 

@@ -4,6 +4,7 @@ import type {
   CreateReadingMaterialRequest,
   ReadingExpectedAnswer,
   ReadingMaterial,
+  ReadingMaterialList,
   ReadingService,
   ReadingSettings,
   SaveReadingSubmissionRequest,
@@ -42,10 +43,31 @@ const expectedAnswers: ReadingExpectedAnswer[] = [
   { questionNumber: 3, questionText: 'Where does Mira go?', expectedAnswer: 'The market.' },
 ];
 
+const materialList: ReadingMaterialList = {
+  items: [
+    {
+      code: material.code,
+      topic: material.topic,
+      genre: material.genre,
+      level: material.level,
+      targetWordCount: material.targetWordCount,
+      wordCount: material.wordCount,
+      tags: material.tags,
+      source: material.source,
+      status: 'unanswered',
+      questionCount: material.questions.length,
+      answeredQuestionCount: 0,
+      createdAt: '2026-09-05T10:00:00.000Z',
+    },
+  ],
+  meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+};
+
 const createReadingServiceStub = (overrides: Partial<ReadingService> = {}): ReadingService => ({
   getSettings: async () => settings,
   updateSettings: async () => settings,
   createMaterial: async () => material,
+  listMaterials: async () => materialList,
   getMaterial: async () => material,
   saveSubmission: async () => material,
   getExpectedAnswers: async () => expectedAnswers,
@@ -58,6 +80,7 @@ mock.module('../src/modules/reading/reading.service', () => ({
   getSettings: () => activeReadingService.getSettings(),
   updateSettings: (input: UpdateReadingSettingsRequest) => activeReadingService.updateSettings(input),
   createMaterial: (input: CreateReadingMaterialRequest) => activeReadingService.createMaterial(input),
+  listMaterials: (input: Parameters<ReadingService['listMaterials']>[0]) => activeReadingService.listMaterials(input),
   getMaterial: (code: string) => activeReadingService.getMaterial(code),
   saveSubmission: (code: string, input: SaveReadingSubmissionRequest) =>
     activeReadingService.saveSubmission(code, input),
@@ -93,13 +116,29 @@ test('reads and updates reading settings', async () => {
   const patchResponse = await app.request('http://localhost/api/v1/reading/settings', {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ default_level: 'B1' }),
+    body: JSON.stringify({ defaultLevel: 'B1' }),
   });
 
   expect(getResponse.status).toBe(200);
   expect(await getResponse.json()).toEqual({ success: true, data: toSnakeCaseJson(settings) });
   expect(patchResponse.status).toBe(200);
   expect(updateInput).toEqual({ defaultLevel: 'B1' });
+});
+
+test('lists reading materials with validated filters and pagination', async () => {
+  let listInput: Parameters<ReadingService['listMaterials']>[0] | undefined;
+  const response = await createReadingApp({
+    listMaterials: async (input) => {
+      listInput = input;
+      return materialList;
+    },
+  }).request('http://localhost/api/v1/reading/materials?q=market&status=unanswered&page=1&limit=20&sort=newest', {
+    headers,
+  });
+
+  expect(response.status).toBe(200);
+  expect(listInput).toEqual({ q: 'market', status: 'unanswered', page: 1, limit: 20, sort: 'newest' });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
 });
 
 test('creates a reading material without exposing expected answers', async () => {
@@ -117,12 +156,12 @@ test('creates a reading material without exposing expected answers', async () =>
       level: material.level,
       genre: material.genre,
       tags: material.tags,
-      target_word_count: material.targetWordCount,
-      passage_text: material.passageText,
+      targetWordCount: material.targetWordCount,
+      passageText: material.passageText,
       source: material.source,
       questions: expectedAnswers.map(({ questionText, expectedAnswer }) => ({
-        question_text: questionText,
-        expected_answer: expectedAnswer,
+        questionText,
+        expectedAnswer,
       })),
     }),
   });
@@ -148,12 +187,12 @@ test('rejects a reading material with fewer than three questions', async () => {
       topic: material.topic,
       level: material.level,
       genre: material.genre,
-      target_word_count: material.targetWordCount,
-      passage_text: material.passageText,
+      targetWordCount: material.targetWordCount,
+      passageText: material.passageText,
       source: material.source,
       questions: expectedAnswers.slice(0, 2).map(({ questionText, expectedAnswer }) => ({
-        question_text: questionText,
-        expected_answer: expectedAnswer,
+        questionText,
+        expectedAnswer,
       })),
     }),
   });
@@ -175,8 +214,8 @@ test('passes a complete reading submission to the service', async () => {
     headers,
     body: JSON.stringify({
       answers: answers.map(({ questionNumber, userAnswer }) => ({
-        question_number: questionNumber,
-        user_answer: userAnswer,
+        questionNumber,
+        userAnswer,
       })),
     }),
   });

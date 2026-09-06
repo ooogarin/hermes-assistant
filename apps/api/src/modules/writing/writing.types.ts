@@ -3,6 +3,7 @@ import type {
   analysisSchema,
   createMaterialSchema,
   createSubmissionSchema,
+  listMaterialsSchema,
   materialCodeSchema,
   submissionParamsSchema,
   updateSettingsSchema,
@@ -14,6 +15,7 @@ import type {
 
 export type CreateWritingMaterialRequest = z.infer<typeof createMaterialSchema>;
 export type CreateWritingSubmissionRequest = z.infer<typeof createSubmissionSchema>;
+export type ListWritingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
 export type UpdateWritingSettingsRequest = z.infer<typeof updateSettingsSchema>;
 export type WritingMaterialParams = z.infer<typeof materialCodeSchema>;
 export type WritingSubmissionParams = z.infer<typeof submissionParamsSchema>;
@@ -52,10 +54,35 @@ export type WritingSubmission = {
   analysis: WritingAnalysis;
   submittedAt: string;
 };
+export type WritingMaterialListItem = {
+  code: string;
+  topic: string;
+  promptExcerpt: string;
+  genre: string;
+  level: string;
+  targetWordCount: number;
+  tags: string[];
+  source: WritingSource;
+  status: 'unsubmitted' | 'reviewed';
+  submissionCount: number;
+  latestSubmissionNumber: number | null;
+  createdAt: string;
+};
+export type WritingMaterialList = {
+  items: WritingMaterialListItem[];
+  meta: WritingPaginationMeta;
+};
+export type WritingPaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
 export type WritingService = {
   getSettings: () => Promise<WritingSettings>;
   updateSettings: (input: UpdateWritingSettingsRequest) => Promise<WritingSettings>;
   createMaterial: (input: CreateWritingMaterialRequest) => Promise<WritingMaterial>;
+  listMaterials: (input: ListWritingMaterialsRequest) => Promise<WritingMaterialList>;
   getMaterial: (code: string) => Promise<WritingMaterial>;
   createSubmission: (code: string, input: CreateWritingSubmissionRequest) => Promise<WritingSubmission>;
   getSubmission: (code: string, submissionNumber: number) => Promise<WritingSubmission>;
@@ -98,4 +125,21 @@ export type WritingSubmissionRow = {
   estimated_level: string;
   analysis: WritingAnalysis;
   submitted_at: Date | string;
+};
+export type WritingMaterialListRow = {
+  code: string;
+  topic: string;
+  prompt_excerpt: string;
+  genre: string;
+  level: string;
+  target_word_count: number;
+  tags: string[];
+  source: WritingSource;
+  status: 'unsubmitted' | 'reviewed';
+  submission_count: number | string;
+  latest_submission_number: number | string | null;
+  created_at: Date | string;
+};
+export type WritingCountRow = {
+  total: number | string;
 };

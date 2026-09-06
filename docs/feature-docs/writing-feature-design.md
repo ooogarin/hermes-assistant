@@ -358,8 +358,10 @@ Tags: technology, ai, formal-essay
 
 ## 10. MVP API Contract
 
-`/api/v1/writing` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, `GET /materials/:code/submissions/:submissionNumber`, and `GET /materials/:code/submissions/:submissionNumber/corrected-text`.
+`/api/v1/writing` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, `GET /materials/:code/submissions/:submissionNumber`, and `GET /materials/:code/submissions/:submissionNumber/corrected-text`.
 
-Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+Request bodies, query parameters, and path parameters use `camelCase`; every response field is serialized recursively as `snake_case`.
+
+`GET /materials` searches `topic`, `promptText`, `genre`, `tags`, and `code` case-insensitively. It supports exact `level` and `genre` filters, `status` (`unsubmitted` or `reviewed`), `page`, `limit` (maximum 100), and `sort` (`newest` or `oldest`). PostgreSQL applies the filtering, stable `created_at`/`id` ordering, pagination, and active submission counts. `reviewed` means at least one active submission exists, which always has structured analysis under the current Hermes submission contract; soft-deleted materials and submissions are excluded. The list returns a 200-character `prompt_excerpt`, adding `...` only when the full prompt is longer.
 
 The backend calculates response field `word_count` from request field `originalText`. Each draft receives a stable response field `submission_number` scoped to its material. The submission `analysis` is validated against the documented structured JSON shape and recursively returned as `snake_case`; ordinary submission detail may be used for full feedback, while the corrected text has a dedicated endpoint for on-demand Telegram delivery.

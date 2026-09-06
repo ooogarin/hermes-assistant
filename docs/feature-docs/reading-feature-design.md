@@ -311,8 +311,10 @@ Questions:
 
 ## 10. MVP API Contract
 
-`/api/v1/reading` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, and `GET /materials/:code/expected-answers`.
+`/api/v1/reading` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, and `GET /materials/:code/expected-answers`.
 
-Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+Request bodies, query parameters, and path parameters use `camelCase`; every response field is serialized recursively as `snake_case`.
+
+`GET /materials` searches `topic`, `genre`, `tags`, and `code` case-insensitively. It supports exact `level` and `genre` filters, `status` (`unanswered` or `completed`), `page`, `limit` (maximum 100), and `sort` (`newest` or `oldest`). PostgreSQL applies the filtering, stable `created_at`/`id` ordering, pagination, and active-row counts. `completed` means the material has one active complete submission; soft-deleted materials, submissions, questions, and answers are excluded.
 
 The backend calculates response field `word_count` from the stored passage. A submission must contain every question exactly once; MVP permits one complete submission per material and returns `409 READING_SUBMISSION_ALREADY_EXISTS` for a repeated submission. Material detail excludes `expected_answer`; expected answers are retrieved only by the dedicated endpoint after submission or by explicit request.

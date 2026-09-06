@@ -63,9 +63,9 @@ test('creates a junk item through the authenticated API', async () => {
     body: JSON.stringify({
       title: 'Rust ownership article',
       category: 'article',
-      raw_text: 'Artikel bagus soal Rust https://example.com/rust-ownership',
-      content_text: 'Article about Rust ownership. User note: artikel bagus soal Rust.',
-      source_url: 'https://example.com/rust-ownership',
+      rawText: 'Artikel bagus soal Rust https://example.com/rust-ownership',
+      contentText: 'Article about Rust ownership. User note: artikel bagus soal Rust.',
+      sourceUrl: 'https://example.com/rust-ownership',
       tags: ['rust', 'programming'],
     }),
   });
@@ -110,7 +110,7 @@ test('passes search filters to the junk service', async () => {
   });
 
   const response = await app.request(
-    'http://localhost/api/v1/junk?q=rust&tag=programming&category=article&source_url=https%3A%2F%2Fexample.com%2Frust-ownership&limit=10',
+    'http://localhost/api/v1/junk?q=rust&tag=programming&category=article&sourceUrl=https%3A%2F%2Fexample.com%2Frust-ownership&limit=10',
     { headers: { Authorization: 'Bearer test-api-key' } },
   );
 
@@ -155,7 +155,7 @@ test('updates junk metadata without allowing raw text replacement', async () => 
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ category: 'reference', tags: ['rust'], raw_text: 'replacement' }),
+    body: JSON.stringify({ category: 'reference', tags: ['rust'] }),
   });
 
   expect(response.status).toBe(200);

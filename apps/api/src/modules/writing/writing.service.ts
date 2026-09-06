@@ -7,9 +7,11 @@ import type { DatabaseReservedConnection } from '../../core/database/database.ty
 import type {
   CreateWritingMaterialRequest,
   CreateWritingSubmissionRequest,
+  ListWritingMaterialsRequest,
   UpdateWritingSettingsRequest,
   WritingCorrectedText,
   WritingMaterial,
+  WritingMaterialList,
   WritingSettings,
   WritingSubmission,
 } from './writing.types';
@@ -56,6 +58,10 @@ export const createMaterial = async (input: CreateWritingMaterialRequest): Promi
     }
     throw error;
   }
+};
+
+export const listMaterials = (input: ListWritingMaterialsRequest): Promise<WritingMaterialList> => {
+  return writingRepository.listMaterials(input);
 };
 
 export const getMaterial = async (code: string): Promise<WritingMaterial> => {
