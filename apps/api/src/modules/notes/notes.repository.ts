@@ -122,6 +122,7 @@ export const findByCode = async (code: string): Promise<Note | null> => {
 export const getAll = async (input: ListNotesRequest): Promise<Note[]> => {
   const database = getDatabaseClient();
   const query = input.q ?? null;
+  const type = input.type ?? null;
   const tag = input.tag ?? null;
   const category = input.category ?? null;
   const rows = await database<NoteRow[]>`
@@ -141,6 +142,7 @@ export const getAll = async (input: ListNotesRequest): Promise<Note[]> => {
     FROM notes
     WHERE deleted_at IS NULL
       AND (${query}::TEXT IS NULL OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT))
+      AND (${type}::note_type IS NULL OR type = ${type}::note_type)
       AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
       AND (${category}::TEXT IS NULL OR category = ${category})
     ORDER BY

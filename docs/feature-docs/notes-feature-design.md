@@ -384,7 +384,7 @@ Request bodies use `camelCase`; every response field is serialized recursively a
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `POST` | `/api/v1/notes` | Create a note. The backend generates the `code`. |
-| `GET` | `/api/v1/notes` | List/search active notes. Optional filters: `q`, `tag`, `category`, and `limit` (default `20`, maximum `100`). Filters combine with AND. |
+| `GET` | `/api/v1/notes` | List/search active notes. Optional filters: `q`, `type`, `tag`, `category`, and `limit` (default `20`, maximum `100`). Filters combine with AND. |
 | `GET` | `/api/v1/notes/:code` | Fetch one active note. |
 | `PATCH` | `/api/v1/notes/:code` | Update supplied fields. A `tags` payload replaces the full tag list. |
 | `DELETE` | `/api/v1/notes/:code` | Soft delete a note. |

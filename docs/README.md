@@ -11,7 +11,9 @@ Read the relevant document before changing code or defining a feature.
 | [coding-conventions.md](coding-conventions.md) | Code, database, migration, and test conventions |
 | [api-conventions.md](api-conventions.md) | REST response and error contract |
 | [frontend.md](frontend.md) | React report frontend, local proxy, and security boundary |
+| [frontend-implementation-plan.md](frontend-implementation-plan.md) | Frontend foundation, delivery phases, blockers, testing, and definition of done |
 | [frontend-screens.md](frontend-screens.md) | Cross-cutting screen, navigation, state, and accessibility conventions |
+| [frontend-screens/finance.md](frontend-screens/finance.md) | Finance Daily View, Range View, states, data contract, and API gap |
 | [frontend-screens/notes.md](frontend-screens/notes.md) | Notes screen list, data needs, state handling, and implementation order |
 | [frontend-screens/junk.md](frontend-screens/junk.md) | Junk screen list, data needs, state handling, and implementation order |
 | [frontend-screens/general-english.md](frontend-screens/general-english.md) | General English Q&A screen, non-persistence, and integration boundary |

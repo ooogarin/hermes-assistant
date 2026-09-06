@@ -164,6 +164,6 @@ Behavior deliberately not included in this screen.
 ## 9. Documentation sequence
 
 1. Keep this guide as the shared baseline.
-2. Add module-specific screen specifications only after their feature behavior and API availability are confirmed. Current specifications are [Notes](frontend-screens/notes.md), [Junk](frontend-screens/junk.md), [General English](frontend-screens/general-english.md), [Reading](frontend-screens/reading.md), [Grammar](frontend-screens/grammar.md), and [Writing](frontend-screens/writing.md).
+2. Add module-specific screen specifications only after their feature behavior and API availability are confirmed. Current specifications are [Finance](frontend-screens/finance.md), [Notes](frontend-screens/notes.md), [Junk](frontend-screens/junk.md), [General English](frontend-screens/general-english.md), [Reading](frontend-screens/reading.md), [Grammar](frontend-screens/grammar.md), and [Writing](frontend-screens/writing.md).
 3. Update the relevant feature design, API contract, and this guide together when a screen requires a behavior or data change.
 4. Implement shared UI primitives before composing module screens.

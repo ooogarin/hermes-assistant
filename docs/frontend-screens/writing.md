@@ -1,6 +1,6 @@
 # Writing Screen List
 
-> Status: Settings ready for implementation; material-list integration is blocked by a missing list API. Visual references: [Writing list](../fe-design/writing-list.png) and [Writing settings](../fe-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
+> Status: Settings and API-backed known-code review screens implemented; material-list and browser-originated submission remain blocked by missing API contracts. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
 
 ## Scope
 
@@ -25,11 +25,11 @@ The initial web scope is to update persistent defaults, open a known writing pro
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-WRITE-001 | Writing material list | `/english/writing` | Design ready; integration deferred | List endpoint missing |
-| SCR-WRITE-002 | Writing settings | `/english/writing/settings` | In scope | Available |
-| SCR-WRITE-003 | Writing prompt and draft workspace | `/english/writing/:code` | In scope for a known code | Available |
-| SCR-WRITE-004 | Writing feedback review | `/english/writing/:code/submissions/:number` | In scope for a known submission | Available |
-| SCR-WRITE-005 | Corrected text | `/english/writing/:code/submissions/:number/corrected-text` | In scope on demand | Available |
+| SCR-WRITE-001 | Writing material list | `/english/writing` | Unavailable state implemented; integration deferred | List endpoint missing |
+| SCR-WRITE-002 | Writing settings | `/english/writing/settings` | Implemented | Available |
+| SCR-WRITE-003 | Writing prompt and draft workspace | `/english/writing/:code` | Prompt/composer implemented; submit unavailable | Submission command missing |
+| SCR-WRITE-004 | Writing feedback review | `/english/writing/:code/submissions/:number` | Implemented for a known submission | Available |
+| SCR-WRITE-005 | Corrected text | `/english/writing/:code/submissions/:number/corrected-text` | Implemented on demand | Available |
 
 Proposed web routes are frontend navigation only. They do not alter the REST API contract.
 
@@ -128,6 +128,10 @@ POST /api/v1/writing/materials/:code/submissions
 - Present prompt text, topic, genre, level, target word count, tags, and stable material code.
 - The draft composer preserves entered content while saving. The frontend can show a non-authoritative live word count, while the API returns the authoritative saved count.
 - A material may have multiple submissions; do not imply a single-attempt limit.
+
+**Known API limitation**
+
+- The current POST schema requires `originalText`, `estimatedLevel`, and a complete structured `analysis` in one request. A browser cannot author authoritative feedback. The composer therefore preserves the draft and shows its word count, but keeps submission unavailable until the API exposes a command that accepts `originalText` and owns the analysis workflow.
 
 ## SCR-WRITE-004 — Writing feedback review
 
