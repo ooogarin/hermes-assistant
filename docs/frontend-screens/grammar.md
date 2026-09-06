@@ -1,6 +1,6 @@
 # Grammar Screen List
 
-> Status: Settings ready for implementation; session-list integration is blocked by a missing list API. Visual references: [Grammar list](../fe-design/grammar-list.png) and [Grammar settings](../fe-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
+> Status: Settings ready for implementation; session-list integration is blocked by a missing list API. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
 
 ## Scope
 

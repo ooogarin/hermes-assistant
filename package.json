@@ -20,7 +20,7 @@
     "check": "biome check .",
     "fix": "biome check --write .",
     "typecheck": "bun run --filter @hermes/api typecheck && bun run --filter @hermes/web typecheck",
-    "test": "bun run --filter @hermes/api test",
+    "test": "bun run --filter @hermes/api test && bun run --filter @hermes/web test",
     "test:integration": "bun run --filter @hermes/api test:integration",
     "verify": "bun run check && bun run typecheck && bun run test"
   },

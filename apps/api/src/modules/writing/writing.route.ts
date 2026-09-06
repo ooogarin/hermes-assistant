@@ -24,12 +24,12 @@ export const createWritingRoutes = () => {
     writingHandler.createSubmission,
   );
   route.get(
-    '/materials/:code/submissions/:submission_number',
+    '/materials/:code/submissions/:submissionNumber',
     appValidator('param', submissionParamsSchema),
     writingHandler.getSubmission,
   );
   route.get(
-    '/materials/:code/submissions/:submission_number/corrected-text',
+    '/materials/:code/submissions/:submissionNumber/corrected-text',
     appValidator('param', submissionParamsSchema),
     writingHandler.getCorrectedText,
   );

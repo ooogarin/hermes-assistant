@@ -1,6 +1,6 @@
 # Reading Screen List
 
-> Status: Settings ready for implementation; material-list integration is blocked by a missing list API. Visual references: [Reading list](../fe-design/reading-list.png), [Reading detail](../fe-design/reading-detail.png), and [Reading settings](../fe-design/reading-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Reading screens.
+> Status: Settings and known-code workflows implemented; material-list integration remains blocked by a missing list API. Visual references: [Reading list](../frontend-design/reading-list.png), [Reading detail](../frontend-design/reading-detail.png), and [Reading settings](../frontend-design/reading-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Reading screens.
 
 ## Scope
 
@@ -23,10 +23,10 @@ The first web scope is reviewing material, answering questions, viewing permitte
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-READ-001 | Reading material list | `/english/reading` | Design ready; integration deferred | List endpoint missing |
-| SCR-READ-002 | Reading settings | `/english/reading/settings` | In scope | Available |
-| SCR-READ-003 | Reading material and answer workspace | `/english/reading/:code` | In scope for a known code | Available |
-| SCR-READ-004 | Expected answers | `/english/reading/:code/expected-answers` | In scope, conditional | Available |
+| SCR-READ-001 | Reading material list | `/english/reading` | Unavailable state implemented; integration deferred | List endpoint missing |
+| SCR-READ-002 | Reading settings | `/english/reading/settings` | Implemented | Available |
+| SCR-READ-003 | Reading material and answer workspace | `/english/reading/:code` | Implemented for a known code | Available |
+| SCR-READ-004 | Expected answers | `/english/reading/:code/expected-answers` | Implemented, conditional | Available |
 
 Proposed web routes are frontend navigation only. They do not alter the REST API contract.
 

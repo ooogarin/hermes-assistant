@@ -40,6 +40,7 @@ export const noteCodeSchema = z
 export const searchNotesSchema = z
   .object({
     q: z.string().trim().min(1).max(500).optional(),
+    type: z.enum(noteTypes).optional(),
     tag: z.string().trim().min(1).max(64).optional(),
     category: z.string().trim().min(1).max(100).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),

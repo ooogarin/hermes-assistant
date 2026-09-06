@@ -1,6 +1,6 @@
 # General English Screen List
 
-> Status: Design ready; browser integration is blocked because General English has no web/API conversation contract. Visual reference: [General English](../fe-design/general-english.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing the screen.
+> Status: Design ready; browser integration is blocked because General English has no web/API conversation contract. Visual reference: [General English](../frontend-design/general-english.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing the screen.
 
 ## Scope
 

@@ -1,6 +1,6 @@
 # Notes Screen List
 
-> Status: Design ready for list and detail review. Visual reference: [Notes list design](../fe-design/notes-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Notes screens.
+> Status: Design ready for list and detail review. Visual reference: [Notes list design](../frontend-design/notes-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Notes screens.
 
 ## Scope
 
@@ -12,9 +12,10 @@ The initial implementation includes the list and detail screens. Editing and del
 
 ```text
 /notes
+├── ?preview=:code  Supporting preview over the list context
 ├── SCR-NOTE-001  Notes list, search, filter, and sorter
 └── /notes/:code
-    ├── SCR-NOTE-002  Note detail supporting pane / full-page detail
+    ├── SCR-NOTE-002  Full-page note detail
     ├── SCR-NOTE-003  Edit note (deferred)
     └── SCR-NOTE-004  Delete confirmation (deferred dialog)
 ```
@@ -22,7 +23,7 @@ The initial implementation includes the list and detail screens. Editing and del
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
 | SCR-NOTE-001 | Notes list, search, filter, and sorter | `/notes` | In scope | Available, with filter/sort limitations |
-| SCR-NOTE-002 | Note detail pane / full-page detail | `/notes/:code` | In scope | Available |
+| SCR-NOTE-002 | Note preview / full-page detail | `/notes?preview=:code` and `/notes/:code` | In scope | Available |
 | SCR-NOTE-003 | Edit note | `/notes/:code/edit` | Deferred | Available |
 | SCR-NOTE-004 | Delete confirmation | No route; dialog over detail | Deferred | Available |
 
@@ -49,7 +50,9 @@ Find a saved note, narrow the collection, then open a note for reading. The defa
 - An always-visible quick filter chip row directly below the controls: `Semua`, `Fact`, `Personal`, `Idea`, and `Quote`. It is a shortcut for a note-type filter; the soft-text `category` field remains an advanced-filter field. This wording avoids conflating the domain's fixed `type` enum with its free-form `category`.
 - One grouped list surface with lightweight row separators.
 - Each row displays type, title, content excerpt, tags, created date, and stable note code.
-- The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, updates the route to `/notes/:code`, and opens SCR-NOTE-002 in a right supporting pane on wide screens. On narrow screens, it opens as the primary screen.
+- The outer page stacks the header, toolbar, and content region vertically. The content region uses the full available width while no note is selected.
+- The application content frame and toolbar use the full available width; the search group absorbs remaining toolbar space while Filter and Sort retain compact widths and equal heights.
+- The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, records the selection as `/notes?preview=:code`, shrinks the list, and opens SCR-NOTE-002 in a right supporting pane on wide screens. On narrow screens, the preview becomes the primary content.
 
 **Interactions**
 
@@ -63,10 +66,11 @@ Find a saved note, narrow the collection, then open a note for reading. The defa
 **Data contract**
 
 ```text
-GET /api/v1/notes?q=<keyword>&tag=<tag>&category=<category>&limit=<1..100>
+GET /api/v1/notes?q=<keyword>&type=<type>&tag=<tag>&category=<category>&limit=<1..100>
 ```
 
 - `q` searches title, content, and tags. It is sent only after an enabled `Cari` action.
+- `type` is an optional exact filter over the fixed note-type enum.
 - `tag` and `category` are optional exact filters.
 - UI tag chips may display `#` for readability, but the request sends the stored tag value without assuming that prefix is persisted.
 - Dates use the Indonesian locale. The frontend never displays an internal database ID.
@@ -74,7 +78,7 @@ GET /api/v1/notes?q=<keyword>&tag=<tag>&category=<category>&limit=<1..100>
 **Known API limitations**
 
 - The current list response has `limit` but no page, cursor, or total metadata. Do not display pagination until the API supports it.
-- The current API supports only `q`, `tag`, and `category`. It has no query parameters for type, source, created-date range, or explicit sort direction. The visual design includes those advanced controls, but integration must not silently filter or sort only the limited client result set. Those controls remain unavailable until the API capability exists, or the API is extended as a separate backend change.
+- The current API has no query parameters for source, created-date range, or explicit sort direction. The visual design includes those advanced controls, but integration must not silently filter or sort only the limited client result set. Those controls remain unavailable until the API capability exists.
 - The API's current natural order is relevance first when a query is present, then newest created date. The `Terbaru` display may reflect that default; `Terlama` requires an explicit API sort parameter.
 - The API has no category-vocabulary endpoint. The category field begins as a text input, not a speculative category dropdown.
 
@@ -96,18 +100,18 @@ GET /api/v1/notes?q=<keyword>&tag=<tag>&category=<category>&limit=<1..100>
 ## SCR-NOTE-002 — Note detail
 
 **Purpose**  
-Read one saved note and understand its metadata and origin. On desktop this begins as a right-side supporting pane opened from SCR-NOTE-001.
+Read one saved note and understand its metadata and origin. On desktop this begins as a right-side supporting preview opened from SCR-NOTE-001; the full route is a standalone page that can later own update and other note actions.
 
 **Entry points**
 
-- Select a result from SCR-NOTE-001.
-- Direct link to `/notes/:code`.
+- Select a result from SCR-NOTE-001 to open `/notes?preview=:code`.
+- Select the preview's expand action or open a direct link to `/notes/:code` for the full page.
 
 **UI composition**
 
-- Right-side detail pane containing close and expand controls at its outer edge.
-- Note title and stable code.
-- Compact metadata line: type, category, and created date.
+- Right-side preview pane containing close and open-page controls at its outer edge.
+- The preview title shares its top row with the pane controls so the reading content starts without an empty control-only region.
+- Note title followed by one compact metadata line: colored type, category, created date, and stable code.
 - Readable note content using a constrained text width.
 - Tags as quiet supporting chips.
 - Source section only when `source` is present.
@@ -115,9 +119,9 @@ Read one saved note and understand its metadata and origin. On desktop this begi
 
 **Panel behavior**
 
-- Close returns to the default list-only state at `/notes`; it removes the selected row state and right pane.
-- Expand changes the detail into a full-page reading state and visually covers the list. The selected note route remains `/notes/:code`.
-- In full-page state, a return control restores the right supporting pane on wide screens. A direct visit to `/notes/:code` may use the full-page state when no list context is available.
+- Close removes the `preview` query parameter, restores the default list-only state, and lets the list expand to the full content width.
+- Open page navigates from `/notes?preview=:code` to the standalone `/notes/:code` route.
+- The full-page route omits a redundant detail page header, uses the full available content width, keeps a compact return control, and remains structurally ready for future update and other note actions.
 - The supporting pane becomes the full primary detail screen on narrow viewports.
 
 **Data contract**

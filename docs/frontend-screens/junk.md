@@ -1,6 +1,6 @@
 # Junk Screen List
 
-> Status: Design ready for list and detail review. Visual reference: [Junk list design](../fe-design/junk-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Junk screens.
+> Status: Design ready for list and detail review. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Junk screens.
 
 ## Scope
 
@@ -12,9 +12,10 @@ The initial implementation includes the list and detail states. Editing and dele
 
 ```text
 /junk
+├── ?preview=:code  Supporting preview over the list context
 ├── SCR-JUNK-001  Junk list, search, filter, and sorter
 └── /junk/:code
-    ├── SCR-JUNK-002  Junk detail supporting pane / full-page detail
+    ├── SCR-JUNK-002  Full-page Junk detail
     ├── SCR-JUNK-003  Edit junk item (deferred)
     └── SCR-JUNK-004  Delete confirmation (deferred dialog)
 ```
@@ -22,7 +23,7 @@ The initial implementation includes the list and detail states. Editing and dele
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
 | SCR-JUNK-001 | Junk list, search, filter, and sorter | `/junk` | In scope | Available, with date/sort limitations |
-| SCR-JUNK-002 | Junk detail pane / full-page detail | `/junk/:code` | In scope | Available |
+| SCR-JUNK-002 | Junk preview / full-page detail | `/junk?preview=:code` and `/junk/:code` | In scope | Available |
 | SCR-JUNK-003 | Edit junk item | `/junk/:code/edit` | Deferred | Available |
 | SCR-JUNK-004 | Delete confirmation | No route; dialog over detail | Deferred | Available |
 
@@ -49,7 +50,8 @@ Find a saved external item, narrow the collection, then open it for reading. The
 - An always-visible quick category filter chip row directly below the controls: `Semua`, `Artikel`, `Video`, `Musik`, `Quote`, and `Tool`. The chips are shortcuts for the soft-text `category` field, not a new fixed enum. Categories outside this shortcut set remain searchable through the advanced filter.
 - One grouped table-like list surface with lightweight row separators.
 - Each row displays category, title or a safe title fallback, content excerpt, tags, source host or URL label, created date, and stable Junk code.
-- The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, updates the route to `/junk/:code`, and opens SCR-JUNK-002 in a right supporting pane on wide screens. On narrow screens, it opens as the primary screen.
+- The header, toolbar, and content are vertically stacked. The application frame and list use the full available width when no item is selected.
+- The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, records it as `/junk?preview=:code`, shrinks the list, and opens SCR-JUNK-002 in a right supporting pane on wide screens. On narrow screens, the preview becomes the primary content.
 
 **Interactions**
 
@@ -101,12 +103,12 @@ Read one saved external item and understand its category, source, and saved desc
 
 **Entry points**
 
-- Select a result from SCR-JUNK-001.
-- Direct link to `/junk/:code`.
+- Select a result from SCR-JUNK-001 to open `/junk?preview=:code`.
+- Select the preview's open-page action or use a direct link to `/junk/:code`.
 
 **UI composition**
 
-- Right-side detail pane containing close and expand controls at its outer edge.
+- Right-side preview pane containing close and open-page controls in the title area.
 - Category, title or safe title fallback, and stable code.
 - Source URL as an external link only when `sourceUrl` is present and API-valid.
 - Description from `contentText` when it is present.
@@ -116,9 +118,9 @@ Read one saved external item and understand its category, source, and saved desc
 
 **Panel behavior**
 
-- Close returns to the default list-only state at `/junk`; it removes the selected row state and right pane.
-- Expand changes the detail into a full-page reading state and visually covers the list. The selected item route remains `/junk/:code`.
-- In full-page state, a return control restores the right supporting pane on wide screens. A direct visit to `/junk/:code` may use the full-page state when no list context is available.
+- Close removes the `preview` query parameter and restores the full-width list state.
+- Open page navigates from `/junk?preview=:code` to the standalone `/junk/:code` route.
+- The standalone route uses the full content width, keeps a compact return control, and is structurally ready for future update actions.
 - The supporting pane becomes the full primary detail screen on narrow viewports.
 
 **Data contract**
