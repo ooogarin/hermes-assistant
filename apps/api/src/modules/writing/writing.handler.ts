@@ -1,9 +1,10 @@
-import { getBody, getParam } from '../../core/http/request';
+import { getBody, getParam, getQuery } from '../../core/http/request';
 import { successResponse } from '../../core/http/response';
 import * as writingService from './writing.service';
 import {
   createMaterialSchema,
   createSubmissionSchema,
+  listMaterialsSchema,
   materialCodeSchema,
   submissionParamsSchema,
   updateSettingsSchema,
@@ -29,6 +30,13 @@ export const createMaterial = async (context: Context<AppEnv>) => {
   const result = await writingService.createMaterial(data);
 
   return successResponse({ context, data: result, statusCode: 201 });
+};
+
+export const listMaterials = async (context: Context<AppEnv>) => {
+  const query = getQuery(context, listMaterialsSchema);
+  const result = await writingService.listMaterials(query);
+
+  return successResponse({ context, data: result });
 };
 
 export const getMaterial = async (context: Context<AppEnv>) => {

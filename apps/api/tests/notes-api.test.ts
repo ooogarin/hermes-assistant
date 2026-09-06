@@ -97,8 +97,8 @@ test('accepts an explicit General English save through Notes', async () => {
       content: 'Both introduce contrast; even though is more emphatic.',
       type: 'fact',
       category: 'English',
-      source_context: 'general_chat',
-      source_reference: null,
+      sourceContext: 'general_chat',
+      sourceReference: null,
       tags: ['english', 'grammar'],
     }),
   });

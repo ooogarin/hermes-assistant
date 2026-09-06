@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type {
   createMaterialSchema,
+  listMaterialsSchema,
   materialCodeSchema,
   saveSubmissionSchema,
   updateSettingsSchema,
@@ -12,6 +13,7 @@ import type {
 
 export type ReadingSource = 'cron' | 'request';
 export type CreateReadingMaterialRequest = z.infer<typeof createMaterialSchema>;
+export type ListReadingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
 export type SaveReadingSubmissionRequest = z.infer<typeof saveSubmissionSchema>;
 export type UpdateReadingSettingsRequest = z.infer<typeof updateSettingsSchema>;
 export type ReadingMaterialParams = z.infer<typeof materialCodeSchema>;
@@ -54,10 +56,38 @@ export type ReadingExpectedAnswer = {
   expectedAnswer: string;
 };
 
+export type ReadingMaterialListItem = {
+  code: string;
+  topic: string;
+  genre: string;
+  level: string;
+  targetWordCount: number;
+  wordCount: number;
+  tags: string[];
+  source: ReadingSource;
+  status: 'unanswered' | 'completed';
+  questionCount: number;
+  answeredQuestionCount: number;
+  createdAt: string;
+};
+
+export type ReadingMaterialList = {
+  items: ReadingMaterialListItem[];
+  meta: PaginationMeta;
+};
+
+export type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
 export type ReadingService = {
   getSettings: () => Promise<ReadingSettings>;
   updateSettings: (input: UpdateReadingSettingsRequest) => Promise<ReadingSettings>;
   createMaterial: (input: CreateReadingMaterialRequest) => Promise<ReadingMaterial>;
+  listMaterials: (input: ListReadingMaterialsRequest) => Promise<ReadingMaterialList>;
   getMaterial: (code: string) => Promise<ReadingMaterial>;
   saveSubmission: (code: string, input: SaveReadingSubmissionRequest) => Promise<ReadingMaterial>;
   getExpectedAnswers: (code: string) => Promise<ReadingExpectedAnswer[]>;
@@ -104,4 +134,21 @@ export type ReadingExpectedAnswerRow = {
   question_number: number;
   question_text: string;
   expected_answer: string;
+};
+export type ReadingMaterialListRow = {
+  code: string;
+  topic: string;
+  genre: string;
+  level: string;
+  target_word_count: number;
+  word_count: number;
+  tags: string[];
+  source: ReadingSource;
+  status: 'unanswered' | 'completed';
+  question_count: number | string;
+  answered_question_count: number | string;
+  created_at: Date | string;
+};
+export type CountRow = {
+  total: number | string;
 };

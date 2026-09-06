@@ -22,6 +22,18 @@ export const materialCodeSchema = z.object({
   code: z.string().regex(/^RD-\d{8}-\d{3,}$/),
 });
 
+export const listMaterialsSchema = z
+  .object({
+    q: textSchema(500).optional(),
+    status: z.enum(['unanswered', 'completed']).optional(),
+    level: textSchema(32).optional(),
+    genre: textSchema(100).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    sort: z.enum(['newest', 'oldest']).default('newest'),
+  })
+  .strict();
+
 export const saveSubmissionSchema = z.object({
   answers: z
     .array(

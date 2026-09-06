@@ -238,6 +238,19 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     ]);
 
     await expect(
+      readingService.listMaterials({
+        q: 'MARKET',
+        status: 'completed',
+        page: 1,
+        limit: 20,
+        sort: 'newest',
+      }),
+    ).resolves.toMatchObject({
+      items: [{ code: material.code, status: 'completed', questionCount: 3, answeredQuestionCount: 3 }],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+
+    await expect(
       readingService.saveSubmission(material.code, {
         answers: [
           { questionNumber: 1, userAnswer: 'Mira.' },
@@ -280,6 +293,18 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     expect(await writingService.getCorrectedText(material.code, 1)).toEqual({
       submissionNumber: 1,
       correctedText: writingAnalysis.correctedText,
+    });
+    await expect(
+      writingService.listMaterials({
+        q: 'WORK',
+        status: 'reviewed',
+        page: 1,
+        limit: 20,
+        sort: 'newest',
+      }),
+    ).resolves.toMatchObject({
+      items: [{ code: material.code, status: 'reviewed', submissionCount: 2, latestSubmissionNumber: 2 }],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
     });
   });
 });

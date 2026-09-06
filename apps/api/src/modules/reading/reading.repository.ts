@@ -2,12 +2,17 @@ import { getDatabaseClient } from '../../core/database/client';
 import { toIsoTimestamp } from '../../shared/date/date';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
+  CountRow,
   CreateReadingMaterialRequest,
   IdRow,
   InsertReadingSubmissionResult,
+  ListReadingMaterialsRequest,
   ReadingExpectedAnswer,
   ReadingExpectedAnswerRow,
   ReadingMaterial,
+  ReadingMaterialList,
+  ReadingMaterialListItem,
+  ReadingMaterialListRow,
   ReadingMaterialRow,
   ReadingQuestion,
   ReadingQuestionWithAnswerRow,
@@ -41,6 +46,21 @@ const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestion[]
   isOverride: row.is_override,
   source: row.source,
   questions,
+});
+
+const toReadingMaterialListItem = (row: ReadingMaterialListRow): ReadingMaterialListItem => ({
+  code: row.code,
+  topic: row.topic,
+  genre: row.genre,
+  level: row.level,
+  targetWordCount: row.target_word_count,
+  wordCount: row.word_count,
+  tags: row.tags,
+  source: row.source,
+  status: row.status,
+  questionCount: Number(row.question_count),
+  answeredQuestionCount: Number(row.answered_question_count),
+  createdAt: toIsoTimestamp(row.created_at),
 });
 
 export const getSettings = async (): Promise<ReadingSettings> => {
@@ -197,6 +217,117 @@ export const findByCode = async (code: string): Promise<ReadingMaterial | null> 
 
   const questions = await getQuestions(material.id);
   return toReadingMaterial(material, questions);
+};
+
+export const listMaterials = async (input: ListReadingMaterialsRequest): Promise<ReadingMaterialList> => {
+  const database = getDatabaseClient();
+  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+  const offset = (input.page - 1) * input.limit;
+  const [rows, [count]] = await Promise.all([
+    database<ReadingMaterialListRow[]>`
+      WITH material_summary AS (
+        SELECT
+          m.id,
+          m.code,
+          m.topic,
+          m.genre,
+          m.level,
+          m.target_word_count,
+          m.word_count,
+          m.tags,
+          m.source,
+          m.created_at,
+          EXISTS (
+            SELECT 1
+            FROM reading_submissions s
+            WHERE s.material_id = m.id AND s.deleted_at IS NULL
+          ) AS is_completed,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM reading_questions q
+            WHERE q.material_id = m.id AND q.deleted_at IS NULL
+          ) AS question_count,
+          (
+            SELECT COUNT(*)::INTEGER
+            FROM reading_answers a
+            JOIN reading_submissions s ON s.id = a.submission_id
+            WHERE s.material_id = m.id AND s.deleted_at IS NULL AND a.deleted_at IS NULL
+          ) AS answered_question_count
+        FROM reading_materials m
+        WHERE m.deleted_at IS NULL
+      )
+      SELECT
+        code,
+        topic,
+        genre,
+        level,
+        target_word_count,
+        word_count,
+        tags,
+        source,
+        CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END AS status,
+        question_count,
+        answered_question_count,
+        created_at
+      FROM material_summary
+      WHERE (${searchPattern}::TEXT IS NULL OR (
+        topic ILIKE ${searchPattern}
+        OR genre ILIKE ${searchPattern}
+        OR code ILIKE ${searchPattern}
+        OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
+      ))
+        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
+        AND (${input.status}::TEXT IS NULL OR CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END = ${input.status})
+      ORDER BY
+        CASE WHEN ${input.sort} = 'oldest' THEN created_at END ASC,
+        CASE WHEN ${input.sort} = 'newest' THEN created_at END DESC,
+        CASE WHEN ${input.sort} = 'oldest' THEN id END ASC,
+        CASE WHEN ${input.sort} = 'newest' THEN id END DESC
+      LIMIT ${input.limit}
+      OFFSET ${offset}
+    `,
+    database<CountRow[]>`
+      WITH material_summary AS (
+        SELECT
+          m.id,
+          m.code,
+          m.topic,
+          m.genre,
+          m.level,
+          m.tags,
+          EXISTS (
+            SELECT 1
+            FROM reading_submissions s
+            WHERE s.material_id = m.id AND s.deleted_at IS NULL
+          ) AS is_completed
+        FROM reading_materials m
+        WHERE m.deleted_at IS NULL
+      )
+      SELECT COUNT(*)::INTEGER AS total
+      FROM material_summary
+      WHERE (${searchPattern}::TEXT IS NULL OR (
+        topic ILIKE ${searchPattern}
+        OR genre ILIKE ${searchPattern}
+        OR code ILIKE ${searchPattern}
+        OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
+      ))
+        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
+        AND (${input.status}::TEXT IS NULL OR CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END = ${input.status})
+    `,
+  ]);
+  const total = Number(count?.total ?? 0);
+
+  return {
+    items: rows.map(toReadingMaterialListItem),
+    meta: {
+      page: input.page,
+      limit: input.limit,
+      total,
+      totalPages: Math.ceil(total / input.limit),
+    },
+  };
 };
 
 export const getQuestions = async (materialId: number): Promise<ReadingQuestion[]> => {

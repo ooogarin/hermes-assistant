@@ -94,11 +94,11 @@ test('creates a resolved finance batch through the authenticated API', async () 
     body: JSON.stringify({
       date: '2026-07-14',
       type: 'expense',
-      raw_text: '12, sarapan di warung A\n23, kopi',
+      rawText: '12, sarapan di warung A\n23, kopi',
       transactions: [
         {
           amount: 23_000,
-          category_code: 'food_drink',
+          categoryCode: 'food_drink',
           name: 'Kopi',
         },
       ],

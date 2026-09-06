@@ -3,6 +3,7 @@ import { appValidator } from '../../core/http/validator';
 import * as readingHandler from './reading.handler';
 import {
   createMaterialSchema,
+  listMaterialsSchema,
   materialCodeSchema,
   saveSubmissionSchema,
   updateSettingsSchema,
@@ -15,6 +16,7 @@ export const createReadingRoutes = () => {
   route.get('/settings', readingHandler.getSettings);
   route.patch('/settings', appValidator('json', updateSettingsSchema), readingHandler.updateSettings);
   route.post('/materials', appValidator('json', createMaterialSchema), readingHandler.createMaterial);
+  route.get('/materials', appValidator('query', listMaterialsSchema), readingHandler.listMaterials);
   route.get('/materials/:code', appValidator('param', materialCodeSchema), readingHandler.getMaterial);
   route.post(
     '/materials/:code/submissions',
