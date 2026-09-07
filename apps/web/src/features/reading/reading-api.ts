@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { apiRequest } from '../../lib/api/api-client';
+import { buildQueryString } from '../../lib/api/query-string';
 
 const readingSettingsSchema = z
   .object({
@@ -65,9 +66,50 @@ const expectedAnswerSchema = z
 
 const expectedAnswersSchema = z.object({ items: z.array(expectedAnswerSchema) }).transform(({ items }) => items);
 
+const readingListItemSchema = z
+  .object({
+    code: z.string(),
+    topic: z.string(),
+    genre: z.string(),
+    level: z.string(),
+    target_word_count: z.number().int().positive(),
+    word_count: z.number().int().nonnegative(),
+    tags: z.array(z.string()),
+    source: z.enum(['cron', 'request']),
+    status: z.enum(['unanswered', 'completed']),
+    question_count: z.number().int().nonnegative(),
+    answered_question_count: z.number().int().nonnegative(),
+    created_at: z.string(),
+  })
+  .transform(({ answered_question_count, created_at, question_count, target_word_count, word_count, ...item }) => ({
+    ...item,
+    answeredQuestionCount: answered_question_count,
+    createdAt: created_at,
+    questionCount: question_count,
+    targetWordCount: target_word_count,
+    wordCount: word_count,
+  }));
+
+const paginationSchema = z
+  .object({ page: z.number().int(), limit: z.number().int(), total: z.number().int(), total_pages: z.number().int() })
+  .transform(({ total_pages, ...meta }) => ({ ...meta, totalPages: total_pages }));
+
+const readingListSchema = z.object({ items: z.array(readingListItemSchema), meta: paginationSchema });
+
 export type ReadingSettings = z.output<typeof readingSettingsSchema>;
 export type ReadingMaterial = z.output<typeof readingMaterialSchema>;
 export type ReadingExpectedAnswer = z.output<typeof expectedAnswerSchema>;
+export type ReadingMaterialListItem = z.output<typeof readingListItemSchema>;
+export type ReadingMaterialList = z.output<typeof readingListSchema>;
+export type ReadingListFilters = {
+  genre?: string;
+  level?: string;
+  limit?: number;
+  page?: number;
+  q?: string;
+  sort?: 'newest' | 'oldest';
+  status?: 'unanswered' | 'completed';
+};
 export type ReadingSettingsInput = Pick<
   ReadingSettings,
   'defaultLevel' | 'defaultWordCount' | 'minWordCount' | 'maxWordCount'
@@ -81,6 +123,9 @@ export const updateReadingSettings = (input: ReadingSettingsInput): Promise<Read
 
 export const getReadingMaterial = (code: string, signal?: AbortSignal): Promise<ReadingMaterial> =>
   apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}`, readingMaterialSchema, { signal });
+
+export const getReadingMaterials = (filters: ReadingListFilters, signal?: AbortSignal): Promise<ReadingMaterialList> =>
+  apiRequest(`/api/v1/reading/materials${buildQueryString(filters)}`, readingListSchema, { signal });
 
 export const submitReadingAnswers = (
   code: string,

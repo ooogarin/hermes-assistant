@@ -17,8 +17,8 @@ Create body:
   "type": "fact",
   "category": "database",
   "source": null,
-  "sourceContext": "general_chat",
-  "sourceReference": null,
+  "source_context": "general_chat",
+  "source_reference": null,
   "tags": ["postgresql", "index"]
 }
 ```

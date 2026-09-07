@@ -56,14 +56,14 @@ export const createSubmission = async (context: Context<AppEnv>) => {
 
 export const getSubmission = async (context: Context<AppEnv>) => {
   const params = getParam(context, submissionParamsSchema);
-  const result = await writingService.getSubmission(params.code, params.submissionNumber);
+  const result = await writingService.getSubmission(params.code, params.submission_number);
 
   return successResponse({ context, data: result });
 };
 
 export const getCorrectedText = async (context: Context<AppEnv>) => {
   const params = getParam(context, submissionParamsSchema);
-  const result = await writingService.getCorrectedText(params.code, params.submissionNumber);
+  const result = await writingService.getCorrectedText(params.code, params.submission_number);
 
   return successResponse({ context, data: result });
 };

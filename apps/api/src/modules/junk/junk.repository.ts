@@ -16,13 +16,13 @@ const toJunkItem = (row: JunkItemRow): JunkItem => ({
   code: row.code,
   title: row.title,
   category: row.category,
-  rawText: row.raw_text,
-  contentText: row.content_text,
-  sourceUrl: row.source_url,
+  raw_text: row.raw_text,
+  content_text: row.content_text,
+  source_url: row.source_url,
   tags: row.tags,
-  createdAt: toIsoTimestamp(row.created_at),
-  updatedAt: toIsoTimestamp(row.updated_at),
-  deletedAt: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
+  created_at: toIsoTimestamp(row.created_at),
+  updated_at: toIsoTimestamp(row.updated_at),
+  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
 });
 
 export const generateCode = async (
@@ -63,9 +63,9 @@ export const insert = async (
       ${code},
       ${input.title},
       ${input.category},
-      ${input.rawText},
-      ${input.contentText},
-      ${input.sourceUrl},
+      ${input.raw_text},
+      ${input.content_text},
+      ${input.source_url},
       ${trx.array(input.tags, 'TEXT')}
     )
     RETURNING
@@ -114,7 +114,7 @@ export const getAll = async (input: ListJunkRequest): Promise<JunkItem[]> => {
   const query = input.q ?? null;
   const tag = input.tag ?? null;
   const category = input.category ?? null;
-  const sourceUrl = input.sourceUrl ?? null;
+  const source_url = input.source_url ?? null;
   const rows = await database<JunkItemRow[]>`
     SELECT
       code,
@@ -132,7 +132,7 @@ export const getAll = async (input: ListJunkRequest): Promise<JunkItem[]> => {
       AND (${query}::TEXT IS NULL OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT))
       AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
       AND (${category}::TEXT IS NULL OR category = ${category})
-      AND (${sourceUrl}::TEXT IS NULL OR source_url = ${sourceUrl})
+      AND (${source_url}::TEXT IS NULL OR source_url = ${source_url})
     ORDER BY
       CASE
         WHEN ${query}::TEXT IS NULL THEN 0
@@ -152,8 +152,8 @@ export const updateByCode = async (code: string, input: UpdateJunkRequest): Prom
     SET
       title = CASE WHEN ${input.title !== undefined} THEN ${input.title ?? null} ELSE title END,
       category = CASE WHEN ${input.category !== undefined} THEN ${input.category ?? ''} ELSE category END,
-      content_text = CASE WHEN ${input.contentText !== undefined} THEN ${input.contentText ?? null} ELSE content_text END,
-      source_url = CASE WHEN ${input.sourceUrl !== undefined} THEN ${input.sourceUrl ?? null} ELSE source_url END,
+      content_text = CASE WHEN ${input.content_text !== undefined} THEN ${input.content_text ?? null} ELSE content_text END,
+      source_url = CASE WHEN ${input.source_url !== undefined} THEN ${input.source_url ?? null} ELSE source_url END,
       tags = CASE WHEN ${input.tags !== undefined} THEN ${database.array(input.tags ?? [], 'TEXT')} ELSE tags END,
       updated_at = NOW()
     WHERE code = ${code}

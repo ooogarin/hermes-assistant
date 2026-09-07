@@ -30,12 +30,12 @@ export type Note = {
   type: NoteType;
   category: string;
   source: string | null;
-  sourceContext: string | null;
-  sourceReference: string | null;
+  source_context: string | null;
+  source_reference: string | null;
   tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 };
 
 export type NotesService = {

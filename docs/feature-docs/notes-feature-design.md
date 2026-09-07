@@ -379,7 +379,7 @@ MVP focuses on passive note capture and search.
 
 The Notes API is mounted below `/api/v1/notes` and requires the internal bearer token.
 
-Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+Request bodies and every response field use `snake_case` recursively.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |

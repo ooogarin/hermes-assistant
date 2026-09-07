@@ -27,11 +27,11 @@ const readingCodeLockNamespace = 141_421_356;
 const readingSubmissionLockNamespace = 244_948_974;
 
 const toReadingSettings = (row: ReadingSettingsRow): ReadingSettings => ({
-  defaultLevel: row.default_level,
-  defaultWordCount: row.default_word_count,
-  minWordCount: row.min_word_count,
-  maxWordCount: row.max_word_count,
-  updatedAt: toIsoTimestamp(row.updated_at),
+  default_level: row.default_level,
+  default_word_count: row.default_word_count,
+  min_word_count: row.min_word_count,
+  max_word_count: row.max_word_count,
+  updated_at: toIsoTimestamp(row.updated_at),
 });
 
 const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestion[]): ReadingMaterial => ({
@@ -40,10 +40,10 @@ const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestion[]
   level: row.level,
   genre: row.genre,
   tags: row.tags,
-  targetWordCount: row.target_word_count,
-  wordCount: row.word_count,
-  passageText: row.passage_text,
-  isOverride: row.is_override,
+  target_word_count: row.target_word_count,
+  word_count: row.word_count,
+  passage_text: row.passage_text,
+  is_override: row.is_override,
   source: row.source,
   questions,
 });
@@ -53,14 +53,14 @@ const toReadingMaterialListItem = (row: ReadingMaterialListRow): ReadingMaterial
   topic: row.topic,
   genre: row.genre,
   level: row.level,
-  targetWordCount: row.target_word_count,
-  wordCount: row.word_count,
+  target_word_count: row.target_word_count,
+  word_count: row.word_count,
   tags: row.tags,
   source: row.source,
   status: row.status,
-  questionCount: Number(row.question_count),
-  answeredQuestionCount: Number(row.answered_question_count),
-  createdAt: toIsoTimestamp(row.created_at),
+  question_count: Number(row.question_count),
+  answered_question_count: Number(row.answered_question_count),
+  created_at: toIsoTimestamp(row.created_at),
 });
 
 export const getSettings = async (): Promise<ReadingSettings> => {
@@ -87,13 +87,13 @@ export const updateSettings = async (input: UpdateReadingSettingsRequest): Promi
   const [row] = await getDatabaseClient()<ReadingSettingsRow[]>`
     UPDATE reading_settings
     SET
-      default_level = CASE WHEN ${input.defaultLevel !== undefined} THEN ${input.defaultLevel ?? ''} ELSE default_level END,
+      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''} ELSE default_level END,
       default_word_count = CASE
-        WHEN ${input.defaultWordCount !== undefined} THEN ${input.defaultWordCount ?? 0}
+        WHEN ${input.default_word_count !== undefined} THEN ${input.default_word_count ?? 0}
         ELSE default_word_count
       END,
-      min_word_count = CASE WHEN ${input.minWordCount !== undefined} THEN ${input.minWordCount ?? 0} ELSE min_word_count END,
-      max_word_count = CASE WHEN ${input.maxWordCount !== undefined} THEN ${input.maxWordCount ?? 0} ELSE max_word_count END,
+      min_word_count = CASE WHEN ${input.min_word_count !== undefined} THEN ${input.min_word_count ?? 0} ELSE min_word_count END,
+      max_word_count = CASE WHEN ${input.max_word_count !== undefined} THEN ${input.max_word_count ?? 0} ELSE max_word_count END,
       updated_at = NOW()
     WHERE id = (SELECT id FROM reading_settings ORDER BY id ASC LIMIT 1)
     RETURNING
@@ -134,8 +134,8 @@ export const insertMaterial = async (
   trx: DatabaseReservedConnection,
   code: string,
   input: CreateReadingMaterialRequest,
-  wordCount: number,
-  isOverride: boolean,
+  word_count: number,
+  is_override: boolean,
 ): Promise<void> => {
   const [material] = await trx<IdRow[]>`
     INSERT INTO reading_materials (
@@ -156,10 +156,10 @@ export const insertMaterial = async (
       ${input.level},
       ${input.genre},
       ${trx.array(input.tags, 'TEXT')},
-      ${input.targetWordCount},
-      ${wordCount},
-      ${input.passageText},
-      ${isOverride},
+      ${input.target_word_count},
+      ${word_count},
+      ${input.passage_text},
+      ${is_override},
       ${input.source}::reading_source
     )
     RETURNING
@@ -171,8 +171,8 @@ export const insertMaterial = async (
   }
 
   const questionNumbers = input.questions.map((_, index) => index + 1);
-  const questionTexts = input.questions.map((question) => question.questionText);
-  const expectedAnswers = input.questions.map((question) => question.expectedAnswer);
+  const questionTexts = input.questions.map((question) => question.question_text);
+  const expectedAnswers = input.questions.map((question) => question.expected_answer);
 
   await trx`
     INSERT INTO reading_questions (
@@ -325,7 +325,7 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
       page: input.page,
       limit: input.limit,
       total,
-      totalPages: Math.ceil(total / input.limit),
+      total_pages: Math.ceil(total / input.limit),
     },
   };
 };
@@ -343,9 +343,9 @@ export const getQuestions = async (materialId: number): Promise<ReadingQuestion[
     ORDER BY q.question_number ASC
   `;
   return rows.map((row) => ({
-    questionNumber: row.question_number,
-    questionText: row.question_text,
-    userAnswer: row.user_answer,
+    question_number: row.question_number,
+    question_text: row.question_text,
+    user_answer: row.user_answer,
   }));
 };
 
@@ -378,8 +378,8 @@ export const insertSubmission = async (
     return status?.material_exists ? 'already_submitted' : 'material_not_found';
   }
 
-  const questionNumbers = input.answers.map((answer) => answer.questionNumber);
-  const userAnswers = input.answers.map((answer) => answer.userAnswer);
+  const questionNumbers = input.answers.map((answer) => answer.question_number);
+  const userAnswers = input.answers.map((answer) => answer.user_answer);
   await trx`
     INSERT INTO reading_answers (
       submission_id,
@@ -411,8 +411,8 @@ export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedA
     ORDER BY q.question_number ASC
   `;
   return rows.map((row) => ({
-    questionNumber: row.question_number,
-    questionText: row.question_text,
-    expectedAnswer: row.expected_answer,
+    question_number: row.question_number,
+    question_text: row.question_text,
+    expected_answer: row.expected_answer,
   }));
 };

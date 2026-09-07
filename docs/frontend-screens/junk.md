@@ -1,12 +1,12 @@
 # Junk Screen List
 
-> Status: Design ready for list and detail review. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Junk screens.
+> Status: Create, list, detail, edit, and delete confirmation implemented. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Junk screens.
 
 ## Scope
 
-Junk is a searchable archive for low-friction external finds: articles, videos, music, quotes, posts, tools, and other items worth keeping but not formal Notes. Items are normally captured through Hermes/Telegram; the initial web scope is to review and find saved items, not to replace capture.
+Junk is a searchable archive for low-friction external finds: articles, videos, music, quotes, posts, tools, and other items worth keeping but not formal Notes. Hermes/Telegram remains the primary assisted capture flow, while the browser also supports deliberate manual creation.
 
-The initial implementation includes the list and detail states. Editing and deletion remain deferred, as they need a deliberate write-flow pass and confirmation behavior.
+The implementation includes create, list, detail, edit, and confirmed deletion. Preserved raw input remains read-only and hidden from browser forms.
 
 ## Screen map
 
@@ -14,20 +14,36 @@ The initial implementation includes the list and detail states. Editing and dele
 /junk
 ├── ?preview=:code  Supporting preview over the list context
 ├── SCR-JUNK-001  Junk list, search, filter, and sorter
+├── /new  SCR-JUNK-005  Create Junk item
 └── /junk/:code
     ├── SCR-JUNK-002  Full-page Junk detail
-    ├── SCR-JUNK-003  Edit junk item (deferred)
-    └── SCR-JUNK-004  Delete confirmation (deferred dialog)
+    ├── SCR-JUNK-003  Edit junk item
+    └── SCR-JUNK-004  Delete confirmation
 ```
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
 | SCR-JUNK-001 | Junk list, search, filter, and sorter | `/junk` | In scope | Available, with date/sort limitations |
 | SCR-JUNK-002 | Junk preview / full-page detail | `/junk?preview=:code` and `/junk/:code` | In scope | Available |
-| SCR-JUNK-003 | Edit junk item | `/junk/:code/edit` | Deferred | Available |
-| SCR-JUNK-004 | Delete confirmation | No route; dialog over detail | Deferred | Available |
+| SCR-JUNK-003 | Edit junk item | `/junk/:code/edit` | Implemented | Available |
+| SCR-JUNK-004 | Delete confirmation | No route; dialog over detail | Implemented | Available |
+| SCR-JUNK-005 | Create Junk item | `/junk/new` | Implemented | Available |
 
 Proposed web routes are frontend navigation only. They do not alter the REST API contract.
+
+## SCR-JUNK-005 — Create Junk item
+
+**Purpose**
+Create a deliberate manual archive item without replacing the assisted Hermes capture flow.
+
+- Reuses the same feature form as edit for optional title, category, description, source URL, and tags.
+- Omits `rawText`, preserving its meaning as original Hermes input rather than synthesizing it in the browser.
+- Validates category, URL, field limits, and tags before POST; protects unsaved input.
+- On success, navigates to the generated item detail and shows a short confirmation.
+
+```text
+POST /api/v1/junk
+```
 
 ## SCR-JUNK-001 — Junk list, search, filter, and sorter
 
@@ -143,11 +159,10 @@ GET /api/v1/junk/:code
 
 **Out of scope**
 
-- Editing and deletion controls in the initial frontend release.
 - Inline media, embedded video/music players, external page previews, or automatic URL fetches.
 - Exposing `rawText` as a technical/audit field by default.
 
-## SCR-JUNK-003 — Edit junk item (deferred)
+## SCR-JUNK-003 — Edit junk item
 
 **Purpose**  
 Correct a saved Junk item after it has been created.
@@ -166,7 +181,7 @@ Correct a saved Junk item after it has been created.
 PATCH /api/v1/junk/:code
 ```
 
-## SCR-JUNK-004 — Delete confirmation (deferred)
+## SCR-JUNK-004 — Delete confirmation
 
 **Purpose**  
 Require an explicit confirmation before removing a Junk item from active views.
@@ -192,4 +207,5 @@ The underlying domain uses soft deletion. The interface should describe the user
 1. Application shell and reusable list/detail primitives, including the closable and expandable detail pane.
 2. SCR-JUNK-001 with explicit search submission, quick category filters, supported advanced filters, default newest ordering, and shared states.
 3. SCR-JUNK-002 with safe source rendering, safe null-title handling, pane/full-page behavior, and not-found state.
-4. Defer SCR-JUNK-003 and SCR-JUNK-004 until write controls are in scope.
+4. SCR-JUNK-003 and SCR-JUNK-004 with changed-field PATCH payloads and the shared confirmation dialog.
+5. SCR-JUNK-005 using the same feature form as edit and the existing POST contract.

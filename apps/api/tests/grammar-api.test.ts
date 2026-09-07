@@ -13,9 +13,9 @@ import type {
 } from '../src/modules/grammar/grammar.types';
 
 const settings: GrammarSettings = {
-  defaultLevel: 'A1',
-  dailyQuestionCount: 5,
-  updatedAt: '2026-09-05T10:00:00.000Z',
+  default_level: 'A1',
+  daily_question_count: 5,
+  updated_at: '2026-09-05T10:00:00.000Z',
 };
 
 const session: GrammarSession = {
@@ -24,29 +24,29 @@ const session: GrammarSession = {
   source: 'request',
   status: 'active',
   level: 'A1',
-  questionCount: 1,
+  question_count: 1,
   score: null,
-  maxScore: null,
-  startedAt: '2026-09-05T10:00:00.000Z',
-  completedAt: null,
+  max_score: null,
+  started_at: '2026-09-05T10:00:00.000Z',
+  completed_at: null,
   questions: [
     {
-      questionNumber: 1,
-      questionType: 'fill_blank',
-      grammarArea: 'tenses',
-      grammarPoint: 'simple past',
+      question_number: 1,
+      question_type: 'fill_blank',
+      grammar_area: 'tenses',
+      grammar_point: 'simple past',
       level: 'A1',
-      questionText: 'She ___ (go) to school yesterday.',
+      question_text: 'She ___ (go) to school yesterday.',
       answer: null,
     },
   ],
 };
 
 const explanation: GrammarExplanation = {
-  questionNumber: 1,
-  questionText: 'She ___ (go) to school yesterday.',
-  grammarArea: 'tenses',
-  grammarPoint: 'simple past',
+  question_number: 1,
+  question_text: 'She ___ (go) to school yesterday.',
+  grammar_area: 'tenses',
+  grammar_point: 'simple past',
   explanation: 'Use the simple past form “went” for a completed action yesterday.',
 };
 
@@ -54,8 +54,8 @@ const report: GrammarReport = {
   code: 'GR-20260905-002',
   status: 'completed',
   score: 1,
-  maxScore: 1,
-  breakdown: [{ grammarArea: 'tenses', correct: 1, partial: 0, incorrect: 0 }],
+  max_score: 1,
+  breakdown: [{ grammar_area: 'tenses', correct: 1, partial: 0, incorrect: 0 }],
 };
 
 const createGrammarServiceStub = (overrides: Partial<GrammarService> = {}): GrammarService => ({
@@ -79,9 +79,9 @@ mock.module('../src/modules/grammar/grammar.service', () => ({
   createSession: (input: CreateGrammarSessionRequest) => activeGrammarService.createSession(input),
   getSession: (code: string) => activeGrammarService.getSession(code),
   removeSession: (code: string) => activeGrammarService.removeSession(code),
-  saveAnswer: (code: string, questionNumber: number, input: SaveGrammarAnswerRequest) =>
-    activeGrammarService.saveAnswer(code, questionNumber, input),
-  getExplanation: (code: string, questionNumber: number) => activeGrammarService.getExplanation(code, questionNumber),
+  saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) =>
+    activeGrammarService.saveAnswer(code, question_number, input),
+  getExplanation: (code: string, question_number: number) => activeGrammarService.getExplanation(code, question_number),
   evaluateSession: (code: string, input: EvaluateGrammarSessionRequest) =>
     activeGrammarService.evaluateSession(code, input),
   getReport: (code: string) => activeGrammarService.getReport(code),
@@ -115,13 +115,13 @@ test('reads and updates grammar settings', async () => {
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ defaultLevel: 'B1', dailyQuestionCount: 10 }),
+    body: JSON.stringify({ default_level: 'B1', daily_question_count: 10 }),
   });
 
   expect(getResponse.status).toBe(200);
   expect(await getResponse.json()).toEqual({ success: true, data: toSnakeCaseJson(settings) });
   expect(patchResponse.status).toBe(200);
-  expect(updateInput).toEqual({ defaultLevel: 'B1', dailyQuestionCount: 10 });
+  expect(updateInput).toEqual({ default_level: 'B1', daily_question_count: 10 });
 });
 
 test('creates a grammar session without exposing correct answers or explanations', async () => {
@@ -137,12 +137,12 @@ test('creates a grammar session without exposing correct answers or explanations
       level: 'A1',
       questions: [
         {
-          questionType: 'fill_blank',
-          grammarArea: 'tenses',
-          grammarPoint: 'simple past',
+          question_type: 'fill_blank',
+          grammar_area: 'tenses',
+          grammar_point: 'simple past',
           level: 'A1',
-          questionText: 'She ___ (go) to school yesterday.',
-          correctAnswer: 'went',
+          question_text: 'She ___ (go) to school yesterday.',
+          correct_answer: 'went',
           explanation: 'Use the simple past form “went”.',
         },
       ],
@@ -208,11 +208,11 @@ test('passes an immediate practice evaluation to the grammar service', async () 
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userAnswer: 'went', result: 'correct' }),
+    body: JSON.stringify({ user_answer: 'went', result: 'correct' }),
   });
 
   expect(response.status).toBe(200);
-  expect(answerInput).toEqual({ userAnswer: 'went', result: 'correct' });
+  expect(answerInput).toEqual({ user_answer: 'went', result: 'correct' });
 });
 
 test('allows an exam answer to remain unevaluated at the API boundary', async () => {
@@ -228,11 +228,11 @@ test('allows an exam answer to remain unevaluated at the API boundary', async ()
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ userAnswer: 'went' }),
+    body: JSON.stringify({ user_answer: 'went' }),
   });
 
   expect(response.status).toBe(200);
-  expect(answerInput).toEqual({ userAnswer: 'went' });
+  expect(answerInput).toEqual({ user_answer: 'went' });
 });
 
 test('passes a complete exam evaluation to the grammar service', async () => {
@@ -248,11 +248,11 @@ test('passes a complete exam evaluation to the grammar service', async () => {
       Authorization: 'Bearer test-api-key',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ answers: [{ questionNumber: 1, result: 'correct' }] }),
+    body: JSON.stringify({ answers: [{ question_number: 1, result: 'correct' }] }),
   });
 
   expect(response.status).toBe(200);
-  expect(evaluationInput).toEqual({ answers: [{ questionNumber: 1, result: 'correct', feedback: null }] });
+  expect(evaluationInput).toEqual({ answers: [{ question_number: 1, result: 'correct', feedback: null }] });
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(report) });
 });
 

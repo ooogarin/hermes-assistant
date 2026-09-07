@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { Note } from '../../features/notes/notes-api';
 
 type NoteDetailPaneProps = {
+  actions?: ReactNode;
   mode?: 'page' | 'preview';
   note: Note;
   onClose?: () => void;
@@ -19,7 +20,7 @@ const DetailSection = ({ children, title }: { children: ReactNode; title: string
   </section>
 );
 
-export const NoteDetailPane = ({ mode = 'preview', note, onClose, onOpenPage }: NoteDetailPaneProps) => (
+export const NoteDetailPane = ({ actions, mode = 'preview', note, onClose, onOpenPage }: NoteDetailPaneProps) => (
   <aside
     className='min-h-full w-full rounded-surface border border-border bg-surface p-6 sm:p-8'
     aria-label={`Detail ${note.title}`}
@@ -41,7 +42,9 @@ export const NoteDetailPane = ({ mode = 'preview', note, onClose, onOpenPage }: 
             <X aria-hidden='true' size={19} />
           </IconButton>
         </div>
-      ) : null}
+      ) : actions === undefined ? null : (
+        <div className='flex shrink-0 flex-wrap gap-2'>{actions}</div>
+      )}
     </div>
 
     <article className='mt-7 whitespace-pre-wrap text-base leading-8 text-ink'>{note.content}</article>

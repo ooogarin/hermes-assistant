@@ -87,7 +87,7 @@ export const removeSession = async (code: string): Promise<void> => {
 
 export const saveAnswer = async (
   code: string,
-  questionNumber: number,
+  question_number: number,
   input: SaveGrammarAnswerRequest,
 ): Promise<GrammarSession> => {
   const session = await getSession(code);
@@ -104,7 +104,7 @@ export const saveAnswer = async (
     throw examEvaluationDeferred();
   }
 
-  const saved = await grammarRepository.upsertAnswer(code, questionNumber, input);
+  const saved = await grammarRepository.upsertAnswer(code, question_number, input);
 
   if (!saved) {
     throw questionNotFound();
@@ -113,8 +113,8 @@ export const saveAnswer = async (
   return getSession(code);
 };
 
-export const getExplanation = async (code: string, questionNumber: number): Promise<GrammarExplanation> => {
-  const explanation = await grammarRepository.getExplanation(code, questionNumber);
+export const getExplanation = async (code: string, question_number: number): Promise<GrammarExplanation> => {
+  const explanation = await grammarRepository.getExplanation(code, question_number);
 
   if (explanation === null) {
     throw questionNotFound();
@@ -142,7 +142,7 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
 
     await grammarRepository.saveEvaluation(trx, code, input);
     const score = input.answers.filter((answer) => answer.result === 'correct').length;
-    await grammarRepository.completeSession(trx, code, score, session.questionCount);
+    await grammarRepository.completeSession(trx, code, score, session.question_count);
     const trxToCommit = trx;
     trx = undefined;
 
@@ -176,12 +176,12 @@ export const getReport = async (code: string): Promise<GrammarReport> => {
 // ====================================================================================================
 
 const validateEvaluation = (session: GrammarSession, input: EvaluateGrammarSessionRequest): void => {
-  const questionNumbers = new Set(input.answers.map((answer) => answer.questionNumber));
-  const expectedQuestionNumbers = new Set(session.questions.map((question) => question.questionNumber));
+  const questionNumbers = new Set(input.answers.map((answer) => answer.question_number));
+  const expectedQuestionNumbers = new Set(session.questions.map((question) => question.question_number));
 
   if (
-    questionNumbers.size !== session.questionCount ||
-    [...expectedQuestionNumbers].some((questionNumber) => !questionNumbers.has(questionNumber))
+    questionNumbers.size !== session.question_count ||
+    [...expectedQuestionNumbers].some((question_number) => !questionNumbers.has(question_number))
   ) {
     throw incompleteEvaluation();
   }

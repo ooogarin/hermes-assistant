@@ -313,7 +313,7 @@ Questions:
 
 `/api/v1/reading` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, and `GET /materials/:code/expected-answers`.
 
-Request bodies, query parameters, and path parameters use `camelCase`; every response field is serialized recursively as `snake_case`.
+Request bodies, query parameters, path parameters, and every response field use `snake_case` recursively.
 
 `GET /materials` searches `topic`, `genre`, `tags`, and `code` case-insensitively. It supports exact `level` and `genre` filters, `status` (`unanswered` or `completed`), `page`, `limit` (maximum 100), and `sort` (`newest` or `oldest`). PostgreSQL applies the filtering, stable `created_at`/`id` ordering, pagination, and active-row counts. `completed` means the material has one active complete submission; soft-deleted materials, submissions, questions, and answers are excluded.
 

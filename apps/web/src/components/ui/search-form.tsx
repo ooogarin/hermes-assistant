@@ -21,7 +21,7 @@ export const SearchForm = ({ label, onChange, onSearch, placeholder, value }: Se
         if (canSearch) onSearch();
       }}
     >
-      <div className='flex min-w-0 flex-1 items-center gap-2 px-2'>
+      <div className='flex min-w-0 flex-1 items-center gap-2 px-2 pr-1'>
         <Search aria-hidden='true' className='shrink-0 text-ink-muted' size={20} />
         <label className='sr-only' htmlFor={inputId}>
           {label}

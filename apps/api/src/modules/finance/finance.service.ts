@@ -20,16 +20,16 @@ import type {
 
 export const createTransactions = async (input: CreateTransactionsRequest): Promise<FinanceTransaction[]> => {
   const categoryByCode = await getCategoryByCode(
-    input.transactions.map((transaction) => transaction.categoryCode),
+    input.transactions.map((trx) => trx.category_code),
     input.type,
   );
-  const payloads = input.transactions.map<FinanceTransactionInsertPayload>((transaction) => ({
-    amount: transaction.amount,
-    categoryId: categoryByCode.get(transaction.categoryCode)?.id ?? 0,
-    dailyNumber: 0,
-    name: transaction.name,
-    location: transaction.location,
-    note: transaction.note,
+  const payloads = input.transactions.map<FinanceTransactionInsertPayload>((trx) => ({
+    amount: trx.amount,
+    category_id: categoryByCode.get(trx.category_code)?.id ?? 0,
+    daily_number: 0,
+    name: trx.name,
+    location: trx.location,
+    note: trx.note,
   }));
   let trx: DatabaseReservedConnection | undefined;
 
@@ -39,14 +39,14 @@ export const createTransactions = async (input: CreateTransactionsRequest): Prom
     const firstDailyNumber = await financeRepository.getNextDailyNumber(trx, input.date);
     const numberedPayloads = payloads.map((payload, index) => ({
       ...payload,
-      dailyNumber: firstDailyNumber + index,
+      daily_number: firstDailyNumber + index,
     }));
     const transactions = await financeRepository.insertBatch(
       trx,
       randomUUID(),
       input.date,
       input.type,
-      input.rawText,
+      input.raw_text,
       numberedPayloads,
     );
     const trxToCommit = trx;
@@ -68,13 +68,13 @@ export const createTransactions = async (input: CreateTransactionsRequest): Prom
 };
 
 export const getTransaction = async (input: TransactionReferenceRequest): Promise<FinanceTransaction> => {
-  const transaction = await financeRepository.findByReference(input.date, input.dailyNumber);
+  const trx = await financeRepository.findByReference(input.date, input.daily_number);
 
-  if (transaction === null) {
+  if (trx === null) {
     throw transactionNotFound();
   }
 
-  return transaction;
+  return trx;
 };
 
 export const listTransactions = (input: ListTransactionsRequest): Promise<FinanceTransaction[]> => {
@@ -86,30 +86,30 @@ export const updateTransaction = async (
   input: UpdateTransactionRequest,
 ): Promise<FinanceTransaction> => {
   const current = await getTransaction(reference);
-  let categoryId: number | undefined;
+  let category_id: number | undefined;
 
-  if (input.categoryCode !== undefined) {
-    categoryId = (await getRequiredCategory(input.categoryCode, current.type)).id;
+  if (input.category_code !== undefined) {
+    category_id = (await getRequiredCategory(input.category_code, current.type)).id;
   }
 
   const payload: FinanceTransactionUpdatePayload = {
     amount: input.amount,
-    categoryId,
+    category_id,
     name: input.name,
     location: input.location,
     note: input.note,
   };
-  const transaction = await financeRepository.updateByReference(reference.date, reference.dailyNumber, payload);
+  const trx = await financeRepository.updateByReference(reference.date, reference.daily_number, payload);
 
-  if (transaction === null) {
+  if (trx === null) {
     throw transactionNotFound();
   }
 
-  return transaction;
+  return trx;
 };
 
 export const removeTransaction = async (input: TransactionReferenceRequest): Promise<void> => {
-  const deleted = await financeRepository.softDeleteByReference(input.date, input.dailyNumber);
+  const deleted = await financeRepository.softDeleteByReference(input.date, input.daily_number);
 
   if (!deleted) {
     throw transactionNotFound();
@@ -125,9 +125,9 @@ export const getSummary = async (input: SummaryRequest): Promise<FinanceSummary>
     financeRepository.getSummaryTotals(input.from, input.to, input.mode),
     financeRepository.getSummaryByCategory(input.from, input.to, input.mode),
   ]);
-  const expenseTotal = Number(totals.expense_total);
-  const incomeTotal = Number(totals.income_total);
-  const byCategory = categoryRows.map<FinanceSummaryCategory>((row) => ({
+  const expense_total = Number(totals.expense_total);
+  const income_total = Number(totals.income_total);
+  const by_category = categoryRows.map<FinanceSummaryCategory>((row) => ({
     category: {
       code: row.category_code,
       name: row.category_name,
@@ -141,10 +141,10 @@ export const getSummary = async (input: SummaryRequest): Promise<FinanceSummary>
     from: input.from,
     to: input.to,
     mode: input.mode,
-    expenseTotal,
-    incomeTotal,
-    netTotal: incomeTotal - expenseTotal,
-    byCategory,
+    expense_total,
+    income_total,
+    net_total: income_total - expense_total,
+    by_category,
   };
 };
 

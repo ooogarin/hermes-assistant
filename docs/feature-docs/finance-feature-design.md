@@ -327,29 +327,29 @@ Hiburan             Rp50.000
 
 The Finance API is mounted below `/api/v1/finance` and requires the internal bearer token.
 
-Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+Request bodies and every response field use `snake_case` recursively.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `POST` | `/api/v1/finance/transactions` | Create one or more final, category-resolved transactions in one batch. The backend creates the internal `batch_id` and each `daily_number`. |
 | `GET` | `/api/v1/finance/transactions?date=YYYY-MM-DD` | List active transactions for one date, ordered by insertion. |
-| `GET` | `/api/v1/finance/transactions/:date/:dailyNumber` | Fetch one active transaction by its date and stable daily number. |
-| `PATCH` | `/api/v1/finance/transactions/:date/:dailyNumber` | Update amount, category, name, location, or note. Transaction date, type, raw text, and daily number are immutable in MVP. |
-| `DELETE` | `/api/v1/finance/transactions/:date/:dailyNumber` | Soft delete one transaction. |
+| `GET` | `/api/v1/finance/transactions/:date/:daily_number` | Fetch one active transaction by its date and stable daily number. |
+| `PATCH` | `/api/v1/finance/transactions/:date/:daily_number` | Update amount, category, name, location, or note. Transaction date, type, raw text, and daily number are immutable in MVP. |
+| `DELETE` | `/api/v1/finance/transactions/:date/:daily_number` | Soft delete one transaction. |
 | `GET` | `/api/v1/finance/categories?type=expense` | List active categories; `type` is optional. |
 | `GET` | `/api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=expense` | Return SQL-calculated expense, income, or net totals and category breakdown. |
 
-The batch-create payload contains values already cleaned by Hermes. `amount` is an integer amount in Rupiah, not the Telegram shorthand: `12` has already become `12000` before the API is called. Each item uses `categoryCode`; database category IDs remain internal.
+The batch-create payload contains values already cleaned by Hermes. `amount` is an integer amount in Rupiah, not the Telegram shorthand: `12` has already become `12000` before the API is called. Each item uses `category_code`; database category IDs remain internal.
 
 ```json
 {
   "date": "2026-07-14",
   "type": "expense",
-  "rawText": "12, sarapan di warung A\n23, kopi",
+  "raw_text": "12, sarapan di warung A\n23, kopi",
   "transactions": [
     {
       "amount": 12000,
-      "categoryCode": "food_drink",
+      "category_code": "food_drink",
       "name": "Sarapan",
       "location": "warung A",
       "note": null

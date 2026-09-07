@@ -7,8 +7,8 @@ Grammar supports practice and exam sessions. Hermes generates questions, correct
 - `GET|PATCH /api/v1/grammar/settings`
 - `POST /api/v1/grammar/sessions`
 - `GET|DELETE /api/v1/grammar/sessions/:code`
-- `PUT /api/v1/grammar/sessions/:code/questions/:questionNumber/answer`
-- `GET /api/v1/grammar/sessions/:code/questions/:questionNumber/explanation`
+- `PUT /api/v1/grammar/sessions/:code/questions/:question_number/answer`
+- `GET /api/v1/grammar/sessions/:code/questions/:question_number/explanation`
 - `POST /api/v1/grammar/sessions/:code/evaluate`
 - `GET /api/v1/grammar/sessions/:code/report`
 
@@ -21,12 +21,12 @@ Create session body:
   "level": "B1",
   "questions": [
     {
-      "questionType": "fill_blank",
-      "grammarArea": "tenses",
-      "grammarPoint": "present perfect",
+      "question_type": "fill_blank",
+      "grammar_area": "tenses",
+      "grammar_point": "present perfect",
       "level": "B1",
-      "questionText": "She ___ already finished.",
-      "correctAnswer": "has",
+      "question_text": "She ___ already finished.",
+      "correct_answer": "has",
       "explanation": "Use has with third-person singular in the present perfect."
     }
   ]
@@ -37,8 +37,8 @@ For scheduled practice, fetch settings first, read `default_level` and exactly `
 
 ## Answers
 
-- Practice: evaluate immediately, then PUT `userAnswer`, `result` (`correct|partial|incorrect`), and optional concise `feedback`. Do not show the full explanation unless requested.
-- Exam: PUT each `userAnswer` without result/feedback. After every question is answered, evaluate all answers once through `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and breakdown.
+- Practice: evaluate immediately, then PUT `user_answer`, `result` (`correct|partial|incorrect`), and optional concise `feedback`. Do not show the full explanation unless requested.
+- Exam: PUT each `user_answer` without result/feedback. After every question is answered, evaluate all answers once through `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and breakdown.
 - Explanation requests must use the explanation endpoint. A deeper conversational explanation need not be persisted.
 
 Use an explicit `GR-...` code and question number when provided. If a delayed answer could belong to multiple sessions or questions, ask before saving or grading. Ordinary session responses deliberately omit correct answers and explanations; never claim they came from that response.

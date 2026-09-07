@@ -1,12 +1,12 @@
 # Notes Screen List
 
-> Status: Design ready for list and detail review. Visual reference: [Notes list design](../frontend-design/notes-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Notes screens.
+> Status: Create, list, detail, edit, and delete confirmation implemented. Visual reference: [Notes list design](../frontend-design/notes-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Notes screens.
 
 ## Scope
 
-Notes are searchable personal records for insights, facts, ideas, quotes, useful information, and passive reminders. They are normally created through Hermes/Telegram; the initial web scope is reviewing and finding saved notes, not replacing that capture flow.
+Notes are searchable personal records for insights, facts, ideas, quotes, useful information, and passive reminders. Hermes/Telegram remains the primary assisted capture flow, while the browser also supports deliberate manual creation.
 
-The initial implementation includes the list and detail screens. Editing and deletion are documented as future screens because they need a deliberate implementation pass and confirmation behavior.
+The implementation includes create, list, detail, edit, and confirmed deletion. Internal origin fields remain read-only and are not exposed by browser forms.
 
 ## Screen map
 
@@ -14,20 +14,36 @@ The initial implementation includes the list and detail screens. Editing and del
 /notes
 ├── ?preview=:code  Supporting preview over the list context
 ├── SCR-NOTE-001  Notes list, search, filter, and sorter
+├── /new  SCR-NOTE-005  Create note
 └── /notes/:code
     ├── SCR-NOTE-002  Full-page note detail
-    ├── SCR-NOTE-003  Edit note (deferred)
-    └── SCR-NOTE-004  Delete confirmation (deferred dialog)
+    ├── SCR-NOTE-003  Edit note
+    └── SCR-NOTE-004  Delete confirmation
 ```
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
 | SCR-NOTE-001 | Notes list, search, filter, and sorter | `/notes` | In scope | Available, with filter/sort limitations |
 | SCR-NOTE-002 | Note preview / full-page detail | `/notes?preview=:code` and `/notes/:code` | In scope | Available |
-| SCR-NOTE-003 | Edit note | `/notes/:code/edit` | Deferred | Available |
-| SCR-NOTE-004 | Delete confirmation | No route; dialog over detail | Deferred | Available |
+| SCR-NOTE-003 | Edit note | `/notes/:code/edit` | Implemented | Available |
+| SCR-NOTE-004 | Delete confirmation | No route; dialog over detail | Implemented | Available |
+| SCR-NOTE-005 | Create note | `/notes/new` | Implemented | Available |
 
 Proposed web routes are frontend navigation only. They do not alter the REST API contract.
+
+## SCR-NOTE-005 — Create note
+
+**Purpose**
+Create a deliberate manual note without replacing the assisted Hermes capture flow.
+
+- Reuses the same feature form as edit for title, content, type, category, source, and tags.
+- Sends `sourceContext` and `sourceReference` as their API defaults by omitting them.
+- Validates required fields, field limits, and tags before POST; protects unsaved input.
+- On success, navigates to the generated note detail and shows a short confirmation.
+
+```text
+POST /api/v1/notes
+```
 
 ## SCR-NOTE-001 — Notes list, search, filter, and sorter
 
@@ -144,11 +160,10 @@ GET /api/v1/notes/:code
 
 **Out of scope**
 
-- Editing and deletion controls in the initial frontend release.
 - Automatic source fetching or previewing external content.
 - Rendering source text as a link unless the API contract later distinguishes a validated URL from a human-readable source name.
 
-## SCR-NOTE-003 — Edit note (deferred)
+## SCR-NOTE-003 — Edit note
 
 **Purpose**  
 Correct a saved note after it has been created.
@@ -166,10 +181,10 @@ Correct a saved note after it has been created.
 PATCH /api/v1/notes/:code
 ```
 
-**Open implementation decision**  
-Although the API accepts `sourceContext` and `sourceReference` updates, the initial edit design should decide whether those internal-origin fields are visible to a user. Do not expose them by default without a concrete correction need.
+**Implementation decision**
+Although the API accepts `sourceContext` and `sourceReference` updates, browser forms do not expose these internal-origin fields without a concrete correction need.
 
-## SCR-NOTE-004 — Delete confirmation (deferred)
+## SCR-NOTE-004 — Delete confirmation
 
 **Purpose**  
 Require an explicit confirmation before removing a note from active views.
@@ -195,4 +210,5 @@ The underlying domain uses soft deletion. The interface should describe the user
 1. Application shell and reusable list/detail primitives, including the closable and expandable detail pane.
 2. SCR-NOTE-001 with explicit search submission, quick type filters, supported advanced filters, default newest ordering, and shared states.
 3. SCR-NOTE-002 with safe metadata rendering, pane/full-page behavior, and not-found state.
-4. Defer SCR-NOTE-003 and SCR-NOTE-004 until write controls are in scope.
+4. SCR-NOTE-003 and SCR-NOTE-004 with changed-field PATCH payloads and the shared confirmation dialog.
+5. SCR-NOTE-005 using the same feature form as edit and the existing POST contract.

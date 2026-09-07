@@ -6,12 +6,12 @@ const answerResultSchema = z.enum(['correct', 'partial', 'incorrect']);
 const textSchema = z.string().trim().min(1).max(20_000);
 
 const questionSchema = z.object({
-  questionType: z.string().trim().min(1).max(100),
-  grammarArea: z.string().trim().min(1).max(100),
-  grammarPoint: z.string().trim().min(1).max(200),
+  question_type: z.string().trim().min(1).max(100),
+  grammar_area: z.string().trim().min(1).max(100),
+  grammar_point: z.string().trim().min(1).max(200),
   level: z.string().trim().min(1).max(32),
-  questionText: textSchema,
-  correctAnswer: textSchema,
+  question_text: textSchema,
+  correct_answer: textSchema,
   explanation: textSchema,
 });
 
@@ -27,12 +27,12 @@ export const sessionCodeSchema = z.object({
 });
 
 export const questionReferenceSchema = sessionCodeSchema.extend({
-  questionNumber: z.coerce.number().int().positive(),
+  question_number: z.coerce.number().int().positive(),
 });
 
 export const saveAnswerSchema = z
   .object({
-    userAnswer: textSchema,
+    user_answer: textSchema,
     result: answerResultSchema.optional(),
     feedback: z.string().trim().min(1).max(2_000).nullable().optional(),
   })
@@ -46,7 +46,7 @@ export const evaluateSessionSchema = z.object({
   answers: z
     .array(
       z.object({
-        questionNumber: z.number().int().positive(),
+        question_number: z.number().int().positive(),
         result: answerResultSchema,
         feedback: z.string().trim().min(1).max(2_000).nullable().optional().default(null),
       }),
@@ -57,7 +57,7 @@ export const evaluateSessionSchema = z.object({
 
 export const updateSettingsSchema = z
   .object({
-    defaultLevel: z.string().trim().min(1).max(32).optional(),
-    dailyQuestionCount: z.number().int().min(1).max(100).optional(),
+    default_level: z.string().trim().min(1).max(32).optional(),
+    daily_question_count: z.number().int().min(1).max(100).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'At least one field must be provided.');

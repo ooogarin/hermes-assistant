@@ -27,46 +27,46 @@ export type WritingAnalysis = z.infer<typeof analysisSchema>;
 // ====================================================================================================
 
 export type WritingSettings = {
-  defaultLevel: string;
-  defaultWordCount: number;
-  minWordCount: number;
-  maxWordCount: number;
-  updatedAt: string;
+  default_level: string;
+  default_word_count: number;
+  min_word_count: number;
+  max_word_count: number;
+  updated_at: string;
 };
 
 export type WritingMaterial = {
   code: string;
   topic: string;
-  promptText: string;
+  prompt_text: string;
   level: string;
   genre: string;
   tags: string[];
-  targetWordCount: number;
-  isOverride: boolean;
+  target_word_count: number;
+  is_override: boolean;
   source: WritingSource;
 };
 
 export type WritingSubmission = {
-  submissionNumber: number;
-  originalText: string;
-  wordCount: number;
-  estimatedLevel: string;
+  submission_number: number;
+  original_text: string;
+  word_count: number;
+  estimated_level: string;
   analysis: WritingAnalysis;
-  submittedAt: string;
+  submitted_at: string;
 };
 export type WritingMaterialListItem = {
   code: string;
   topic: string;
-  promptExcerpt: string;
+  prompt_excerpt: string;
   genre: string;
   level: string;
-  targetWordCount: number;
+  target_word_count: number;
   tags: string[];
   source: WritingSource;
   status: 'unsubmitted' | 'reviewed';
-  submissionCount: number;
-  latestSubmissionNumber: number | null;
-  createdAt: string;
+  submission_count: number;
+  latest_submission_number: number | null;
+  created_at: string;
 };
 export type WritingMaterialList = {
   items: WritingMaterialListItem[];
@@ -76,7 +76,7 @@ export type WritingPaginationMeta = {
   page: number;
   limit: number;
   total: number;
-  totalPages: number;
+  total_pages: number;
 };
 export type WritingService = {
   getSettings: () => Promise<WritingSettings>;
@@ -85,13 +85,13 @@ export type WritingService = {
   listMaterials: (input: ListWritingMaterialsRequest) => Promise<WritingMaterialList>;
   getMaterial: (code: string) => Promise<WritingMaterial>;
   createSubmission: (code: string, input: CreateWritingSubmissionRequest) => Promise<WritingSubmission>;
-  getSubmission: (code: string, submissionNumber: number) => Promise<WritingSubmission>;
-  getCorrectedText: (code: string, submissionNumber: number) => Promise<WritingCorrectedText>;
+  getSubmission: (code: string, submission_number: number) => Promise<WritingSubmission>;
+  getCorrectedText: (code: string, submission_number: number) => Promise<WritingCorrectedText>;
 };
 
 export type WritingCorrectedText = {
-  submissionNumber: number;
-  correctedText: string;
+  submission_number: number;
+  corrected_text: string;
 };
 
 // ====================================================================================================

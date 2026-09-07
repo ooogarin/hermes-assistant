@@ -1,6 +1,8 @@
+import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { NavigationNotice } from '../../../components/feedback/navigation-notice';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { PageHeader } from '../../../components/layout/page-header';
 import { NoteDetailPane } from '../../../components/notes/note-detail-pane';
@@ -87,7 +89,19 @@ const NotesListPage = () => {
 
   return (
     <div className='space-y-7'>
-      <PageHeader title='Notes' description='Temukan kembali hal yang ingin kamu simpan.' />
+      <NavigationNotice />
+      <PageHeader
+        actions={
+          <Link
+            className='inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-primary bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-strong'
+            to='/notes/new'
+          >
+            <Plus aria-hidden='true' size={18} /> Buat catatan
+          </Link>
+        }
+        title='Notes'
+        description='Temukan kembali hal yang ingin kamu simpan.'
+      />
       <NotesToolbar
         activeFilterCount={activeFilterCount}
         activeType={filters.type}

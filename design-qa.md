@@ -53,6 +53,99 @@ final result: passed
 
 ---
 
+# Finance Write-flow QA
+
+## Scope and evidence
+
+- Live routes checked in the in-app Browser: `/finance/new?date=2026-09-08`, `/finance?date=2026-09-06`, and the missing-record state for `/finance/transactions/2026-09-06/1/edit`.
+- Create renders batch-level date, type, and source text plus repeatable transaction rows with amount, API-backed category, name, optional location/note, and guarded save/cancel actions.
+- Daily keeps date controls and report navigation together, exposes a clear `Tambah transaksi` entry point, and preserves the responsive list/category hierarchy.
+- Edit resolves records by the public date and daily number. The inspected absent fixture produced the intended safe not-found state.
+- No transaction was created, updated, or deleted during visual QA.
+
+## Implementation checklist
+
+- [x] Runtime-validated category, create, detail, update, and delete API mappings.
+- [x] Reusable Finance transaction fields across repeatable batch create rows and single edit, including type-specific category loading and unsaved-change protection.
+- [x] Changed-fields-only edit payload and immutable date/type/source context.
+- [x] Reusable confirmation dialog for deletion and post-mutation navigation notices.
+- [x] Responsive browser inspection, runtime console check, Biome check, TypeScript check, production build, and diff validation.
+
+final result: passed
+
+---
+
+# Collapsible Sidebar and Grammar Settings QA
+
+## Comparison target
+
+- Sidebar sources: `docs/frontend-design/component-sidebar.png` and the latest revision capture `/var/folders/v3/vvxrhz8d3zsdqq_14s9qhl8r0000gn/T/codex-clipboard-1b95629a-8c37-4cff-8388-83089f0b618e.png`.
+- Grammar source: `docs/frontend-design/grammar-setting.png`.
+- Live route: `http://localhost:5174/english/grammar/settings`.
+- Latest implementation captures: expanded and collapsed states at a 1241 × 734 CSS px in-app Browser viewport and device scale factor 1. The 540 × 914 latest source is a focused high-density sidebar crop; normalized to 50%, its 270 px sidebar width aligns with the 272 px implementation token.
+
+## Evidence and findings
+
+- Expanded navigation retains the 17 rem content offset, visible labels, English children, balanced 48 px navigation rows, and a protruding collapse control.
+- Collapsed navigation uses a 5.5 rem rail and keeps active icons visible. The chevron provides explicit expand/collapse control, and the content offset follows the selected state.
+- The desktop preference is retained locally while the keyboard-operable mobile drawer remains independent.
+- Grammar Settings loaded the API values, preserved the segmented CEFR selector and daily-question field hierarchy, stacked cleanly at the responsive viewport, and displayed no horizontal overflow.
+- The Grammar landing route links to settings and explicitly reports that the collection is unavailable instead of presenting fabricated sessions.
+
+## Latest comparison history
+
+1. P1: the edge chevron was clipped because the sidebar itself owned `overflow-hidden` while the control used a negative right offset.
+2. P1: hover/focus preview caused the sidebar to expand and hide automatically, conflicting with the requested manual interaction.
+3. Moved clipping to an inner content wrapper so the edge control remains fully visible, then removed every hover/focus state transition.
+4. Post-fix expanded and collapsed desktop captures show the complete circular control in both states; repeated chevron clicks are now the only persistent state transition. No P0, P1, or P2 issue remains.
+
+No actionable P0, P1, or P2 differences remain on the implemented surfaces.
+
+## Implementation checklist
+
+- [x] Manually expanded and compact desktop states with synchronized width transitions.
+- [x] Active navigation, accessible toggle names, fully visible edge control, and persisted preference.
+- [x] Runtime-validated Grammar settings GET/PATCH mapping and changed-fields-only update.
+- [x] Dirty, valid, saving, success, retry, and unsaved-navigation states.
+- [x] Same-canvas sidebar comparison and responsive Grammar settings inspection.
+
+final result: passed
+
+---
+
+# Reading and Writing List API Integration QA
+
+## Comparison target
+
+- Source visuals: `docs/frontend-design/reading-list.png` and `docs/frontend-design/writing-list.png`, both 1487 × 1058 px.
+- Live routes: `http://localhost:5173/english/reading` and `http://localhost:5173/english/writing`.
+- Same-canvas comparison normalized each reference and live route to matching 670 × 476 px frames.
+
+## Evidence
+
+- Reading loaded the live collection record `RD-20260906-001`; Writing loaded the API-authoritative empty collection state.
+- Keyword, status, level, genre, page, and limit are mapped through runtime-validated response schemas. Applied filters and page state are reflected in the URL.
+- The `unanswered` status filter returned the expected Reading row, and a direct `q=Remote` route retained the search term and matching result.
+- Desktop comparison covered header hierarchy, toolbar grouping, table columns, row density, badges, pagination, and shell alignment. The 733 px view confirmed both list rows and controls stack without horizontal clipping.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- P3: the references contain seven illustrative records; the current database contains one Reading material and no Writing materials. The implementation intentionally displays the real API state rather than mock rows.
+- P3: the shared explicit-search form includes the established Hermes `Cari` action, while the older Reading/Writing references show a bare search field.
+
+## Implementation checklist
+
+- [x] Reading and Writing collection schemas and API functions.
+- [x] Shared learning-list toolbar, URL state, and pagination.
+- [x] Feature-specific responsive rows, statuses, destinations, and empty/error/loading states.
+- [x] Live API checks, interaction checks, same-canvas comparison, type check, production build, and diff validation.
+
+final result: passed
+
+---
+
 # Writing Design QA
 
 ## Comparison target
@@ -231,5 +324,38 @@ No actionable P0, P1, or P2 differences remain.
 - [x] Keyword, type, category, and tag filtering; loading, empty, not-found, and retryable-error states.
 - [x] Equal-height toolbar controls, compact preview header, combined colored metadata, responsive behavior, and accessible controls.
 - [x] Biome check, TypeScript check, production build, browser interaction checks, and visual QA.
+
+final result: passed
+
+---
+
+# Grammar and Resource Write-flow QA
+
+## Comparison target
+
+- Grammar references: `grammar-insert.png`, `grammar-result.png`, and the contracts in `docs/frontend-screens/grammar.md`.
+- Live Grammar routes: `/english/grammar/:code`, nested explanation, and report.
+- Live resource routes: `/notes/new`, `/notes/:code`, `/notes/:code/edit`, `/junk/new`, `/junk/:code`, and `/junk/:code/edit`.
+- Responsive browser inspection used the 733 px-wide in-app Browser; existing populated Notes and Junk records were read without mutation.
+
+## Evidence and findings
+
+- Notes and Junk detail actions remain aligned beside the title at the responsive width, and both edit forms preserve the established surface, field, and spacing rhythm without horizontal overflow.
+- The shared native confirmation dialog provides explicit cancel/destructive actions, Escape handling, pending protection, and semantic dialog labeling.
+- Edit requests include changed fields only; hidden source-origin and raw-input fields are preserved. Successful update/delete navigation has one shared status notice.
+- Notes and Junk create routes reuse their feature edit form, use the existing POST contracts, and omit internal source/raw-input fields. Both responsive forms retain balanced 24 px field spacing and stack without horizontal overflow.
+- Grammar session, explanation, and report payloads are runtime validated. Missing known-code sessions present a safe not-found state.
+- Grammar grading remains outside the browser. Exam answers can be stored unevaluated; completed reports only render for completed API state.
+
+No actionable P0, P1, or P2 differences remain on the implemented and locally reachable states.
+
+## Implementation checklist
+
+- [x] Grammar session workspace, explanation, and completed-report routes.
+- [x] Notes and Junk edit routes with validation and unsaved-change protection.
+- [x] Notes and Junk create routes, shared feature forms, and list-header entry actions.
+- [x] Shared confirmation dialog and navigation success notice.
+- [x] API-backed update/delete functions and safe empty/error/not-found states.
+- [x] Responsive browser inspection, Biome check, TypeScript check, production build, and diff validation.
 
 final result: passed

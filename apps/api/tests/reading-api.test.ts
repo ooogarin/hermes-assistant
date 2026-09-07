@@ -12,11 +12,11 @@ import type {
 } from '../src/modules/reading/reading.types';
 
 const settings: ReadingSettings = {
-  defaultLevel: 'A1',
-  defaultWordCount: 300,
-  minWordCount: 250,
-  maxWordCount: 350,
-  updatedAt: '2026-09-05T10:00:00.000Z',
+  default_level: 'A1',
+  default_word_count: 300,
+  min_word_count: 250,
+  max_word_count: 350,
+  updated_at: '2026-09-05T10:00:00.000Z',
 };
 
 const material: ReadingMaterial = {
@@ -25,22 +25,22 @@ const material: ReadingMaterial = {
   level: 'A1',
   genre: 'story',
   tags: ['daily-life'],
-  targetWordCount: 300,
-  wordCount: 8,
-  passageText: 'Mira visits the market early every Sunday morning.',
-  isOverride: false,
+  target_word_count: 300,
+  word_count: 8,
+  passage_text: 'Mira visits the market early every Sunday morning.',
+  is_override: false,
   source: 'request',
   questions: [
-    { questionNumber: 1, questionText: 'Who visits the market?', userAnswer: null },
-    { questionNumber: 2, questionText: 'When does Mira visit?', userAnswer: null },
-    { questionNumber: 3, questionText: 'Where does Mira go?', userAnswer: null },
+    { question_number: 1, question_text: 'Who visits the market?', user_answer: null },
+    { question_number: 2, question_text: 'When does Mira visit?', user_answer: null },
+    { question_number: 3, question_text: 'Where does Mira go?', user_answer: null },
   ],
 };
 
 const expectedAnswers: ReadingExpectedAnswer[] = [
-  { questionNumber: 1, questionText: 'Who visits the market?', expectedAnswer: 'Mira.' },
-  { questionNumber: 2, questionText: 'When does Mira visit?', expectedAnswer: 'Every Sunday morning.' },
-  { questionNumber: 3, questionText: 'Where does Mira go?', expectedAnswer: 'The market.' },
+  { question_number: 1, question_text: 'Who visits the market?', expected_answer: 'Mira.' },
+  { question_number: 2, question_text: 'When does Mira visit?', expected_answer: 'Every Sunday morning.' },
+  { question_number: 3, question_text: 'Where does Mira go?', expected_answer: 'The market.' },
 ];
 
 const materialList: ReadingMaterialList = {
@@ -50,17 +50,17 @@ const materialList: ReadingMaterialList = {
       topic: material.topic,
       genre: material.genre,
       level: material.level,
-      targetWordCount: material.targetWordCount,
-      wordCount: material.wordCount,
+      target_word_count: material.target_word_count,
+      word_count: material.word_count,
       tags: material.tags,
       source: material.source,
       status: 'unanswered',
-      questionCount: material.questions.length,
-      answeredQuestionCount: 0,
-      createdAt: '2026-09-05T10:00:00.000Z',
+      question_count: material.questions.length,
+      answered_question_count: 0,
+      created_at: '2026-09-05T10:00:00.000Z',
     },
   ],
-  meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+  meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
 };
 
 const createReadingServiceStub = (overrides: Partial<ReadingService> = {}): ReadingService => ({
@@ -108,7 +108,7 @@ test('reads and updates reading settings', async () => {
   const app = createReadingApp({
     updateSettings: async (input) => {
       updateInput = input;
-      return { ...settings, defaultLevel: input.defaultLevel ?? settings.defaultLevel };
+      return { ...settings, default_level: input.default_level ?? settings.default_level };
     },
   });
 
@@ -116,13 +116,13 @@ test('reads and updates reading settings', async () => {
   const patchResponse = await app.request('http://localhost/api/v1/reading/settings', {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ defaultLevel: 'B1' }),
+    body: JSON.stringify({ default_level: 'B1' }),
   });
 
   expect(getResponse.status).toBe(200);
   expect(await getResponse.json()).toEqual({ success: true, data: toSnakeCaseJson(settings) });
   expect(patchResponse.status).toBe(200);
-  expect(updateInput).toEqual({ defaultLevel: 'B1' });
+  expect(updateInput).toEqual({ default_level: 'B1' });
 });
 
 test('lists reading materials with validated filters and pagination', async () => {
@@ -156,19 +156,19 @@ test('creates a reading material without exposing expected answers', async () =>
       level: material.level,
       genre: material.genre,
       tags: material.tags,
-      targetWordCount: material.targetWordCount,
-      passageText: material.passageText,
+      target_word_count: material.target_word_count,
+      passage_text: material.passage_text,
       source: material.source,
-      questions: expectedAnswers.map(({ questionText, expectedAnswer }) => ({
-        questionText,
-        expectedAnswer,
+      questions: expectedAnswers.map(({ question_text, expected_answer }) => ({
+        question_text,
+        expected_answer,
       })),
     }),
   });
 
   expect(response.status).toBe(201);
   expect(createInput?.questions).toEqual(
-    expectedAnswers.map(({ questionText, expectedAnswer }) => ({ questionText, expectedAnswer })),
+    expectedAnswers.map(({ question_text, expected_answer }) => ({ question_text, expected_answer })),
   );
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(material) });
 });
@@ -187,12 +187,12 @@ test('rejects a reading material with fewer than three questions', async () => {
       topic: material.topic,
       level: material.level,
       genre: material.genre,
-      targetWordCount: material.targetWordCount,
-      passageText: material.passageText,
+      target_word_count: material.target_word_count,
+      passage_text: material.passage_text,
       source: material.source,
-      questions: expectedAnswers.slice(0, 2).map(({ questionText, expectedAnswer }) => ({
-        questionText,
-        expectedAnswer,
+      questions: expectedAnswers.slice(0, 2).map(({ question_text, expected_answer }) => ({
+        question_text,
+        expected_answer,
       })),
     }),
   });
@@ -203,7 +203,7 @@ test('rejects a reading material with fewer than three questions', async () => {
 
 test('passes a complete reading submission to the service', async () => {
   let submissionInput: SaveReadingSubmissionRequest | undefined;
-  const answers = expectedAnswers.map(({ questionNumber }) => ({ questionNumber, userAnswer: 'Answer' }));
+  const answers = expectedAnswers.map(({ question_number }) => ({ question_number, user_answer: 'Answer' }));
   const response = await createReadingApp({
     saveSubmission: async (_code, input) => {
       submissionInput = input;
@@ -213,9 +213,9 @@ test('passes a complete reading submission to the service', async () => {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      answers: answers.map(({ questionNumber, userAnswer }) => ({
-        questionNumber,
-        userAnswer,
+      answers: answers.map(({ question_number, user_answer }) => ({
+        question_number,
+        user_answer,
       })),
     }),
   });

@@ -33,6 +33,8 @@ const noteListSchema = z.object({ items: z.array(noteSchema) }).transform(({ ite
 export type Note = z.output<typeof noteSchema>;
 export type NoteType = z.infer<typeof noteTypeSchema>;
 export type NoteListFilters = { category?: string; q?: string; tag?: string; type?: NoteType };
+export type UpdateNoteInput = Partial<Pick<Note, 'category' | 'content' | 'source' | 'tags' | 'title' | 'type'>>;
+export type CreateNoteInput = Pick<Note, 'category' | 'content' | 'source' | 'tags' | 'title' | 'type'>;
 
 export const parseNoteType = (value: string | null): NoteType | undefined => noteTypeSchema.safeParse(value).data;
 
@@ -41,3 +43,12 @@ export const getNotes = (filters: NoteListFilters, signal?: AbortSignal): Promis
 
 export const getNote = (code: string, signal?: AbortSignal): Promise<Note> =>
   apiRequest(`/api/v1/notes/${encodeURIComponent(code)}`, noteSchema, { signal });
+
+export const createNote = (input: CreateNoteInput): Promise<Note> =>
+  apiRequest('/api/v1/notes', noteSchema, { body: input, method: 'POST' });
+
+export const updateNote = (code: string, input: UpdateNoteInput): Promise<Note> =>
+  apiRequest(`/api/v1/notes/${encodeURIComponent(code)}`, noteSchema, { body: input, method: 'PATCH' });
+
+export const deleteNote = (code: string): Promise<void> =>
+  apiRequest(`/api/v1/notes/${encodeURIComponent(code)}`, z.undefined(), { method: 'DELETE' });

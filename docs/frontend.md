@@ -2,7 +2,7 @@
 
 ## Scope
 
-`apps/web` is a React and Tailwind CSS application for read-oriented Hermes reports. Implemented vertical slices include Finance, Notes, Junk, Reading, and the API-backed Writing workflows. The frontend does not own durable data, calculations, aggregation, analysis, or filtering rules; those remain in the API and PostgreSQL.
+`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk, Reading, API-backed Writing workflows, and Grammar known-code workflows. The frontend does not own durable data, calculations, aggregation, analysis, or filtering rules; those remain in the API and PostgreSQL.
 
 The initial implementation deliberately uses React's built-in `useState` and `useEffect`, plus focused custom hooks such as `useFinanceReport`. It does not use a state-management library, UI kit, or chart library. Reusable UI is implemented as small Tailwind components in `src/components`.
 
@@ -37,11 +37,20 @@ The frontend uses a routing library for nested and direct routes, Lucide for fun
 
 Feature pages, hooks, schemas, and mapping remain inside `features/<feature>`. A multi-page feature groups each page by use case. Visual components scoped to one feature live in `components/<feature>`; cross-feature primitives belong to `components/ui`, `components/layout`, or `components/feedback`. The current foundation is intentionally small and is expanded through implemented vertical slices rather than speculative components.
 
-Finance is read-only. Its Daily screen defaults to the current date and its Range screen defaults to the current calendar month. Both show API-authoritative expense, income, net balance, and category breakdown returned by:
+The desktop application sidebar can be expanded or reduced to an icon rail through its chevron button. It does not auto-expand or auto-hide on hover. Its state is retained in local browser storage, and the sidebar width and content offset transition together. The mobile drawer remains independent of this desktop preference.
+
+Finance Daily defaults to the current date and Range defaults to the current calendar month. Both show API-authoritative expense, income, net balance, and category breakdown. Daily also provides manual batch creation, correction, and confirmed deletion backed by the existing Finance contracts:
 
 ```text
 GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
+GET /api/v1/finance/categories?type=expense|income
+POST /api/v1/finance/transactions
+GET /api/v1/finance/transactions/:date/:dailyNumber
+PATCH /api/v1/finance/transactions/:date/:dailyNumber
+DELETE /api/v1/finance/transactions/:date/:dailyNumber
 ```
+
+Create sends one to 100 transaction rows that share an explicit date, type, and source text. Create and edit reuse the same transaction-field component; edit keeps date, type, and source text immutable and sends changed fields only. Delete reuses the cross-feature confirmation dialog.
 
 Notes is read-only in this phase. Its list and detail routes use the API as the source of truth:
 
@@ -71,19 +80,33 @@ POST  /api/v1/reading/materials/:code/submissions
 GET   /api/v1/reading/materials/:code/expected-answers
 ```
 
-The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` keeps an honest unavailable state because the API still has no collection/search/filter contract; no browser-only material list is fabricated.
+The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` uses the paginated collection API for keyword search plus status, level, and genre filters.
 
 Writing reuses the same English settings primitive and provides known-code prompt, feedback, and corrected-text routes:
 
 ```text
 GET   /api/v1/writing/settings
 PATCH /api/v1/writing/settings
+GET   /api/v1/writing/materials?q=&status=&level=&genre=&page=&limit=&sort=
 GET   /api/v1/writing/materials/:code
 GET   /api/v1/writing/materials/:code/submissions/:submissionNumber
 GET   /api/v1/writing/materials/:code/submissions/:submissionNumber/corrected-text
 ```
 
-The prompt composer shows a non-authoritative live word count and preserves browser input. Its submission action remains unavailable because the current POST contract requires the caller to supply `estimatedLevel` and the complete authoritative analysis alongside `originalText`; the frontend does not fabricate those domain results. The Writing collection also remains unavailable until a list/search/filter contract exists.
+The prompt composer shows a non-authoritative live word count and preserves browser input. Its submission action remains unavailable because the current POST contract requires the caller to supply `estimatedLevel` and the complete authoritative analysis alongside `originalText`; the frontend does not fabricate those domain results. The Writing list uses its paginated API and routes reviewed materials directly to their latest feedback.
+
+Grammar settings load and update the API-backed daily-practice defaults:
+
+```text
+GET   /api/v1/grammar/settings
+PATCH /api/v1/grammar/settings
+```
+
+The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` exposes the settings entry point and an explicit unavailable state while the Grammar session collection API is missing.
+
+Known Grammar session routes display session questions, stored feedback, on-demand explanations, and completed reports. The browser may save unevaluated exam answers. It does not grade practice answers or submit final exam evaluations because those commands require authoritative results supplied by Hermes.
+
+Notes and Junk support manual creation, detail-derived editing, and deletion from their full-page detail routes. Create and edit share one form per feature; both retain immutable/internal fields outside browser forms, use changed-fields-only PATCH requests, show deletion through one shared confirmation dialog, and return a short navigation notice after successful writes.
 
 ## Local development and API key safety
 

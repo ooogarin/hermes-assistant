@@ -8,9 +8,9 @@ export const createJunkSchema = z
   .object({
     title: z.string().trim().min(1).max(300).nullable().optional().default(null),
     category: z.string().trim().min(1).max(100),
-    rawText: nullableTextSchema.optional().default(null),
-    contentText: nullableTextSchema.optional().default(null),
-    sourceUrl: nullableUrlSchema.optional().default(null),
+    raw_text: nullableTextSchema.optional().default(null),
+    content_text: nullableTextSchema.optional().default(null),
+    source_url: nullableUrlSchema.optional().default(null),
     tags: tagsSchema.optional().default([]),
   })
   .strict();
@@ -19,8 +19,8 @@ export const updateJunkSchema = z
   .object({
     title: z.string().trim().min(1).max(300).nullable().optional(),
     category: z.string().trim().min(1).max(100).optional(),
-    contentText: nullableTextSchema.optional(),
-    sourceUrl: nullableUrlSchema.optional(),
+    content_text: nullableTextSchema.optional(),
+    source_url: nullableUrlSchema.optional(),
     tags: tagsSchema.optional(),
   })
   .strict()
@@ -37,7 +37,7 @@ export const searchJunkSchema = z
     q: z.string().trim().min(1).max(500).optional(),
     tag: z.string().trim().min(1).max(64).optional(),
     category: z.string().trim().min(1).max(100).optional(),
-    sourceUrl: z.string().trim().url().max(2_000).optional(),
+    source_url: z.string().trim().url().max(2_000).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
   })
   .strict();

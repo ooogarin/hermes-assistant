@@ -21,37 +21,37 @@ const category: Category = {
   type: 'expense',
 };
 
-const transaction: FinanceTransaction = {
-  dailyNumber: 3,
-  displayNumber: 2,
+const trx: FinanceTransaction = {
+  daily_number: 3,
+  display_number: 2,
   type: 'expense',
   amount: 23_000,
   name: 'Kopi',
   location: null,
   note: null,
   date: '2026-07-14',
-  rawText: '12, sarapan di warung A\n23, kopi',
+  raw_text: '12, sarapan di warung A\n23, kopi',
   category,
-  createdAt: '2026-07-14T10:00:00.000Z',
-  updatedAt: '2026-07-14T10:00:00.000Z',
+  created_at: '2026-07-14T10:00:00.000Z',
+  updated_at: '2026-07-14T10:00:00.000Z',
 };
 
 const summary: FinanceSummary = {
   from: '2026-07-14',
   to: '2026-07-14',
   mode: 'expense',
-  expenseTotal: 23_000,
-  incomeTotal: 0,
-  netTotal: -23_000,
-  byCategory: [{ category, total: 23_000 }],
+  expense_total: 23_000,
+  income_total: 0,
+  net_total: -23_000,
+  by_category: [{ category, total: 23_000 }],
 };
 
 const createFinanceServiceStub = (overrides: Partial<FinanceService> = {}): FinanceService => ({
-  createTransactions: async () => [transaction],
-  getTransaction: async () => transaction,
-  listTransactions: async () => [transaction],
+  createTransactions: async () => [trx],
+  getTransaction: async () => trx,
+  listTransactions: async () => [trx],
   updateTransaction: async (_reference: TransactionReferenceRequest, input: UpdateTransactionRequest) => ({
-    ...transaction,
+    ...trx,
     ...input,
   }),
   removeTransaction: async () => {},
@@ -94,11 +94,11 @@ test('creates a resolved finance batch through the authenticated API', async () 
     body: JSON.stringify({
       date: '2026-07-14',
       type: 'expense',
-      rawText: '12, sarapan di warung A\n23, kopi',
+      raw_text: '12, sarapan di warung A\n23, kopi',
       transactions: [
         {
           amount: 23_000,
-          categoryCode: 'food_drink',
+          category_code: 'food_drink',
           name: 'Kopi',
         },
       ],
@@ -106,7 +106,7 @@ test('creates a resolved finance batch through the authenticated API', async () 
   });
 
   expect(response.status).toBe(201);
-  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [transaction] }) });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [trx] }) });
 });
 
 test('uses the unpadded daily number in a transaction reference', async () => {
@@ -114,15 +114,15 @@ test('uses the unpadded daily number in a transaction reference', async () => {
   const response = await createFinanceApp({
     getTransaction: async (input) => {
       reference = input;
-      return transaction;
+      return trx;
     },
   }).request('http://localhost/api/v1/finance/transactions/2026-07-14/3', {
     headers: { Authorization: 'Bearer test-api-key' },
   });
 
   expect(response.status).toBe(200);
-  expect(reference).toEqual({ date: '2026-07-14', dailyNumber: 3 });
-  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(transaction) });
+  expect(reference).toEqual({ date: '2026-07-14', daily_number: 3 });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(trx) });
 });
 
 test('lists transactions for one validated date', async () => {
@@ -130,7 +130,7 @@ test('lists transactions for one validated date', async () => {
   const response = await createFinanceApp({
     listTransactions: async (input) => {
       listInput = input;
-      return [transaction];
+      return [trx];
     },
   }).request('http://localhost/api/v1/finance/transactions?date=2026-07-14', {
     headers: { Authorization: 'Bearer test-api-key' },
@@ -138,7 +138,7 @@ test('lists transactions for one validated date', async () => {
 
   expect(response.status).toBe(200);
   expect(listInput).toEqual({ date: '2026-07-14' });
-  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [transaction] }) });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [trx] }) });
 });
 
 test('updates and soft deletes a transaction through its stable reference', async () => {
@@ -147,7 +147,7 @@ test('updates and soft deletes a transaction through its stable reference', asyn
   const app = createFinanceApp({
     updateTransaction: async (_reference, input) => {
       updateInput = input;
-      return { ...transaction, amount: input.amount ?? transaction.amount };
+      return { ...trx, amount: input.amount ?? trx.amount };
     },
     removeTransaction: async (reference) => {
       removedReference = reference;
@@ -170,7 +170,7 @@ test('updates and soft deletes a transaction through its stable reference', asyn
   expect(patchResponse.status).toBe(200);
   expect(updateInput).toEqual({ amount: 25_000, note: null });
   expect(deleteResponse.status).toBe(204);
-  expect(removedReference).toEqual({ date: '2026-07-14', dailyNumber: 3 });
+  expect(removedReference).toEqual({ date: '2026-07-14', daily_number: 3 });
 });
 
 test('rejects an unresolved finance payload without calling the service', async () => {
@@ -178,7 +178,7 @@ test('rejects an unresolved finance payload without calling the service', async 
   const app = createFinanceApp({
     createTransactions: async () => {
       createCalled = true;
-      return [transaction];
+      return [trx];
     },
   });
 

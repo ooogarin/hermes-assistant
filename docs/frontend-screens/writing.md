@@ -1,6 +1,6 @@
 # Writing Screen List
 
-> Status: Settings and API-backed known-code review screens implemented; material-list and browser-originated submission remain blocked by missing API contracts. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
+> Status: List, settings, and API-backed known-code review screens implemented; browser-originated submission remains blocked by its request contract. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
 
 ## Scope
 
@@ -25,7 +25,7 @@ The initial web scope is to update persistent defaults, open a known writing pro
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-WRITE-001 | Writing material list | `/english/writing` | Unavailable state implemented; integration deferred | List endpoint missing |
+| SCR-WRITE-001 | Writing material list | `/english/writing` | Implemented | Available |
 | SCR-WRITE-002 | Writing settings | `/english/writing/settings` | Implemented | Available |
 | SCR-WRITE-003 | Writing prompt and draft workspace | `/english/writing/:code` | Prompt/composer implemented; submit unavailable | Submission command missing |
 | SCR-WRITE-004 | Writing feedback review | `/english/writing/:code/submissions/:number` | Implemented for a known submission | Available |
@@ -45,9 +45,10 @@ Find a writing prompt and start, continue, or review a draft.
 - One grouped table-like list with topic/prompt, genre, level, target word count, tags, date, source, status, code, and draft count.
 - Selecting a row opens SCR-WRITE-003 or its latest submission review.
 
-**Known API limitation**
+**Data contract**
 
-- The current API has no `GET /api/v1/writing/materials` collection endpoint, search/filter parameters, or pagination metadata. Do not implement this visual list with incomplete client-side data or browser-only mock records. Its controls remain design-only until the collection contract exists.
+- `GET /api/v1/writing/materials` supports keyword, status, level, genre, page, limit, and sort parameters.
+- Search/filter state is represented in the URL. Reviewed rows navigate to their latest submission number from the API.
 
 ## SCR-WRITE-002 — Writing settings
 

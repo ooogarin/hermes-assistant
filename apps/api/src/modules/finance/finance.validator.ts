@@ -7,7 +7,7 @@ const transactionTypeSchema = z.enum(['expense', 'income']);
 const transactionInputSchema = z
   .object({
     amount: z.number().int().positive().max(2_147_483_647),
-    categoryCode: z.string().trim().min(1).max(100),
+    category_code: z.string().trim().min(1).max(100),
     name: z.string().trim().min(1).max(300),
     location: nullableTextSchema.optional().default(null),
     note: nullableTextSchema.optional().default(null),
@@ -18,7 +18,7 @@ export const createTransactionsSchema = z
   .object({
     date: dateSchema,
     type: transactionTypeSchema.default('expense'),
-    rawText: z.string().min(1).max(20_000),
+    raw_text: z.string().min(1).max(20_000),
     transactions: z.array(transactionInputSchema).min(1).max(100),
   })
   .strict();
@@ -26,7 +26,7 @@ export const createTransactionsSchema = z
 export const updateTransactionSchema = z
   .object({
     amount: z.number().int().positive().max(2_147_483_647).optional(),
-    categoryCode: z.string().trim().min(1).max(100).optional(),
+    category_code: z.string().trim().min(1).max(100).optional(),
     name: z.string().trim().min(1).max(300).optional(),
     location: nullableTextSchema.optional(),
     note: nullableTextSchema.optional(),
@@ -37,7 +37,7 @@ export const updateTransactionSchema = z
 export const transactionReferenceSchema = z
   .object({
     date: dateSchema,
-    dailyNumber: z.coerce.number().int().positive(),
+    daily_number: z.coerce.number().int().positive(),
   })
   .strict();
 

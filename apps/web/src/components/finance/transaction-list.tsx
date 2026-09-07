@@ -1,16 +1,22 @@
-import { ArrowDown, ArrowUp, ReceiptText } from 'lucide-react';
+import { ArrowDown, ArrowUp, Pencil, ReceiptText, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../lib/formatting/formatters';
 import type { FinanceTransaction } from '../../features/finance/finance-api';
 
 const timeFormatter = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
 const formatTime = (value: string): string => timeFormatter.format(new Date(value)).replace('.', ':');
-const transactionColumns = 'md:grid-cols-[7rem_minmax(7rem,0.9fr)_minmax(6rem,0.8fr)_minmax(7rem,1fr)_3.5rem_7rem]';
+const transactionColumns =
+  'md:grid-cols-[7rem_minmax(7rem,0.9fr)_minmax(6rem,0.8fr)_minmax(7rem,1fr)_3.5rem_7rem_5.5rem]';
 
 export const FinanceTransactionList = ({
   dateLabel,
+  editTo,
+  onDelete,
   transactions,
 }: {
   dateLabel: string;
+  editTo: (transaction: FinanceTransaction) => string;
+  onDelete: (transaction: FinanceTransaction) => void;
   transactions: FinanceTransaction[];
 }) => (
   <section
@@ -39,6 +45,7 @@ export const FinanceTransactionList = ({
           <span>Catatan</span>
           <span>Waktu</span>
           <span className='text-right'>Jumlah</span>
+          <span className='text-right'>Aksi</span>
         </div>
         <ul>
           {transactions.map((transaction) => {
@@ -69,6 +76,23 @@ export const FinanceTransactionList = ({
                   {income ? '+' : '-'}
                   {formatCurrency(transaction.amount)}
                 </strong>
+                <div className='flex items-center gap-2 md:justify-end'>
+                  <Link
+                    className='grid size-9 place-items-center rounded-control border border-border text-ink-muted hover:bg-surface-subtle hover:text-ink'
+                    to={editTo(transaction)}
+                    aria-label={`Edit ${transaction.name}`}
+                  >
+                    <Pencil aria-hidden='true' size={16} />
+                  </Link>
+                  <button
+                    type='button'
+                    className='grid size-9 place-items-center rounded-control border border-border text-danger hover:bg-danger-subtle'
+                    aria-label={`Hapus ${transaction.name}`}
+                    onClick={() => onDelete(transaction)}
+                  >
+                    <Trash2 aria-hidden='true' size={16} />
+                  </button>
+                </div>
               </li>
             );
           })}

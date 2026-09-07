@@ -2,26 +2,26 @@ import type { WritingAnalysis } from '../../src/modules/writing/writing.types';
 
 export const writingAnalysis: WritingAnalysis = {
   summary: {
-    overallFeedback: 'The draft is clear and relevant.',
+    overall_feedback: 'The draft is clear and relevant.',
     strengths: ['Clear main idea'],
-    priorityImprovements: ['Use more varied vocabulary'],
+    priority_improvements: ['Use more varied vocabulary'],
   },
   grammar: {
-    errorCount: 1,
+    error_count: 1,
     items: [
       {
         original: 'I go yesterday.',
         corrected: 'I went yesterday.',
-        errorType: 'past_tense',
+        error_type: 'past_tense',
         explanation: 'Use the simple past for a completed action.',
       },
     ],
   },
-  correctedText: 'I went to the office yesterday.',
+  corrected_text: 'I went to the office yesterday.',
   vocabulary: {
-    repeatedWords: [],
-    betterPhrases: [],
-    newUsefulWords: [
+    repeated_words: [],
+    better_phrases: [],
+    new_useful_words: [
       {
         word: 'productive',
         meaning: 'Producing useful results.',
@@ -33,13 +33,13 @@ export const writingAnalysis: WritingAnalysis = {
     feedback: 'The draft has a clear sequence.',
     suggestions: ['Add a concluding sentence.'],
   },
-  topicAdherence: {
+  topic_adherence: {
     status: 'aligned',
     notes: 'The response addresses the assigned topic.',
   },
-  genreAdherence: {
+  genre_adherence: {
     status: 'aligned',
     notes: 'The tone matches a journal entry.',
   },
-  nextSteps: ['Review the simple past tense.'],
+  next_steps: ['Review the simple past tense.'],
 };

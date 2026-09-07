@@ -19,12 +19,12 @@ const toNote = (row: NoteRow): Note => ({
   type: row.type,
   category: row.category,
   source: row.source,
-  sourceContext: row.source_context,
-  sourceReference: row.source_reference,
+  source_context: row.source_context,
+  source_reference: row.source_reference,
   tags: row.tags,
-  createdAt: toIsoTimestamp(row.created_at),
-  updatedAt: toIsoTimestamp(row.updated_at),
-  deletedAt: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
+  created_at: toIsoTimestamp(row.created_at),
+  updated_at: toIsoTimestamp(row.updated_at),
+  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
 });
 
 export const generateCode = async (
@@ -70,8 +70,8 @@ export const insert = async (
       ${input.type}::note_type,
       ${input.category},
       ${input.source},
-      ${input.sourceContext},
-      ${input.sourceReference},
+      ${input.source_context},
+      ${input.source_reference},
       ${trx.array(input.tags, 'TEXT')}
     )
     RETURNING
@@ -167,9 +167,9 @@ export const updateByCode = async (code: string, input: UpdateNoteRequest): Prom
       type = CASE WHEN ${input.type !== undefined} THEN ${input.type ?? 'fact'}::note_type ELSE type END,
       category = CASE WHEN ${input.category !== undefined} THEN ${input.category ?? ''} ELSE category END,
       source = CASE WHEN ${input.source !== undefined} THEN ${input.source ?? null} ELSE source END,
-      source_context = CASE WHEN ${input.sourceContext !== undefined} THEN ${input.sourceContext ?? null} ELSE source_context END,
+      source_context = CASE WHEN ${input.source_context !== undefined} THEN ${input.source_context ?? null} ELSE source_context END,
       source_reference = CASE
-        WHEN ${input.sourceReference !== undefined} THEN ${input.sourceReference ?? null}
+        WHEN ${input.source_reference !== undefined} THEN ${input.source_reference ?? null}
         ELSE source_reference
       END,
       tags = CASE WHEN ${input.tags !== undefined} THEN ${database.array(input.tags ?? [], 'TEXT')} ELSE tags END,

@@ -46,18 +46,18 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     const firstBatch = await financeService.createTransactions({
       date: '2026-09-05',
       type: 'expense',
-      rawText: '12, breakfast\n23, taxi',
+      raw_text: '12, breakfast\n23, taxi',
       transactions: [
         {
           amount: 12_000,
-          categoryCode: 'food_drink',
+          category_code: 'food_drink',
           name: 'Breakfast',
           location: null,
           note: null,
         },
         {
           amount: 23_000,
-          categoryCode: 'transport',
+          category_code: 'transport',
           name: 'Taxi',
           location: null,
           note: null,
@@ -67,11 +67,11 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     const secondBatch = await financeService.createTransactions({
       date: '2026-09-05',
       type: 'income',
-      rawText: '50, refund',
+      raw_text: '50, refund',
       transactions: [
         {
           amount: 50_000,
-          categoryCode: 'refund',
+          category_code: 'refund',
           name: 'Refund',
           location: null,
           note: null,
@@ -79,23 +79,23 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       ],
     });
 
-    expect(firstBatch.map(({ dailyNumber }) => dailyNumber)).toEqual([1, 2]);
-    expect(secondBatch[0]?.dailyNumber).toBe(3);
+    expect(firstBatch.map(({ daily_number }) => daily_number)).toEqual([1, 2]);
+    expect(secondBatch[0]?.daily_number).toBe(3);
 
     const summary = await financeService.getSummary({ from: '2026-09-05', to: '2026-09-05', mode: 'net' });
-    expect(summary).toMatchObject({ expenseTotal: 35_000, incomeTotal: 50_000, netTotal: 15_000 });
+    expect(summary).toMatchObject({ expense_total: 35_000, income_total: 50_000, net_total: 15_000 });
 
     const updated = await financeService.updateTransaction(
-      { date: '2026-09-05', dailyNumber: 2 },
+      { date: '2026-09-05', daily_number: 2 },
       { amount: 25_000, note: 'Airport trip' },
     );
     expect(updated).toMatchObject({ amount: 25_000, note: 'Airport trip' });
 
-    await financeService.removeTransaction({ date: '2026-09-05', dailyNumber: 1 });
+    await financeService.removeTransaction({ date: '2026-09-05', daily_number: 1 });
     const remaining = await financeService.listTransactions({ date: '2026-09-05' });
-    expect(remaining.map(({ dailyNumber, displayNumber }) => ({ dailyNumber, displayNumber }))).toEqual([
-      { dailyNumber: 2, displayNumber: 1 },
-      { dailyNumber: 3, displayNumber: 2 },
+    expect(remaining.map(({ daily_number, display_number }) => ({ daily_number, display_number }))).toEqual([
+      { daily_number: 2, display_number: 1 },
+      { daily_number: 3, display_number: 2 },
     ]);
   });
 
@@ -103,17 +103,17 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     const first = await junkService.create({
       title: 'Rust article',
       category: 'article',
-      rawText: 'Useful Rust article',
-      contentText: 'An article about Rust ownership.',
-      sourceUrl: 'https://example.com/rust',
+      raw_text: 'Useful Rust article',
+      content_text: 'An article about Rust ownership.',
+      source_url: 'https://example.com/rust',
       tags: ['rust', 'programming'],
     });
     const second = await junkService.create({
       title: null,
       category: 'quote',
-      rawText: 'A useful quote',
-      contentText: 'A quote about deliberate practice.',
-      sourceUrl: null,
+      raw_text: 'A useful quote',
+      content_text: 'A quote about deliberate practice.',
+      source_url: null,
       tags: ['learning'],
     });
 
@@ -138,18 +138,18 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       level: 'A1',
       questions: [
         {
-          questionType: 'fill_blank',
-          grammarArea: 'tenses',
-          grammarPoint: 'simple past',
+          question_type: 'fill_blank',
+          grammar_area: 'tenses',
+          grammar_point: 'simple past',
           level: 'A1',
-          questionText: 'She ___ yesterday.',
-          correctAnswer: 'went',
+          question_text: 'She ___ yesterday.',
+          correct_answer: 'went',
           explanation: 'Use the simple past for completed actions.',
         },
       ],
     });
     const answeredPractice = await grammarService.saveAnswer(practice.code, 1, {
-      userAnswer: 'went',
+      user_answer: 'went',
       result: 'correct',
       feedback: null,
     });
@@ -162,35 +162,35 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       level: 'A1',
       questions: [
         {
-          questionType: 'fill_blank',
-          grammarArea: 'tenses',
-          grammarPoint: 'simple past',
+          question_type: 'fill_blank',
+          grammar_area: 'tenses',
+          grammar_point: 'simple past',
           level: 'A1',
-          questionText: 'She ___ yesterday.',
-          correctAnswer: 'went',
+          question_text: 'She ___ yesterday.',
+          correct_answer: 'went',
           explanation: 'Use the simple past.',
         },
         {
-          questionType: 'error_correction',
-          grammarArea: 'agreement',
-          grammarPoint: 'subject verb agreement',
+          question_type: 'error_correction',
+          grammar_area: 'agreement',
+          grammar_point: 'subject verb agreement',
           level: 'A1',
-          questionText: 'He walk every day.',
-          correctAnswer: 'He walks every day.',
+          question_text: 'He walk every day.',
+          correct_answer: 'He walks every day.',
           explanation: 'Third-person singular verbs take -s.',
         },
       ],
     });
-    await grammarService.saveAnswer(exam.code, 1, { userAnswer: 'went' });
-    await grammarService.saveAnswer(exam.code, 2, { userAnswer: 'He walk every day.' });
+    await grammarService.saveAnswer(exam.code, 1, { user_answer: 'went' });
+    await grammarService.saveAnswer(exam.code, 2, { user_answer: 'He walk every day.' });
     const report = await grammarService.evaluateSession(exam.code, {
       answers: [
-        { questionNumber: 1, result: 'correct', feedback: null },
-        { questionNumber: 2, result: 'incorrect', feedback: 'Use walks.' },
+        { question_number: 1, result: 'correct', feedback: null },
+        { question_number: 2, result: 'incorrect', feedback: 'Use walks.' },
       ],
     });
 
-    expect(report).toMatchObject({ status: 'completed', score: 1, maxScore: 2 });
+    expect(report).toMatchObject({ status: 'completed', score: 1, max_score: 2 });
     expect(report.breakdown).toHaveLength(2);
 
     await grammarService.removeSession(practice.code);
@@ -203,22 +203,22 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       level: 'A1',
       genre: 'story',
       tags: ['daily-life'],
-      targetWordCount: 300,
-      passageText: 'Mira visits the market early every Sunday morning.',
+      target_word_count: 300,
+      passage_text: 'Mira visits the market early every Sunday morning.',
       source: 'request',
       questions: [
-        { questionText: 'Who visits the market?', expectedAnswer: 'Mira.' },
-        { questionText: 'When does Mira visit?', expectedAnswer: 'Every Sunday morning.' },
-        { questionText: 'Where does Mira go?', expectedAnswer: 'The market.' },
+        { question_text: 'Who visits the market?', expected_answer: 'Mira.' },
+        { question_text: 'When does Mira visit?', expected_answer: 'Every Sunday morning.' },
+        { question_text: 'Where does Mira go?', expected_answer: 'The market.' },
       ],
     });
 
     expect(material.code).toMatch(/^RD-\d{8}-001$/);
-    expect(material.wordCount).toBe(8);
-    expect(material.questions.every(({ userAnswer }) => userAnswer === null)).toBe(true);
+    expect(material.word_count).toBe(8);
+    expect(material.questions.every(({ user_answer }) => user_answer === null)).toBe(true);
 
     const expectedAnswers = await readingService.getExpectedAnswers(material.code);
-    expect(expectedAnswers.map(({ expectedAnswer }) => expectedAnswer)).toEqual([
+    expect(expectedAnswers.map(({ expected_answer }) => expected_answer)).toEqual([
       'Mira.',
       'Every Sunday morning.',
       'The market.',
@@ -226,12 +226,12 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     const submitted = await readingService.saveSubmission(material.code, {
       answers: [
-        { questionNumber: 1, userAnswer: 'Mira.' },
-        { questionNumber: 2, userAnswer: 'Sunday morning.' },
-        { questionNumber: 3, userAnswer: 'The market.' },
+        { question_number: 1, user_answer: 'Mira.' },
+        { question_number: 2, user_answer: 'Sunday morning.' },
+        { question_number: 3, user_answer: 'The market.' },
       ],
     });
-    expect(submitted.questions.map(({ userAnswer }) => userAnswer)).toEqual([
+    expect(submitted.questions.map(({ user_answer }) => user_answer)).toEqual([
       'Mira.',
       'Sunday morning.',
       'The market.',
@@ -246,16 +246,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         sort: 'newest',
       }),
     ).resolves.toMatchObject({
-      items: [{ code: material.code, status: 'completed', questionCount: 3, answeredQuestionCount: 3 }],
-      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      items: [{ code: material.code, status: 'completed', question_count: 3, answered_question_count: 3 }],
+      meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
     });
 
     await expect(
       readingService.saveSubmission(material.code, {
         answers: [
-          { questionNumber: 1, userAnswer: 'Mira.' },
-          { questionNumber: 2, userAnswer: 'Sunday morning.' },
-          { questionNumber: 3, userAnswer: 'The market.' },
+          { question_number: 1, user_answer: 'Mira.' },
+          { question_number: 2, user_answer: 'Sunday morning.' },
+          { question_number: 3, user_answer: 'The market.' },
         ],
       }),
     ).rejects.toMatchObject({ code: 'READING_SUBMISSION_ALREADY_EXISTS', statusCode: 409 });
@@ -264,20 +264,20 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
   test('persists structured writing feedback and serializes concurrent draft numbers', async () => {
     const material = await writingService.createMaterial({
       topic: 'My work week',
-      promptText: 'Describe your work experience this week.',
+      prompt_text: 'Describe your work experience this week.',
       level: 'A1',
       genre: 'journal',
       tags: ['work', 'reflection'],
-      targetWordCount: 150,
+      target_word_count: 150,
       source: 'request',
     });
 
     expect(material.code).toMatch(/^WR-\d{8}-001$/);
 
-    const createDraft = (originalText: string) =>
+    const createDraft = (original_text: string) =>
       writingService.createSubmission(material.code, {
-        originalText,
-        estimatedLevel: 'A1',
+        original_text,
+        estimated_level: 'A1',
         analysis: writingAnalysis,
       });
     const drafts = await Promise.all([
@@ -285,14 +285,14 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       createDraft('Yesterday I worked from the office.'),
     ]);
 
-    expect(drafts.map(({ submissionNumber }) => submissionNumber).sort()).toEqual([1, 2]);
-    expect(drafts.map(({ wordCount }) => wordCount)).toEqual([6, 6]);
+    expect(drafts.map(({ submission_number }) => submission_number).sort()).toEqual([1, 2]);
+    expect(drafts.map(({ word_count }) => word_count)).toEqual([6, 6]);
 
     const firstDraft = await writingService.getSubmission(material.code, 1);
     expect(firstDraft.analysis).toEqual(writingAnalysis);
     expect(await writingService.getCorrectedText(material.code, 1)).toEqual({
-      submissionNumber: 1,
-      correctedText: writingAnalysis.correctedText,
+      submission_number: 1,
+      corrected_text: writingAnalysis.corrected_text,
     });
     await expect(
       writingService.listMaterials({
@@ -303,8 +303,8 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         sort: 'newest',
       }),
     ).resolves.toMatchObject({
-      items: [{ code: material.code, status: 'reviewed', submissionCount: 2, latestSubmissionNumber: 2 }],
-      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      items: [{ code: material.code, status: 'reviewed', submission_count: 2, latest_submission_number: 2 }],
+      meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
     });
   });
 });

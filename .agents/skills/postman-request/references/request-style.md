@@ -12,7 +12,7 @@ Use these rules to preserve the Guestpedia-inspired Postman style while represen
 ## URLs and parameters
 
 - Use `{{DOMAIN}}` as the host and keep the complete Hermes route, for example `{{DOMAIN}}/api/v1/notes/:code`.
-- Preserve every path parameter name from the Hono route. Do not rename `:code`, `:date`, `:dailyNumber`, or another meaningful parameter to `:id`.
+- Preserve every path parameter name from the Hono route. Do not rename `:code`, `:date`, `:daily_number`, or another meaningful parameter to `:id`.
 - Give path variables realistic sample values in Postman's path-variable data, not as literal replacements in the URL.
 - Include supported query parameters with editable realistic values. Required parameters come first. When supported, order pagination controls as `page` then `limit`; do not add either parameter if its Zod validator does not define it.
 - Represent each query parameter once. When the Postman tool accepts both a URL and a `queryParams` field, follow its schema so parameters are not duplicated.
@@ -22,7 +22,7 @@ Examples:
 
 ```text
 {{DOMAIN}}/api/v1/notes?q=advisory&tag=postgres&category=Tech%2FProgramming&limit=20
-{{DOMAIN}}/api/v1/finance/transactions/:date/:dailyNumber
+{{DOMAIN}}/api/v1/finance/transactions/:date/:daily_number
 ```
 
 Suggested path-variable values for the second example are `2026-09-05` and `1`.
@@ -38,7 +38,7 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 ## JSON bodies
 
 - Use Postman raw JSON mode and set the language to JSON.
-- Use Hermes `camelCase` field names exactly as defined by the Zod schema.
+- Use Hermes `snake_case` field names exactly as defined by the Zod schema.
 - Use realistic but unmistakably sample values. IDs and codes must match the validated shape.
 - Use one or two items in arrays and nested collections.
 - Include useful optional fields or omit them. Use explicit `null` only when the endpoint accepts it and the example intentionally demonstrates clearing a nullable value.
@@ -99,8 +99,8 @@ Use these only when no suitable Hermes request exists in the target or sibling f
     "type": "fact",
     "category": "Tech/Programming",
     "source": "PostgreSQL documentation",
-    "sourceContext": "Concurrency control",
-    "sourceReference": "Chapter 13",
+    "source_context": "Concurrency control",
+    "source_reference": "Chapter 13",
     "tags": ["postgres", "concurrency"]
   }
 }
@@ -140,7 +140,7 @@ Use these only when no suitable Hermes request exists in the target or sibling f
 
 - The method and composed path match `src/app.ts` plus the module route.
 - Body, query, and path fields match the applied Zod validators.
-- Request JSON uses `camelCase` and realistic sample literals.
+- Request JSON uses `snake_case` and realistic sample literals.
 - URL uses `{{DOMAIN}}`; dynamic segments retain their original names.
 - No unsupported pagination or filters were added.
 - Authentication is inherited and no real secret is present.

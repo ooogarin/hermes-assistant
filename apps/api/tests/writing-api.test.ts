@@ -14,37 +14,37 @@ import type {
 } from '../src/modules/writing/writing.types';
 
 const settings: WritingSettings = {
-  defaultLevel: 'A1',
-  defaultWordCount: 150,
-  minWordCount: 120,
-  maxWordCount: 180,
-  updatedAt: '2026-09-05T10:00:00.000Z',
+  default_level: 'A1',
+  default_word_count: 150,
+  min_word_count: 120,
+  max_word_count: 180,
+  updated_at: '2026-09-05T10:00:00.000Z',
 };
 
 const material: WritingMaterial = {
   code: 'WR-20260905-001',
   topic: 'My work week',
-  promptText: 'Describe your work experience this week.',
+  prompt_text: 'Describe your work experience this week.',
   level: 'A1',
   genre: 'journal',
   tags: ['work', 'reflection'],
-  targetWordCount: 150,
-  isOverride: false,
+  target_word_count: 150,
+  is_override: false,
   source: 'request',
 };
 
 const submission: WritingSubmission = {
-  submissionNumber: 1,
-  originalText: 'I go to the office yesterday.',
-  wordCount: 7,
-  estimatedLevel: 'A1',
+  submission_number: 1,
+  original_text: 'I go to the office yesterday.',
+  word_count: 7,
+  estimated_level: 'A1',
   analysis: writingAnalysis,
-  submittedAt: '2026-09-05T10:10:00.000Z',
+  submitted_at: '2026-09-05T10:10:00.000Z',
 };
 
-const correctedText: WritingCorrectedText = {
-  submissionNumber: 1,
-  correctedText: writingAnalysis.correctedText,
+const corrected_text: WritingCorrectedText = {
+  submission_number: 1,
+  corrected_text: writingAnalysis.corrected_text,
 };
 
 const materialList: WritingMaterialList = {
@@ -52,19 +52,19 @@ const materialList: WritingMaterialList = {
     {
       code: material.code,
       topic: material.topic,
-      promptExcerpt: material.promptText,
+      prompt_excerpt: material.prompt_text,
       genre: material.genre,
       level: material.level,
-      targetWordCount: material.targetWordCount,
+      target_word_count: material.target_word_count,
       tags: material.tags,
       source: material.source,
       status: 'unsubmitted',
-      submissionCount: 0,
-      latestSubmissionNumber: null,
-      createdAt: '2026-09-05T10:00:00.000Z',
+      submission_count: 0,
+      latest_submission_number: null,
+      created_at: '2026-09-05T10:00:00.000Z',
     },
   ],
-  meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+  meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
 };
 
 const createWritingServiceStub = (overrides: Partial<WritingService> = {}): WritingService => ({
@@ -75,7 +75,7 @@ const createWritingServiceStub = (overrides: Partial<WritingService> = {}): Writ
   getMaterial: async () => material,
   createSubmission: async () => submission,
   getSubmission: async () => submission,
-  getCorrectedText: async () => correctedText,
+  getCorrectedText: async () => corrected_text,
   ...overrides,
 });
 
@@ -89,9 +89,10 @@ mock.module('../src/modules/writing/writing.service', () => ({
   getMaterial: (code: string) => activeWritingService.getMaterial(code),
   createSubmission: (code: string, input: CreateWritingSubmissionRequest) =>
     activeWritingService.createSubmission(code, input),
-  getSubmission: (code: string, submissionNumber: number) => activeWritingService.getSubmission(code, submissionNumber),
-  getCorrectedText: (code: string, submissionNumber: number) =>
-    activeWritingService.getCorrectedText(code, submissionNumber),
+  getSubmission: (code: string, submission_number: number) =>
+    activeWritingService.getSubmission(code, submission_number),
+  getCorrectedText: (code: string, submission_number: number) =>
+    activeWritingService.getCorrectedText(code, submission_number),
 }));
 
 const { createApp } = await import('../src/app');
@@ -115,7 +116,7 @@ test('reads and updates writing settings', async () => {
   const app = createWritingApp({
     updateSettings: async (input) => {
       updateInput = input;
-      return { ...settings, defaultLevel: input.defaultLevel ?? settings.defaultLevel };
+      return { ...settings, default_level: input.default_level ?? settings.default_level };
     },
   });
 
@@ -123,13 +124,13 @@ test('reads and updates writing settings', async () => {
   const patchResponse = await app.request('http://localhost/api/v1/writing/settings', {
     method: 'PATCH',
     headers,
-    body: JSON.stringify({ defaultLevel: 'B1' }),
+    body: JSON.stringify({ default_level: 'B1' }),
   });
 
   expect(getResponse.status).toBe(200);
   expect(await getResponse.json()).toEqual({ success: true, data: toSnakeCaseJson(settings) });
   expect(patchResponse.status).toBe(200);
-  expect(updateInput).toEqual({ defaultLevel: 'B1' });
+  expect(updateInput).toEqual({ default_level: 'B1' });
 });
 
 test('lists writing materials with validated filters and pagination', async () => {
@@ -161,11 +162,11 @@ test('creates and reads a writing material', async () => {
     headers,
     body: JSON.stringify({
       topic: material.topic,
-      promptText: material.promptText,
+      prompt_text: material.prompt_text,
       level: material.level,
       genre: material.genre,
       tags: material.tags,
-      targetWordCount: material.targetWordCount,
+      target_word_count: material.target_word_count,
       source: material.source,
     }),
   });
@@ -174,11 +175,11 @@ test('creates and reads a writing material', async () => {
   expect(createResponse.status).toBe(201);
   expect(createInput).toEqual({
     topic: material.topic,
-    promptText: material.promptText,
+    prompt_text: material.prompt_text,
     level: material.level,
     genre: material.genre,
     tags: material.tags,
-    targetWordCount: material.targetWordCount,
+    target_word_count: material.target_word_count,
     source: material.source,
   });
   expect(getResponse.status).toBe(200);
@@ -196,9 +197,9 @@ test('validates structured writing analysis before calling the service', async (
     method: 'POST',
     headers,
     body: JSON.stringify({
-      originalText: submission.originalText,
-      estimatedLevel: submission.estimatedLevel,
-      analysis: { correctedText: writingAnalysis.correctedText },
+      original_text: submission.original_text,
+      estimated_level: submission.estimated_level,
+      analysis: { corrected_text: writingAnalysis.corrected_text },
     }),
   });
 
@@ -217,32 +218,32 @@ test('creates a writing submission with validated analysis', async () => {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      originalText: submission.originalText,
-      estimatedLevel: submission.estimatedLevel,
+      original_text: submission.original_text,
+      estimated_level: submission.estimated_level,
       analysis: writingAnalysis,
     }),
   });
 
   expect(response.status).toBe(201);
   expect(createInput).toEqual({
-    originalText: submission.originalText,
-    estimatedLevel: submission.estimatedLevel,
+    original_text: submission.original_text,
+    estimated_level: submission.estimated_level,
     analysis: writingAnalysis,
   });
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(submission) });
 });
 
 test('reads a submission using a numeric submission reference', async () => {
-  let reference: { code: string; submissionNumber: number } | undefined;
+  let reference: { code: string; submission_number: number } | undefined;
   const response = await createWritingApp({
-    getSubmission: async (code, submissionNumber) => {
-      reference = { code, submissionNumber };
+    getSubmission: async (code, submission_number) => {
+      reference = { code, submission_number };
       return submission;
     },
   }).request(`http://localhost/api/v1/writing/materials/${material.code}/submissions/1`, { headers });
 
   expect(response.status).toBe(200);
-  expect(reference).toEqual({ code: material.code, submissionNumber: 1 });
+  expect(reference).toEqual({ code: material.code, submission_number: 1 });
 });
 
 test('returns corrected text through the dedicated endpoint', async () => {
@@ -252,5 +253,5 @@ test('returns corrected text through the dedicated endpoint', async () => {
   );
 
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(correctedText) });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(corrected_text) });
 });

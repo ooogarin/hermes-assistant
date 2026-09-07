@@ -22,5 +22,6 @@
 :root {
   color-scheme: light;
   --sidebar-width: 17rem;
+  --sidebar-collapsed-width: 5.5rem;
   --reading-width: 46rem;
 }

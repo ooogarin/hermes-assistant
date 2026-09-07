@@ -69,6 +69,6 @@ const getTransactionReference = (context: Context<AppEnv>): TransactionReference
 
   return {
     date: params.date,
-    dailyNumber: params.dailyNumber,
+    daily_number: params.daily_number,
   };
 };

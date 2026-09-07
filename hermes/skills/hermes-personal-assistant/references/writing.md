@@ -8,10 +8,10 @@ Writing creates prompts and stores structured feedback for multiple drafts per m
 - `POST /api/v1/writing/materials`
 - `GET /api/v1/writing/materials/:code`
 - `POST /api/v1/writing/materials/:code/submissions`
-- `GET /api/v1/writing/materials/:code/submissions/:submissionNumber`
-- `GET /api/v1/writing/materials/:code/submissions/:submissionNumber/corrected-text`
+- `GET /api/v1/writing/materials/:code/submissions/:submission_number`
+- `GET /api/v1/writing/materials/:code/submissions/:submission_number/corrected-text`
 
-Material body fields are `topic`, `promptText`, `level`, `genre`, `tags`, `targetWordCount`, and `source` (`cron|request`). For cron, fetch settings first, use defaults, set `source: "cron"`, and rotate topic/genre when possible. User-supplied level or length is a one-off override unless they explicitly update settings.
+Material body fields are `topic`, `prompt_text`, `level`, `genre`, `tags`, `target_word_count`, and `source` (`cron|request`). For cron, fetch settings first, use defaults, set `source: "cron"`, and rotate topic/genre when possible. User-supplied level or length is a one-off override unless they explicitly update settings.
 
 Settings and material responses use fields such as `default_level`, `default_word_count`, `prompt_text`, `target_word_count`, and `is_override`. Submission responses recursively use snake_case, including `submission_number`, `word_count`, `estimated_level`, `corrected_text`, `overall_feedback`, and `next_steps`.
 
@@ -21,35 +21,35 @@ Submission body fields:
 
 ```json
 {
-  "originalText": "...",
-  "estimatedLevel": "B1",
+  "original_text": "...",
+  "estimated_level": "B1",
   "analysis": {
     "summary": {
-      "overallFeedback": "...",
+      "overall_feedback": "...",
       "strengths": ["..."],
-      "priorityImprovements": ["..."]
+      "priority_improvements": ["..."]
     },
     "grammar": {
-      "errorCount": 1,
+      "error_count": 1,
       "items": [
         {
           "original": "...",
           "corrected": "...",
-          "errorType": "...",
+          "error_type": "...",
           "explanation": "..."
         }
       ]
     },
-    "correctedText": "...",
+    "corrected_text": "...",
     "vocabulary": {
-      "repeatedWords": [{ "word": "...", "count": 2, "suggestions": ["..."] }],
-      "betterPhrases": [{ "original": "...", "suggestions": ["..."] }],
-      "newUsefulWords": [{ "word": "...", "meaning": "...", "example": "..." }]
+      "repeated_words": [{ "word": "...", "count": 2, "suggestions": ["..."] }],
+      "better_phrases": [{ "original": "...", "suggestions": ["..."] }],
+      "new_useful_words": [{ "word": "...", "meaning": "...", "example": "..." }]
     },
     "structure": { "feedback": "...", "suggestions": ["..."] },
-    "topicAdherence": { "status": "aligned", "notes": "..." },
-    "genreAdherence": { "status": "aligned", "notes": "..." },
-    "nextSteps": ["..."]
+    "topic_adherence": { "status": "aligned", "notes": "..." },
+    "genre_adherence": { "status": "aligned", "notes": "..." },
+    "next_steps": ["..."]
   }
 }
 ```

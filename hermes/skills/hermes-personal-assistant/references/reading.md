@@ -18,19 +18,19 @@ Create material body:
   "level": "B1",
   "genre": "informative article",
   "tags": ["environment", "cities"],
-  "targetWordCount": 350,
-  "passageText": "...",
+  "target_word_count": 350,
+  "passage_text": "...",
   "source": "request",
   "questions": [
-    { "questionText": "...", "expectedAnswer": "..." },
-    { "questionText": "...", "expectedAnswer": "..." },
-    { "questionText": "...", "expectedAnswer": "..." }
+    { "question_text": "...", "expected_answer": "..." },
+    { "question_text": "...", "expected_answer": "..." },
+    { "question_text": "...", "expected_answer": "..." }
   ]
 }
 ```
 
-For cron, fetch settings and read `default_level`, `default_word_count`, `min_word_count`, and `max_word_count` from the response. Use those defaults in the camelCase create request, set `source: "cron"`, and choose a fresh topic/genre when possible. For a user request, use provided one-off overrides without changing settings unless explicitly asked; set `source: "request"`.
+For cron, fetch settings and read `default_level`, `default_word_count`, `min_word_count`, and `max_word_count` from the response. Use those defaults in the `snake_case` create request, set `source: "cron"`, and choose a fresh topic/genre when possible. For a user request, use provided one-off overrides without changing settings unless explicitly asked; set `source: "request"`.
 
-Submission body is `{ "answers": [{ "questionNumber": 1, "userAnswer": "..." }] }`. Reading does not grade answers as correct/partial/incorrect in MVP. Response questions use `question_number`, `question_text`, `user_answer`, and `expected_answer`. Once all questions have answers, show expected answers by fetching the dedicated endpoint. Also fetch them when explicitly requested.
+Submission body is `{ "answers": [{ "question_number": 1, "user_answer": "..." }] }`. Reading does not grade answers as correct/partial/incorrect in MVP. Response questions use `question_number`, `question_text`, `user_answer`, and `expected_answer`. Once all questions have answers, show expected answers by fetching the dedicated endpoint. Also fetch them when explicitly requested.
 
 Resolve the material from an explicit `RD-...` code or an unambiguous current session. If uncertain, ask before persisting answers.

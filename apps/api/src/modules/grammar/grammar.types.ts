@@ -29,24 +29,24 @@ export type GrammarQuestionParams = z.infer<typeof questionReferenceSchema>;
 // ====================================================================================================
 
 export type GrammarSettings = {
-  defaultLevel: string;
-  dailyQuestionCount: number;
-  updatedAt: string;
+  default_level: string;
+  daily_question_count: number;
+  updated_at: string;
 };
 
 export type GrammarQuestion = {
-  questionNumber: number;
-  questionType: string;
-  grammarArea: string;
-  grammarPoint: string;
+  question_number: number;
+  question_type: string;
+  grammar_area: string;
+  grammar_point: string;
   level: string;
-  questionText: string;
+  question_text: string;
   answer: {
-    userAnswer: string;
+    user_answer: string;
     result: GrammarAnswerResult | null;
     feedback: string | null;
-    answeredAt: string | null;
-    evaluatedAt: string | null;
+    answered_at: string | null;
+    evaluated_at: string | null;
   } | null;
 };
 
@@ -56,24 +56,24 @@ export type GrammarSession = {
   source: GrammarSource;
   status: GrammarSessionStatus;
   level: string;
-  questionCount: number;
+  question_count: number;
   score: number | null;
-  maxScore: number | null;
-  startedAt: string;
-  completedAt: string | null;
+  max_score: number | null;
+  started_at: string;
+  completed_at: string | null;
   questions: GrammarQuestion[];
 };
 
 export type GrammarExplanation = {
-  questionNumber: number;
-  questionText: string;
-  grammarArea: string;
-  grammarPoint: string;
+  question_number: number;
+  question_text: string;
+  grammar_area: string;
+  grammar_point: string;
   explanation: string;
 };
 
 export type GrammarReportBreakdown = {
-  grammarArea: string;
+  grammar_area: string;
   correct: number;
   partial: number;
   incorrect: number;
@@ -83,7 +83,7 @@ export type GrammarReport = {
   code: string;
   status: GrammarSessionStatus;
   score: number | null;
-  maxScore: number | null;
+  max_score: number | null;
   breakdown: GrammarReportBreakdown[];
 };
 
@@ -93,8 +93,8 @@ export type GrammarService = {
   createSession: (input: CreateGrammarSessionRequest) => Promise<GrammarSession>;
   getSession: (code: string) => Promise<GrammarSession>;
   removeSession: (code: string) => Promise<void>;
-  saveAnswer: (code: string, questionNumber: number, input: SaveGrammarAnswerRequest) => Promise<GrammarSession>;
-  getExplanation: (code: string, questionNumber: number) => Promise<GrammarExplanation>;
+  saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) => Promise<GrammarSession>;
+  getExplanation: (code: string, question_number: number) => Promise<GrammarExplanation>;
   evaluateSession: (code: string, input: EvaluateGrammarSessionRequest) => Promise<GrammarReport>;
   getReport: (code: string) => Promise<GrammarReport>;
 };

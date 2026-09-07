@@ -11,8 +11,8 @@ export const createNoteSchema = z
     type: z.enum(noteTypes),
     category: z.string().trim().min(1).max(100),
     source: nullableTextSchema.optional().default(null),
-    sourceContext: nullableTextSchema.optional().default(null),
-    sourceReference: nullableTextSchema.optional().default(null),
+    source_context: nullableTextSchema.optional().default(null),
+    source_reference: nullableTextSchema.optional().default(null),
     tags: tagsSchema.optional().default([]),
   })
   .strict();
@@ -24,8 +24,8 @@ export const updateNoteSchema = z
     type: z.enum(noteTypes).optional(),
     category: z.string().trim().min(1).max(100).optional(),
     source: nullableTextSchema.optional(),
-    sourceContext: nullableTextSchema.optional(),
-    sourceReference: nullableTextSchema.optional(),
+    source_context: nullableTextSchema.optional(),
+    source_reference: nullableTextSchema.optional(),
     tags: tagsSchema.optional(),
   })
   .strict()

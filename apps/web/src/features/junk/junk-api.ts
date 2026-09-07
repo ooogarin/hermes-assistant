@@ -29,9 +29,20 @@ const junkListSchema = z.object({ items: z.array(junkItemSchema) }).transform(({
 
 export type JunkItem = z.output<typeof junkItemSchema>;
 export type JunkListFilters = { category?: string; q?: string; sourceUrl?: string; tag?: string };
+export type UpdateJunkInput = Partial<Pick<JunkItem, 'category' | 'contentText' | 'sourceUrl' | 'tags' | 'title'>>;
+export type CreateJunkInput = Pick<JunkItem, 'category' | 'contentText' | 'sourceUrl' | 'tags' | 'title'>;
 
 export const getJunkItems = (filters: JunkListFilters, signal?: AbortSignal): Promise<JunkItem[]> =>
   apiRequest(`/api/v1/junk${buildQueryString({ ...filters, limit: 100 })}`, junkListSchema, { signal });
 
 export const getJunkItem = (code: string, signal?: AbortSignal): Promise<JunkItem> =>
   apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, junkItemSchema, { signal });
+
+export const createJunkItem = (input: CreateJunkInput): Promise<JunkItem> =>
+  apiRequest('/api/v1/junk', junkItemSchema, { body: input, method: 'POST' });
+
+export const updateJunkItem = (code: string, input: UpdateJunkInput): Promise<JunkItem> =>
+  apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, junkItemSchema, { body: input, method: 'PATCH' });
+
+export const deleteJunkItem = (code: string): Promise<void> =>
+  apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, z.undefined(), { method: 'DELETE' });

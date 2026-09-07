@@ -56,7 +56,7 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 ## Preserve repository invariants
 
 - The backend and PostgreSQL are authoritative; do not move calculations or durable state into a caller.
-- Use `camelCase` in TypeScript and every request input (JSON body, query parameter, and path parameter). The shared response boundary serializes response JSON to `snake_case`; PostgreSQL also uses `snake_case`.
+- Use `snake_case` for every API/service data field: request JSON, query/path parameter names, service/domain types, response JSON, and PostgreSQL. Keep ordinary TypeScript function and local-variable names idiomatic `camelCase`. The shared response boundary defensively preserves `snake_case`.
 - Return stable, safe `AppError` codes for expected failures.
 - Keep soft-deleted rows out of ordinary reads and never reuse user-facing codes or Finance daily numbers.
 - Use `getJakartaDateCodeParts` for Jakarta-scoped code dates and `toIsoTimestamp` for database timestamps.

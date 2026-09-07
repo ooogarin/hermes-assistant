@@ -7,8 +7,8 @@ Route structured exercises to Grammar, Reading, or Writing instead of forcing th
 Do not persist automatically. When the user explicitly asks to save useful content, create a Note with:
 
 - a suitable allowed Notes `type`;
-- `sourceContext: "general_chat"`;
-- `sourceReference: null`;
+- `source_context: "general_chat"`;
+- `source_reference: null`;
 - a concise title, cleaned content, category, and tags.
 
 Read `notes.md` before saving or correcting that note. Current-session conversation context is fine for dialogue but is not durable source-of-truth data.

@@ -14,11 +14,13 @@ const DetailSection = ({ children, title }: { children: ReactNode; title: string
 );
 
 export const JunkDetailPane = ({
+  actions,
   item,
   mode = 'preview',
   onClose,
   onOpenPage,
 }: {
+  actions?: ReactNode;
   item: JunkItem;
   mode?: 'page' | 'preview';
   onClose?: () => void;
@@ -56,7 +58,9 @@ export const JunkDetailPane = ({
               <X aria-hidden='true' size={19} />
             </IconButton>
           </div>
-        ) : null}
+        ) : actions === undefined ? null : (
+          <div className='flex shrink-0 flex-wrap gap-2'>{actions}</div>
+        )}
       </div>
 
       {item.contentText === null ? null : (
