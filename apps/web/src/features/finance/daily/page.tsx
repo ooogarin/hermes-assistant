@@ -80,18 +80,13 @@ const FinanceDailyPage = ({ today = new Date() }: { today?: Date }) => {
       {report.status === 'loading' ? <FinanceReportSkeleton /> : null}
       {report.status === 'error' ? <ErrorState onRetry={report.retry} /> : null}
       {report.status === 'success' ? (
-        <>
-          <FinanceSummaryCards
-            expenseTotal={report.data[1].expenseTotal}
-            incomeTotal={report.data[1].incomeTotal}
-            netTotal={report.data[1].netTotal}
-          />
-          <div className='grid items-start gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.9fr)]'>
-            <FinanceTransactionList
-              transactions={report.data[0]}
-              dateLabel={formatDate(date)}
-              editTo={(transaction) => `/finance/transactions/${transaction.date}/${transaction.dailyNumber}/edit`}
-              onDelete={setDeleteTarget}
+        <div className='space-y-5'>
+          <div className='grid items-stretch gap-5 lg:grid-cols-2'>
+            <FinanceSummaryCards
+              expenseTotal={report.data[1].expenseTotal}
+              incomeTotal={report.data[1].incomeTotal}
+              layout='vertical'
+              netTotal={report.data[1].netTotal}
             />
             <FinanceCategoryBreakdown
               byCategory={report.data[1].byCategory}
@@ -99,7 +94,13 @@ const FinanceDailyPage = ({ today = new Date() }: { today?: Date }) => {
               incomeTotal={report.data[1].incomeTotal}
             />
           </div>
-        </>
+          <FinanceTransactionList
+            transactions={report.data[0]}
+            dateLabel={formatDate(date)}
+            editTo={(transaction) => `/finance/transactions/${transaction.date}/${transaction.dailyNumber}/edit`}
+            onDelete={setDeleteTarget}
+          />
+        </div>
       ) : null}
       <ConfirmationDialog
         description='Transaksi ini tidak akan muncul lagi di laporan Finance.'

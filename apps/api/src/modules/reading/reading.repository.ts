@@ -223,6 +223,8 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
   const offset = (input.page - 1) * input.limit;
+  const levels = 'levels' in input ? input.levels : null;
+  const levelValues = database.array(levels ?? [], 'TEXT');
   const [rows, [count]] = await Promise.all([
     database<ReadingMaterialListRow[]>`
       WITH material_summary AS (
@@ -276,7 +278,7 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
         OR code ILIKE ${searchPattern}
         OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
       ))
-        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
         AND (${input.status}::TEXT IS NULL OR CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END = ${input.status})
       ORDER BY
@@ -312,7 +314,7 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
         OR code ILIKE ${searchPattern}
         OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
       ))
-        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
         AND (${input.status}::TEXT IS NULL OR CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END = ${input.status})
     `,

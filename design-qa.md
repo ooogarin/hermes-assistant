@@ -53,6 +53,55 @@ final result: passed
 
 ---
 
+# Shared Filter Dropdown QA
+
+## Comparison target
+
+- Source visual truth: `docs/frontend-design/filter-dropdown-reference.png` at 834 × 762 px. The second supplied reference was also inspected for its semantic status-pill option treatment.
+- Implementation screenshot: `docs/frontend-design/qa/filter-dropdown-implementation.png` at a 1280 × 720 CSS px in-app Browser viewport and device scale factor 1.
+- Combined evidence: `docs/frontend-design/qa/filter-dropdown-comparison.png` at 1280 × 720 px places the source and open Reading level dropdown in one browser-rendered comparison view.
+- State: open dropdown with an active `Semua level` option, populated choices, and the search field visible. Notes was also checked with its outer advanced-filter popover and nested type dropdown open; Junk was checked with its shared outer filter popover open.
+
+## Evidence
+
+- Full-view comparison: the combined image shows the reference trigger, chevron, anchored surface, search control, row separators, square selected indicators, and elevation beside the live Hermes implementation.
+- Focused comparison: `docs/frontend-design/qa/filter-dropdown-implementation.png` keeps the open control legible at native capture size, so an additional crop was unnecessary.
+- Interactions checked: open/close trigger, fixed-option selection with URL-backed Reading filtering, search field availability, nested Notes dropdown, Escape closing the nested dropdown without closing its parent popover, and viewport-safe Notes/Junk panel alignment.
+- Browser console: no warnings or errors were observed.
+
+## Required fidelity surfaces
+
+- Fonts and typography: the implementation keeps Hermes typography, compact 14 px option labels, readable weights, and stable wrapping instead of importing the unrelated source-product font.
+- Spacing and layout rhythm: 44 px trigger/search controls, 48 px option rows, consistent separators, 8 px trigger-to-panel spacing, rounded surfaces, and a restrained shadow follow the source composition.
+- Colors and visual tokens: source blue focus treatment maps intentionally to Hermes primary green; neutral borders, muted placeholders, and selected contrast use existing semantic tokens.
+- Image and asset fidelity: no raster assets are required by this control. Search, chevron, check, and filter icons use the existing Lucide system.
+- Copy and content: source labels are localized and adapted to actual Hermes filters. Empty search results use `Pilihan tidak ditemukan.` rather than leaving a blank panel.
+
+## Comparison history
+
+1. Initial implementation matched the dropdown anatomy but the shared Notes/Junk popover could extend beyond the right viewport edge when triggered near the toolbar boundary (P2).
+2. The popover was changed to right-edge alignment while retaining the 8 px vertical anchor distance.
+3. Post-fix Notes and Junk captures show the complete panel within the viewport. The open Reading dropdown and nested Notes dropdown retain their search, checkbox, and separator structure with no remaining P0/P1/P2 issue.
+
+## Findings
+
+No actionable P0, P1, or P2 differences remain.
+
+- P3: the references depict multi-selection, while current Hermes list endpoints accept one value for type or level. The reusable control therefore presents the same searchable checkbox language but applies one value at a time rather than implying unsupported multi-filter behavior.
+- P3: the dropdown panel has a 256 px minimum width when its toolbar trigger is narrower, preserving readable labels and search input sizing.
+
+## Implementation checklist
+
+- [x] Shared searchable fixed-option dropdown with visible selected state and empty results.
+- [x] Shared Notes/Junk toolbar popover with active count, outside-click dismissal, Escape handling, and viewport-safe anchoring.
+- [x] Shared level filtering across Reading and Writing, plus the Notes type filter.
+- [x] Free-form category, tag, genre, and source filters remain inputs where the API does not provide a complete option catalog.
+- [x] Biome check, TypeScript check, production build, browser interaction checks, same-canvas comparison, and console check.
+
+final result: passed
+
+---
+
 # Finance Write-flow QA
 
 ## Scope and evidence

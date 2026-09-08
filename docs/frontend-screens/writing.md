@@ -41,13 +41,13 @@ Find a writing prompt and start, continue, or review a draft.
 **UI composition**
 
 - Header: `Writing`, purpose statement, and local `Pengaturan` action.
-- Search, status chips, level filter, and genre filter.
+- Search, status chips, a multi-select level filter, and genre filter.
 - One grouped table-like list with topic/prompt, genre, level, target word count, tags, date, source, status, code, and draft count.
 - Selecting a row opens SCR-WRITE-003 or its latest submission review.
 
 **Data contract**
 
-- `GET /api/v1/writing/materials` supports keyword, status, level, genre, page, limit, and sort parameters.
+- `GET /api/v1/writing/materials` supports keyword, status, `levels` as a comma-separated list, genre, page, limit, and sort parameters. The legacy single `level` parameter remains accepted.
 - Search/filter state is represented in the URL. Reviewed rows navigate to their latest submission number from the API.
 
 ## SCR-WRITE-002 — Writing settings

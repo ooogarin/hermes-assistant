@@ -127,7 +127,7 @@ Read one saved external item and understand its category, source, and saved desc
 - Right-side preview pane containing close and open-page controls in the title area.
 - Category, title or safe title fallback, and stable code.
 - Source URL as an external link only when `sourceUrl` is present and API-valid.
-- Description from `contentText` when it is present.
+- Full-width primary content from `contentText` when it is present, using the same readable body structure as Notes without an extra nested description container.
 - Tags as quiet supporting chips.
 - Compact metadata rows for category, source host, created date, and code.
 - Do not render `rawText` by default. It is preserved for origin/audit purposes and must not become a frontend debug surface without a specific user-facing need.

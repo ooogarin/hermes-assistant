@@ -54,10 +54,10 @@ Review every recorded transaction and the income/expense distribution for one se
 **UI composition**
 
 - Header: `Finance`, selected date, date navigation, and `Lihat laporan periode`.
-- Compact daily totals: `Pengeluaran`, `Pemasukan`, and `Saldo bersih`.
-- Primary section: a transaction list for the selected date. Each row shows flow (`Pemasukan` or `Pengeluaran`), transaction name, category, optional location or note, and Rupiah amount. Use the stable daily reference when a visible reference is needed.
+- The top content row pairs stacked daily totals (`Pengeluaran`, `Pemasukan`, and `Saldo bersih`) with `Ringkasan kategori` in two balanced columns when space permits.
+- Primary section: a transaction list for the selected date. Each row shows flow (`Pemasukan` or `Pengeluaran`), transaction name, category, optional note and location, time, Rupiah amount, and row actions. Missing optional text uses a quiet dash rather than a raw null value. Use the stable daily reference when a visible reference is needed.
 - Supporting section: `Ringkasan kategori`, visibly split into `Pengeluaran` and `Pemasukan`. Each group shows category, total, and its percentage of that flow's total.
-- The transaction list is the dominant section; the category summary is a quiet secondary column on desktop and follows the list on narrow screens.
+- The transaction list is the dominant full-width section below both summaries. On narrow screens, the daily totals, category summary, and transaction list stack in that order.
 - No pagination in this version.
 
 **Interactions**

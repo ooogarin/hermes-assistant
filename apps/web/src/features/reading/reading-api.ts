@@ -103,7 +103,7 @@ export type ReadingMaterialListItem = z.output<typeof readingListItemSchema>;
 export type ReadingMaterialList = z.output<typeof readingListSchema>;
 export type ReadingListFilters = {
   genre?: string;
-  level?: string;
+  levels?: string[];
   limit?: number;
   page?: number;
   q?: string;
@@ -124,8 +124,17 @@ export const updateReadingSettings = (input: ReadingSettingsInput): Promise<Read
 export const getReadingMaterial = (code: string, signal?: AbortSignal): Promise<ReadingMaterial> =>
   apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}`, readingMaterialSchema, { signal });
 
-export const getReadingMaterials = (filters: ReadingListFilters, signal?: AbortSignal): Promise<ReadingMaterialList> =>
-  apiRequest(`/api/v1/reading/materials${buildQueryString(filters)}`, readingListSchema, { signal });
+export const getReadingMaterials = (
+  filters: ReadingListFilters,
+  signal?: AbortSignal,
+): Promise<ReadingMaterialList> => {
+  const { levels, ...query } = filters;
+  return apiRequest(
+    `/api/v1/reading/materials${buildQueryString({ ...query, levels: levels?.join(',') })}`,
+    readingListSchema,
+    { signal },
+  );
+};
 
 export const submitReadingAnswers = (
   code: string,

@@ -140,13 +140,40 @@ test('lists writing materials with validated filters and pagination', async () =
       listInput = input;
       return materialList;
     },
-  }).request('http://localhost/api/v1/writing/materials?q=work&status=unsubmitted&page=1&limit=20&sort=newest', {
+  }).request(
+    'http://localhost/api/v1/writing/materials?q=work&status=unsubmitted&levels=A2%2CB2&page=1&limit=20&sort=newest',
+    { headers },
+  );
+
+  expect(response.status).toBe(200);
+  expect(listInput).toEqual({
+    q: 'work',
+    status: 'unsubmitted',
+    levels: ['A2', 'B2'],
+    page: 1,
+    limit: 20,
+    sort: 'newest',
+  });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
+});
+
+test('normalizes the legacy writing level filter and rejects ambiguous level filters', async () => {
+  let listInput: Parameters<WritingService['listMaterials']>[0] | undefined;
+  const app = createWritingApp({
+    listMaterials: async (input) => {
+      listInput = input;
+      return materialList;
+    },
+  });
+
+  const legacyResponse = await app.request('http://localhost/api/v1/writing/materials?level=B1', { headers });
+  const ambiguousResponse = await app.request('http://localhost/api/v1/writing/materials?level=A1&levels=B1', {
     headers,
   });
 
-  expect(response.status).toBe(200);
-  expect(listInput).toEqual({ q: 'work', status: 'unsubmitted', page: 1, limit: 20, sort: 'newest' });
-  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
+  expect(legacyResponse.status).toBe(200);
+  expect(listInput).toMatchObject({ levels: ['B1'] });
+  expect(ambiguousResponse.status).toBe(400);
 });
 
 test('creates and reads a writing material', async () => {

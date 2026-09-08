@@ -64,11 +64,7 @@ export const JunkDetailPane = ({
       </div>
 
       {item.contentText === null ? null : (
-        <div className='mt-8'>
-          <DetailSection title='Deskripsi'>
-            <p className='max-w-[42rem] whitespace-pre-wrap'>{item.contentText}</p>
-          </DetailSection>
-        </div>
+        <article className='mt-7 whitespace-pre-wrap text-base leading-8 text-ink'>{item.contentText}</article>
       )}
 
       <div className='mt-8 space-y-6'>

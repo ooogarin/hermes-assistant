@@ -37,6 +37,8 @@ The frontend uses a routing library for nested and direct routes, Lucide for fun
 
 Feature pages, hooks, schemas, and mapping remain inside `features/<feature>`. A multi-page feature groups each page by use case. Visual components scoped to one feature live in `components/<feature>`; cross-feature primitives belong to `components/ui`, `components/layout`, or `components/feedback`. The current foundation is intentionally small and is expanded through implemented vertical slices rather than speculative components.
 
+Filter controls use shared UI primitives: `FilterPopover` owns the toolbar trigger, anchored panel, active-count badge, outside-click handling, and Escape behavior for Notes and Junk; `FilterDropdown` owns the searchable option panel, selected-state checkbox, focus treatment, and empty search state used by fixed-option filters. Free-form API filters remain text inputs rather than being constrained to an incomplete option list.
+
 The desktop application sidebar can be expanded or reduced to an icon rail through its chevron button. It does not auto-expand or auto-hide on hover. Its state is retained in local browser storage, and the sidebar width and content offset transition together. The mobile drawer remains independent of this desktop preference.
 
 Finance Daily defaults to the current date and Range defaults to the current calendar month. Both show API-authoritative expense, income, net balance, and category breakdown. Daily also provides manual batch creation, correction, and confirmed deletion backed by the existing Finance contracts:

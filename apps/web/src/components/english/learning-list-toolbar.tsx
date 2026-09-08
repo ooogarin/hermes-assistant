@@ -1,14 +1,15 @@
 import { FilterChip } from '../ui/filter-chip';
+import { FilterDropdown } from '../ui/filter-dropdown';
 import { SearchForm } from '../ui/search-form';
 
 type FilterOption<Value extends string> = { label: string; value?: Value };
 
 type LearningListToolbarProps<Status extends string> = {
   genre: string;
-  level: string;
+  levels: string[];
   onGenreChange: (value: string) => void;
   onGenreSubmit: () => void;
-  onLevelChange: (value: string) => void;
+  onLevelsChange: (value: string[]) => void;
   onQueryChange: (value: string) => void;
   onSearch: () => void;
   onStatusChange: (value?: Status) => void;
@@ -19,10 +20,10 @@ type LearningListToolbarProps<Status extends string> = {
 
 export const LearningListToolbar = <Status extends string>({
   genre,
-  level,
+  levels,
   onGenreChange,
   onGenreSubmit,
-  onLevelChange,
+  onLevelsChange,
   onQueryChange,
   onSearch,
   onStatusChange,
@@ -48,17 +49,15 @@ export const LearningListToolbar = <Status extends string>({
         ))}
       </fieldset>
       <span className='hidden h-8 w-px bg-border lg:block' aria-hidden='true' />
-      <select
-        aria-label='Filter level'
-        className='h-11 min-w-40 rounded-control border border-border bg-surface px-3 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15'
-        value={level}
-        onChange={(event) => onLevelChange(event.target.value)}
-      >
-        <option value=''>Semua level</option>
-        {['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((option) => (
-          <option key={option}>{option}</option>
-        ))}
-      </select>
+      <FilterDropdown
+        label='Filter level'
+        multiple
+        onChange={onLevelsChange}
+        options={['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((option) => ({ label: option, value: option }))}
+        placeholder='Semua level'
+        searchPlaceholder='Cari level...'
+        value={levels}
+      />
       <input
         aria-label='Filter genre'
         className='h-11 min-w-48 rounded-control border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/15'

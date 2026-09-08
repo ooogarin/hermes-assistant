@@ -132,13 +132,40 @@ test('lists reading materials with validated filters and pagination', async () =
       listInput = input;
       return materialList;
     },
-  }).request('http://localhost/api/v1/reading/materials?q=market&status=unanswered&page=1&limit=20&sort=newest', {
+  }).request(
+    'http://localhost/api/v1/reading/materials?q=market&status=unanswered&levels=A1%2CB1&page=1&limit=20&sort=newest',
+    { headers },
+  );
+
+  expect(response.status).toBe(200);
+  expect(listInput).toEqual({
+    q: 'market',
+    status: 'unanswered',
+    levels: ['A1', 'B1'],
+    page: 1,
+    limit: 20,
+    sort: 'newest',
+  });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
+});
+
+test('normalizes the legacy reading level filter and rejects ambiguous level filters', async () => {
+  let listInput: Parameters<ReadingService['listMaterials']>[0] | undefined;
+  const app = createReadingApp({
+    listMaterials: async (input) => {
+      listInput = input;
+      return materialList;
+    },
+  });
+
+  const legacyResponse = await app.request('http://localhost/api/v1/reading/materials?level=B1', { headers });
+  const ambiguousResponse = await app.request('http://localhost/api/v1/reading/materials?level=A1&levels=B1', {
     headers,
   });
 
-  expect(response.status).toBe(200);
-  expect(listInput).toEqual({ q: 'market', status: 'unanswered', page: 1, limit: 20, sort: 'newest' });
-  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
+  expect(legacyResponse.status).toBe(200);
+  expect(listInput).toMatchObject({ levels: ['B1'] });
+  expect(ambiguousResponse.status).toBe(400);
 });
 
 test('creates a reading material without exposing expected answers', async () => {

@@ -1,5 +1,6 @@
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { WritingWorkspace } from '../../../components/writing/writing-workspace';
@@ -21,13 +22,7 @@ const WritingDetailPage = () => {
           <ArrowLeft aria-hidden='true' size={18} />
           Semua Writing
         </Link>
-        <Link
-          className='inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline'
-          to='/english/writing/settings'
-        >
-          <Settings aria-hidden='true' size={18} />
-          Pengaturan
-        </Link>
+        <EnglishSettingsLink to='/english/writing/settings' />
       </div>
 
       {material.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}

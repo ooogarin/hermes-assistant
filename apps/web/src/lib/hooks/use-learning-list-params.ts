@@ -2,12 +2,20 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 const optional = (value: string | null): string | undefined => value?.trim() || undefined;
+const list = (value: string | null): string[] => [
+  ...new Set(
+    (value ?? '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  ),
+];
 
 export const useLearningListParams = <Status extends string>(statuses: readonly Status[]) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const appliedQuery = optional(searchParams.get('q'));
   const appliedGenre = optional(searchParams.get('genre'));
-  const level = optional(searchParams.get('level'));
+  const levels = list(searchParams.get('levels') ?? searchParams.get('level'));
   const rawStatus = optional(searchParams.get('status'));
   const status = statuses.find((value) => value === rawStatus);
   const rawPage = Number(searchParams.get('page') ?? '1');
@@ -37,12 +45,12 @@ export const useLearningListParams = <Status extends string>(statuses: readonly 
 
   return {
     clearFilters: () => setSearchParams(new URLSearchParams()),
-    filters: { genre: appliedGenre, level, page, q: appliedQuery, status },
+    filters: { genre: appliedGenre, levels, page, q: appliedQuery, status },
     genre,
     key: searchParams.toString(),
     query,
     setGenre: changeGenre,
-    setLevel: (value: string) => update({ level: optional(value), page: 1 }),
+    setLevels: (value: string[]) => update({ level: undefined, levels: value.join(',') || undefined, page: 1 }),
     setPage: (value: number) => update({ page: value }),
     setQuery: changeQuery,
     setStatus: (value?: Status) => update({ page: 1, status: value }),

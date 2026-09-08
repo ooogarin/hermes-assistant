@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
+const levels = z
+  .string()
+  .transform((value) => value.split(',').map((level) => level.trim()))
+  .pipe(z.array(text(32)).min(1).max(20));
 const source = z.enum(['cron', 'request']);
 const adherence = z.enum(['aligned', 'partially_aligned', 'off_topic']);
 const genre_adherence = z.enum(['aligned', 'partially_aligned', 'not_aligned']);
@@ -79,12 +83,21 @@ export const listMaterialsSchema = z
     q: text(500).optional(),
     status: z.enum(['unsubmitted', 'reviewed']).optional(),
     level: text(32).optional(),
+    levels: levels.optional(),
     genre: text(100).optional(),
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     sort: z.enum(['newest', 'oldest']).default('newest'),
   })
-  .strict();
+  .strict()
+  .refine(({ level, levels }) => level === undefined || levels === undefined, {
+    message: 'Use either level or levels, not both.',
+    path: ['levels'],
+  })
+  .transform(({ level, levels, ...query }) => {
+    const selectedLevels = levels ?? (level === undefined ? undefined : [level]);
+    return selectedLevels === undefined ? query : { ...query, levels: selectedLevels };
+  });
 
 export const submissionParamsSchema = materialCodeSchema.extend({
   submission_number: z.coerce.number().int().positive(),

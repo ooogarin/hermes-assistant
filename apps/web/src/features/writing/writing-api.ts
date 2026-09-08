@@ -159,7 +159,7 @@ export type WritingMaterialListItem = z.output<typeof writingListItemSchema>;
 export type WritingMaterialList = z.output<typeof writingListSchema>;
 export type WritingListFilters = {
   genre?: string;
-  level?: string;
+  levels?: string[];
   limit?: number;
   page?: number;
   q?: string;
@@ -176,8 +176,17 @@ export const updateWritingSettings = (input: LearningSettingsInput): Promise<Wri
 export const getWritingMaterial = (code: string, signal?: AbortSignal): Promise<WritingMaterial> =>
   apiRequest(`/api/v1/writing/materials/${encodeURIComponent(code)}`, materialSchema, { signal });
 
-export const getWritingMaterials = (filters: WritingListFilters, signal?: AbortSignal): Promise<WritingMaterialList> =>
-  apiRequest(`/api/v1/writing/materials${buildQueryString(filters)}`, writingListSchema, { signal });
+export const getWritingMaterials = (
+  filters: WritingListFilters,
+  signal?: AbortSignal,
+): Promise<WritingMaterialList> => {
+  const { levels, ...query } = filters;
+  return apiRequest(
+    `/api/v1/writing/materials${buildQueryString({ ...query, levels: levels?.join(',') })}`,
+    writingListSchema,
+    { signal },
+  );
+};
 
 export const getWritingSubmission = (
   code: string,

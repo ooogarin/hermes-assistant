@@ -1,5 +1,4 @@
-import { Settings } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { LearningListToolbar } from '../../../components/english/learning-list-toolbar';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
@@ -17,29 +16,21 @@ const WritingListPage = () => {
   const state = useLearningListParams(statuses);
   const filters = { ...state.filters, limit: 20, sort: 'newest' as const };
   const materials = useApiQuery(state.key, (signal) => getWritingMaterials(filters, signal));
-  const hasFilters = Boolean(filters.q || filters.status || filters.level || filters.genre);
+  const hasFilters = Boolean(filters.q || filters.status || filters.levels.length || filters.genre);
 
   return (
     <div className='space-y-7'>
       <PageHeader
         title='Writing'
         description='Latihan menulis dengan feedback terarah.'
-        actions={
-          <Link
-            className='inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline'
-            to='settings'
-          >
-            <Settings aria-hidden='true' size={18} />
-            Pengaturan
-          </Link>
-        }
+        actions={<EnglishSettingsLink to='/english/writing/settings' />}
       />
       <LearningListToolbar
         genre={state.genre}
-        level={filters.level ?? ''}
+        levels={filters.levels}
         onGenreChange={state.setGenre}
         onGenreSubmit={state.submitGenre}
-        onLevelChange={state.setLevel}
+        onLevelsChange={state.setLevels}
         onQueryChange={state.setQuery}
         onSearch={state.submitQuery}
         onStatusChange={state.setStatus}
