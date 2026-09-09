@@ -1,13 +1,19 @@
 import { commitTransaction, rollbackTransaction, startTransaction } from '../../core/database/client';
-import { AppError } from '../../core/errors/app-error';
-import { getJakartaDateCodeParts } from '../../shared/date/date';
+import { notFoundError } from '../../core/errors/not-found-error';
+import { formatPublicCode } from '../../shared/code/public-code';
+import { getJakartaDateCodeParts, toIsoTimestamp } from '../../shared/date/date';
 import * as junkRepository from './junk.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
+import type { AppError } from '../../core/errors/app-error';
 import type {
+  CreateJunkPayload,
   CreateJunkRequest,
   JunkItem,
+  JunkItemRow,
   JunkReferenceRequest,
+  ListJunkRepositoryQuery,
   ListJunkRequest,
+  UpdateJunkPayload,
   UpdateJunkRequest,
 } from './junk.types';
 
@@ -18,14 +24,23 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
     const date = getJakartaDateCodeParts(new Date());
     trx = await startTransaction();
 
-    const code = await junkRepository.generateCode(trx, date.key, date.segment);
-    const junkItem = await junkRepository.insert(trx, code, input);
+    const sequenceRow = await junkRepository.getNextSequence(trx, date.key, date.segment);
+    const code = formatPublicCode('JK', date.segment, sequenceRow.sequence + 1);
+    const payload: CreateJunkPayload = {
+      title: input.title,
+      category: input.category,
+      raw_text: input.raw_text,
+      content_text: input.content_text,
+      source_url: input.source_url,
+      tags: input.tags,
+    };
+    const junkItemRow = await junkRepository.insert(trx, code, payload);
     const trxToCommit = trx;
     trx = undefined;
 
     await commitTransaction(trxToCommit);
 
-    return junkItem;
+    return toJunkItem(junkItemRow);
   } catch (error) {
     if (trx !== undefined) {
       const trxToRollback = trx;
@@ -39,25 +54,43 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
 };
 
 export const getDetail = async ({ code }: JunkReferenceRequest): Promise<JunkItem> => {
-  const junkItem = await junkRepository.findByCode(code);
+  const junkItemRow = await junkRepository.findByCode(code);
 
-  if (junkItem === null) {
+  if (junkItemRow === null) {
     throw junkItemNotFound();
   }
 
-  return junkItem;
+  return toJunkItem(junkItemRow);
 };
 
-export const list = (input: ListJunkRequest): Promise<JunkItem[]> => junkRepository.getAll(input);
+export const list = async (input: ListJunkRequest): Promise<JunkItem[]> => {
+  const query: ListJunkRepositoryQuery = {
+    q: input.q,
+    tag: input.tag,
+    category: input.category,
+    source_url: input.source_url,
+    limit: input.limit,
+  };
+
+  const rows = await junkRepository.getAll(query);
+  return rows.map(toJunkItem);
+};
 
 export const update = async ({ code }: JunkReferenceRequest, input: UpdateJunkRequest): Promise<JunkItem> => {
-  const junkItem = await junkRepository.updateByCode(code, input);
+  const payload: UpdateJunkPayload = {
+    title: input.title,
+    category: input.category,
+    content_text: input.content_text,
+    source_url: input.source_url,
+    tags: input.tags,
+  };
+  const junkItemRow = await junkRepository.updateByCode(code, payload);
 
-  if (junkItem === null) {
+  if (junkItemRow === null) {
     throw junkItemNotFound();
   }
 
-  return junkItem;
+  return toJunkItem(junkItemRow);
 };
 
 export const remove = async ({ code }: JunkReferenceRequest): Promise<void> => {
@@ -72,10 +105,19 @@ export const remove = async ({ code }: JunkReferenceRequest): Promise<void> => {
 // Helper functions
 // ====================================================================================================
 
+const toJunkItem = (row: JunkItemRow): JunkItem => ({
+  code: row.code,
+  title: row.title,
+  category: row.category,
+  raw_text: row.raw_text,
+  content_text: row.content_text,
+  source_url: row.source_url,
+  tags: row.tags,
+  created_at: toIsoTimestamp(row.created_at),
+  updated_at: toIsoTimestamp(row.updated_at),
+  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
+});
+
 const junkItemNotFound = (): AppError => {
-  return new AppError({
-    code: 'JUNK_ITEM_NOT_FOUND',
-    statusCode: 404,
-    message: 'Junk item not found',
-  });
+  return notFoundError('JUNK_ITEM_NOT_FOUND', 'Junk item not found');
 };

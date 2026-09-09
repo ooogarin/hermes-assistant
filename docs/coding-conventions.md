@@ -22,7 +22,7 @@
 - Validators use Zod through the shared `appValidator(...)` wrapper around `@hono/zod-validator`. A route applies it before its handler; handlers read only validated input through `getBody(...)`, `getParam(...)`, or `getQuery(...)`, which delegate to Hono's `request.valid(...)`.
 - Handlers export named operations directly, compose explicit `*Request` contracts from validated input and request scope, map HTTP input/output, and select status codes. They contain no SQL or core business rules.
 - Services export named operations directly, own business rules, workflows, and transaction boundaries, and do not receive Hono context or return Hono responses.
-- Repositories are the only layer that accesses `bun:sql`; they contain raw SQL and row mapping.
+- Repositories are the only layer that accesses `bun:sql`; they contain parameterized raw SQL and return raw database rows or primitive write results. Domain mapping, response composition, public-code formatting, and question numbering belong in services.
 - A module's `*.types.ts` owns its reusable request contracts, domain maps, repository payloads/rows, and service interfaces used by tests or consumers. Group these with clearly labeled sections (for example: request contracts, service operations, repository payloads, repository responses). Keep service and repository files focused on executable behavior, not local type declarations.
 - Modules interact through services/use cases, not another module's repository.
 
@@ -31,6 +31,7 @@
 - Parameterize every dynamic SQL value. Never concatenate user, agent, or request input into SQL.
 - Use readable multi-line SQL with uppercase keywords, explicit columns, and distinct `*Row` result types. Do not use `SELECT *`.
 - Let PostgreSQL handle filtering, joins, aggregation, sorting, locking, and reporting when appropriate.
+- Keep one result responsibility per repository method. For paginated data, expose separate list-row and count-row methods; the service calls both and builds collection metadata.
 - A service opens a transaction only when multiple dependent operations must succeed or fail together; keep it short. Use `startTransaction`, `commitTransaction`, and `rollbackTransaction` explicitly. Pass the same reserved connection to each participating repository write, clear the local transaction reference before commit, and do not let a rollback failure hide the original error.
 - Name variables and parameters that hold a PostgreSQL transaction executor `trx`. Keep `transaction` for Finance domain values where it means a financial transaction.
 - Name migrations `<four-digit-sequence>_<description>.ts`, export `up(trx)` and `down(trx)`, and use raw SQL.
@@ -39,8 +40,8 @@
 
 ## Errors, logs, and tests
 
-- Use typed application errors for expected failures; the global error handler maps them to API responses.
-- Map framework HTTP exceptions to the standard safe error envelope; never forward their raw messages or response bodies.
+- Use typed application errors for expected failures; the global error handler maps them to the public HTTP contract in [architecture.md](architecture.md).
+- Never forward framework exception messages or response bodies directly to clients.
 - Accept only `postgres:` or `postgresql:` database URLs. Internal API keys must be trimmed, contain at least 32 characters, and must not use the documented placeholder in production.
 - Use LogTape for structured logs with safe context and request ID. Never log credentials, connection strings, sensitive bodies, SQL parameters, or client-visible stack traces.
 - Unit-test service behavior. Integration-test routes, repositories, migrations, and transactions where PostgreSQL/Hono behavior matters.

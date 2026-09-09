@@ -1,71 +1,22 @@
 import { getDatabaseClient } from '../../core/database/client';
-import { toIsoTimestamp } from '../../shared/date/date';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateWritingMaterialRequest,
-  CreateWritingSubmissionRequest,
-  ListWritingMaterialsRequest,
-  UpdateWritingSettingsRequest,
+  CreateWritingMaterialPayload,
+  CreateWritingSubmissionPayload,
+  ListWritingMaterialsQuery,
+  UpdateWritingSettingsPayload,
   WritingCountRow,
-  WritingMaterial,
-  WritingMaterialList,
-  WritingMaterialListItem,
   WritingMaterialListRow,
   WritingMaterialRow,
-  WritingSettings,
+  WritingSequenceRow,
   WritingSettingsRow,
-  WritingSubmission,
   WritingSubmissionRow,
 } from './writing.types';
 
 const writingCodeLockNamespace = 173_205_080;
 const writingSubmissionLockNamespace = 223_606_797;
 
-const toWritingSettings = (row: WritingSettingsRow): WritingSettings => ({
-  default_level: row.default_level,
-  default_word_count: row.default_word_count,
-  min_word_count: row.min_word_count,
-  max_word_count: row.max_word_count,
-  updated_at: toIsoTimestamp(row.updated_at),
-});
-
-const toWritingMaterial = (row: WritingMaterialRow): WritingMaterial => ({
-  code: row.code,
-  topic: row.topic,
-  prompt_text: row.prompt_text,
-  level: row.level,
-  genre: row.genre,
-  tags: row.tags,
-  target_word_count: row.target_word_count,
-  is_override: row.is_override,
-  source: row.source,
-});
-
-const toWritingSubmission = (row: WritingSubmissionRow): WritingSubmission => ({
-  submission_number: row.submission_number,
-  original_text: row.original_text,
-  word_count: row.word_count,
-  estimated_level: row.estimated_level,
-  analysis: row.analysis,
-  submitted_at: toIsoTimestamp(row.submitted_at),
-});
-
-const toWritingMaterialListItem = (row: WritingMaterialListRow): WritingMaterialListItem => ({
-  code: row.code,
-  topic: row.topic,
-  prompt_excerpt: row.prompt_excerpt,
-  genre: row.genre,
-  level: row.level,
-  target_word_count: row.target_word_count,
-  tags: row.tags,
-  source: row.source,
-  status: row.status,
-  submission_count: Number(row.submission_count),
-  latest_submission_number: row.latest_submission_number === null ? null : Number(row.latest_submission_number),
-  created_at: toIsoTimestamp(row.created_at),
-});
-
-export const getSettings = async (): Promise<WritingSettings> => {
+export const getSettings = async (): Promise<WritingSettingsRow> => {
   const [row] = await getDatabaseClient()<WritingSettingsRow[]>`
     SELECT
       default_level,
@@ -81,10 +32,10 @@ export const getSettings = async (): Promise<WritingSettings> => {
     throw new Error('Writing settings are missing.');
   }
 
-  return toWritingSettings(row);
+  return row;
 };
 
-export const updateSettings = async (input: UpdateWritingSettingsRequest): Promise<WritingSettings> => {
+export const updateSettings = async (input: UpdateWritingSettingsPayload): Promise<WritingSettingsRow> => {
   const [row] = await getDatabaseClient()<WritingSettingsRow[]>`
     UPDATE writing_settings
     SET
@@ -105,31 +56,35 @@ export const updateSettings = async (input: UpdateWritingSettingsRequest): Promi
     throw new Error('Writing settings are missing.');
   }
 
-  return toWritingSettings(row);
+  return row;
 };
 
-export const generateCode = async (
+export const getNextSequence = async (
   trx: DatabaseReservedConnection,
   dateKey: number,
   dateSegment: string,
-): Promise<string> => {
+): Promise<WritingSequenceRow> => {
   await trx`SELECT pg_advisory_xact_lock(${writingCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)`;
-  const [row] = await trx<{ sequence: number }[]>`
+  const [row] = await trx<WritingSequenceRow[]>`
     SELECT
       COALESCE(MAX(SPLIT_PART(code, '-', 3)::INTEGER), 0) AS sequence
     FROM writing_materials
     WHERE code LIKE ${`WR-${dateSegment}-%`}
   `;
-  return `WR-${dateSegment}-${String((row?.sequence ?? 0) + 1).padStart(3, '0')}`;
+  if (row === undefined) {
+    throw new Error('Writing sequence query did not return a row.');
+  }
+
+  return row;
 };
 
 export const insertMaterial = async (
   trx: DatabaseReservedConnection,
   code: string,
-  input: CreateWritingMaterialRequest,
+  input: CreateWritingMaterialPayload,
   is_override: boolean,
-): Promise<void> => {
-  await trx`
+): Promise<WritingMaterialRow> => {
+  const [row] = await trx<WritingMaterialRow[]>`
     INSERT INTO writing_materials (
       code,
       topic,
@@ -152,10 +107,26 @@ export const insertMaterial = async (
       ${is_override},
       ${input.source}::writing_source
     )
+    RETURNING
+      code,
+      topic,
+      prompt_text,
+      level,
+      genre,
+      tags,
+      target_word_count,
+      is_override,
+      source
   `;
+
+  if (row === undefined) {
+    throw new Error('Writing material creation did not return a row.');
+  }
+
+  return row;
 };
 
-export const getMaterial = async (code: string): Promise<WritingMaterial | null> => {
+export const getMaterial = async (code: string): Promise<WritingMaterialRow | null> => {
   const [row] = await getDatabaseClient()<WritingMaterialRow[]>`
     SELECT
       code,
@@ -170,17 +141,16 @@ export const getMaterial = async (code: string): Promise<WritingMaterial | null>
     FROM writing_materials
     WHERE code = ${code} AND deleted_at IS NULL
   `;
-  return row === undefined ? null : toWritingMaterial(row);
+  return row === undefined ? null : row;
 };
 
-export const listMaterials = async (input: ListWritingMaterialsRequest): Promise<WritingMaterialList> => {
+export const listMaterials = async (input: ListWritingMaterialsQuery): Promise<WritingMaterialListRow[]> => {
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
   const offset = (input.page - 1) * input.limit;
-  const levels = 'levels' in input ? input.levels : null;
+  const levels = input.levels ?? null;
   const levelValues = database.array(levels ?? [], 'TEXT');
-  const [rows, [count]] = await Promise.all([
-    database<WritingMaterialListRow[]>`
+  return database<WritingMaterialListRow[]>`
       WITH material_summary AS (
         SELECT
           m.id,
@@ -209,16 +179,12 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
       SELECT
         code,
         topic,
-        CASE
-          WHEN CHAR_LENGTH(prompt_text) > 200 THEN LEFT(prompt_text, 197) || '...'
-          ELSE prompt_text
-        END AS prompt_excerpt,
+        prompt_text,
         genre,
         level,
         target_word_count,
         tags,
         source,
-        CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END AS status,
         submission_count,
         latest_submission_number,
         created_at
@@ -232,7 +198,11 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
       ))
         AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
-        AND (${input.status}::TEXT IS NULL OR CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END = ${input.status})
+        AND (
+          ${input.status}::TEXT IS NULL
+          OR (${input.status}::TEXT = 'reviewed' AND submission_count > 0)
+          OR (${input.status}::TEXT = 'unsubmitted' AND submission_count = 0)
+        )
       ORDER BY
         CASE WHEN ${input.sort} = 'oldest' THEN created_at END ASC,
         CASE WHEN ${input.sort} = 'newest' THEN created_at END DESC,
@@ -240,8 +210,15 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
         CASE WHEN ${input.sort} = 'newest' THEN id END DESC
       LIMIT ${input.limit}
       OFFSET ${offset}
-    `,
-    database<WritingCountRow[]>`
+    `;
+};
+
+export const countMaterials = async (input: ListWritingMaterialsQuery): Promise<WritingCountRow> => {
+  const database = getDatabaseClient();
+  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+  const levels = input.levels ?? null;
+  const levelValues = database.array(levels ?? [], 'TEXT');
+  const [count] = await database<WritingCountRow[]>`
       WITH material_summary AS (
         SELECT
           m.id,
@@ -270,28 +247,26 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
       ))
         AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
-        AND (${input.status}::TEXT IS NULL OR CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END = ${input.status})
-    `,
-  ]);
-  const total = Number(count?.total ?? 0);
+        AND (
+          ${input.status}::TEXT IS NULL
+          OR (${input.status}::TEXT = 'reviewed' AND submission_count > 0)
+          OR (${input.status}::TEXT = 'unsubmitted' AND submission_count = 0)
+        )
+    `;
 
-  return {
-    items: rows.map(toWritingMaterialListItem),
-    meta: {
-      page: input.page,
-      limit: input.limit,
-      total,
-      total_pages: Math.ceil(total / input.limit),
-    },
-  };
+  if (count === undefined) {
+    throw new Error('Writing material count query did not return a row.');
+  }
+
+  return count;
 };
 
 export const insertSubmission = async (
   trx: DatabaseReservedConnection,
   code: string,
-  input: CreateWritingSubmissionRequest,
+  input: CreateWritingSubmissionPayload,
   word_count: number,
-): Promise<WritingSubmission | null> => {
+): Promise<WritingSubmissionRow | null> => {
   // Submission numbers are scoped to a material, so serialize the MAX + 1 lookup for the same code.
   await trx`
     SELECT pg_advisory_xact_lock(${writingSubmissionLockNamespace}::INTEGER, hashtext(${code}))
@@ -329,10 +304,10 @@ export const insertSubmission = async (
       analysis,
       submitted_at
   `;
-  return row === undefined ? null : toWritingSubmission(row);
+  return row === undefined ? null : row;
 };
 
-export const getSubmission = async (code: string, submission_number: number): Promise<WritingSubmission | null> => {
+export const getSubmission = async (code: string, submission_number: number): Promise<WritingSubmissionRow | null> => {
   const [row] = await getDatabaseClient()<WritingSubmissionRow[]>`
     SELECT
       s.submission_number,
@@ -345,5 +320,5 @@ export const getSubmission = async (code: string, submission_number: number): Pr
     JOIN writing_materials m ON m.id = s.material_id
     WHERE m.code = ${code} AND m.deleted_at IS NULL AND s.submission_number = ${submission_number} AND s.deleted_at IS NULL
   `;
-  return row === undefined ? null : toWritingSubmission(row);
+  return row === undefined ? null : row;
 };

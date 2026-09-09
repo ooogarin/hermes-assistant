@@ -95,6 +95,43 @@ export type WritingCorrectedText = {
 };
 
 // ====================================================================================================
+// Repository payloads
+// ====================================================================================================
+
+export type CreateWritingMaterialPayload = {
+  topic: string;
+  prompt_text: string;
+  level: string;
+  genre: string;
+  tags: string[];
+  target_word_count: number;
+  source: WritingSource;
+};
+
+export type CreateWritingSubmissionPayload = {
+  original_text: string;
+  estimated_level: string;
+  analysis: WritingAnalysis;
+};
+
+export type ListWritingMaterialsQuery = {
+  q?: string;
+  status?: 'unsubmitted' | 'reviewed';
+  levels?: string[];
+  genre?: string;
+  page: number;
+  limit: number;
+  sort: 'newest' | 'oldest';
+};
+
+export type UpdateWritingSettingsPayload = {
+  default_level?: string;
+  default_word_count?: number;
+  min_word_count?: number;
+  max_word_count?: number;
+};
+
+// ====================================================================================================
 // Repository responses
 // ====================================================================================================
 
@@ -104,6 +141,10 @@ export type WritingSettingsRow = {
   min_word_count: number;
   max_word_count: number;
   updated_at: Date | string;
+};
+
+export type WritingSequenceRow = {
+  sequence: number;
 };
 
 export type WritingMaterialRow = {
@@ -129,13 +170,12 @@ export type WritingSubmissionRow = {
 export type WritingMaterialListRow = {
   code: string;
   topic: string;
-  prompt_excerpt: string;
+  prompt_text: string;
   genre: string;
   level: string;
   target_word_count: number;
   tags: string[];
   source: WritingSource;
-  status: 'unsubmitted' | 'reviewed';
   submission_count: number | string;
   latest_submission_number: number | string | null;
   created_at: Date | string;

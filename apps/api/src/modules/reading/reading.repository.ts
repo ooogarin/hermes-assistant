@@ -1,69 +1,24 @@
 import { getDatabaseClient } from '../../core/database/client';
-import { toIsoTimestamp } from '../../shared/date/date';
-import type { DatabaseReservedConnection } from '../../core/database/database.types';
+import type { DatabaseExecutor, DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
   CountRow,
-  CreateReadingMaterialRequest,
+  CreateReadingMaterialPayload,
   IdRow,
-  InsertReadingSubmissionResult,
-  ListReadingMaterialsRequest,
-  ReadingExpectedAnswer,
+  ListReadingMaterialsQuery,
   ReadingExpectedAnswerRow,
-  ReadingMaterial,
-  ReadingMaterialList,
-  ReadingMaterialListItem,
   ReadingMaterialListRow,
   ReadingMaterialRow,
-  ReadingQuestion,
   ReadingQuestionWithAnswerRow,
-  ReadingSettings,
   ReadingSettingsRow,
-  SaveReadingSubmissionRequest,
+  SaveReadingSubmissionPayload,
   SequenceRow,
-  UpdateReadingSettingsRequest,
+  UpdateReadingSettingsPayload,
 } from './reading.types';
 
 const readingCodeLockNamespace = 141_421_356;
 const readingSubmissionLockNamespace = 244_948_974;
 
-const toReadingSettings = (row: ReadingSettingsRow): ReadingSettings => ({
-  default_level: row.default_level,
-  default_word_count: row.default_word_count,
-  min_word_count: row.min_word_count,
-  max_word_count: row.max_word_count,
-  updated_at: toIsoTimestamp(row.updated_at),
-});
-
-const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestion[]): ReadingMaterial => ({
-  code: row.code,
-  topic: row.topic,
-  level: row.level,
-  genre: row.genre,
-  tags: row.tags,
-  target_word_count: row.target_word_count,
-  word_count: row.word_count,
-  passage_text: row.passage_text,
-  is_override: row.is_override,
-  source: row.source,
-  questions,
-});
-
-const toReadingMaterialListItem = (row: ReadingMaterialListRow): ReadingMaterialListItem => ({
-  code: row.code,
-  topic: row.topic,
-  genre: row.genre,
-  level: row.level,
-  target_word_count: row.target_word_count,
-  word_count: row.word_count,
-  tags: row.tags,
-  source: row.source,
-  status: row.status,
-  question_count: Number(row.question_count),
-  answered_question_count: Number(row.answered_question_count),
-  created_at: toIsoTimestamp(row.created_at),
-});
-
-export const getSettings = async (): Promise<ReadingSettings> => {
+export const getSettings = async (): Promise<ReadingSettingsRow> => {
   const [row] = await getDatabaseClient()<ReadingSettingsRow[]>`
     SELECT
       default_level,
@@ -80,10 +35,10 @@ export const getSettings = async (): Promise<ReadingSettings> => {
     throw new Error('Reading settings are missing.');
   }
 
-  return toReadingSettings(row);
+  return row;
 };
 
-export const updateSettings = async (input: UpdateReadingSettingsRequest): Promise<ReadingSettings> => {
+export const updateSettings = async (input: UpdateReadingSettingsPayload): Promise<ReadingSettingsRow> => {
   const [row] = await getDatabaseClient()<ReadingSettingsRow[]>`
     UPDATE reading_settings
     SET
@@ -108,14 +63,14 @@ export const updateSettings = async (input: UpdateReadingSettingsRequest): Promi
     throw new Error('Reading settings are missing.');
   }
 
-  return toReadingSettings(row);
+  return row;
 };
 
-export const generateCode = async (
+export const getNextSequence = async (
   trx: DatabaseReservedConnection,
   dateKey: number,
   dateSegment: string,
-): Promise<string> => {
+): Promise<SequenceRow> => {
   await trx`
     SELECT pg_advisory_xact_lock(${readingCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
@@ -127,16 +82,20 @@ export const generateCode = async (
     WHERE code LIKE ${`RD-${dateSegment}-%`}
   `;
 
-  return `RD-${dateSegment}-${String((row?.sequence ?? 0) + 1).padStart(3, '0')}`;
+  if (row === undefined) {
+    throw new Error('Reading sequence query did not return a row.');
+  }
+
+  return row;
 };
 
 export const insertMaterial = async (
   trx: DatabaseReservedConnection,
   code: string,
-  input: CreateReadingMaterialRequest,
+  input: CreateReadingMaterialPayload,
   word_count: number,
   is_override: boolean,
-): Promise<void> => {
+): Promise<IdRow> => {
   const [material] = await trx<IdRow[]>`
     INSERT INTO reading_materials (
       code,
@@ -170,9 +129,17 @@ export const insertMaterial = async (
     throw new Error('Reading material creation did not return a row.');
   }
 
-  const questionNumbers = input.questions.map((_, index) => index + 1);
-  const questionTexts = input.questions.map((question) => question.question_text);
-  const expectedAnswers = input.questions.map((question) => question.expected_answer);
+  return material;
+};
+
+export const insertQuestions = async (
+  trx: DatabaseReservedConnection,
+  materialId: number,
+  questions: CreateReadingMaterialPayload['questions'],
+): Promise<void> => {
+  const questionNumbers = questions.map((question) => question.question_number);
+  const questionTexts = questions.map((question) => question.question_text);
+  const expectedAnswers = questions.map((question) => question.expected_answer);
 
   await trx`
     INSERT INTO reading_questions (
@@ -182,7 +149,7 @@ export const insertMaterial = async (
       expected_answer
     )
     SELECT
-      ${material.id},
+      ${materialId},
       payload.question_number,
       payload.question_text,
       payload.expected_answer
@@ -194,8 +161,28 @@ export const insertMaterial = async (
   `;
 };
 
-export const findByCode = async (code: string): Promise<ReadingMaterial | null> => {
-  const [material] = await getDatabaseClient()<ReadingMaterialRow[]>`
+const getQuestionsWithExecutor = async (
+  database: DatabaseExecutor,
+  materialId: number,
+): Promise<ReadingQuestionWithAnswerRow[]> => {
+  return database<ReadingQuestionWithAnswerRow[]>`
+    SELECT
+      q.question_number,
+      q.question_text,
+      a.user_answer
+    FROM reading_questions q
+    LEFT JOIN reading_submissions s ON s.material_id = q.material_id AND s.deleted_at IS NULL
+    LEFT JOIN reading_answers a ON a.submission_id = s.id AND a.question_id = q.id AND a.deleted_at IS NULL
+    WHERE q.material_id = ${materialId} AND q.deleted_at IS NULL
+    ORDER BY q.question_number ASC
+  `;
+};
+
+const findMaterialRowWithExecutor = async (
+  database: DatabaseExecutor,
+  code: string,
+): Promise<ReadingMaterialRow | null> => {
+  const [material] = await database<ReadingMaterialRow[]>`
     SELECT
       id,
       code,
@@ -211,22 +198,27 @@ export const findByCode = async (code: string): Promise<ReadingMaterial | null> 
     FROM reading_materials
     WHERE code = ${code} AND deleted_at IS NULL
   `;
-  if (material === undefined) {
-    return null;
-  }
-
-  const questions = await getQuestions(material.id);
-  return toReadingMaterial(material, questions);
+  return material ?? null;
 };
 
-export const listMaterials = async (input: ListReadingMaterialsRequest): Promise<ReadingMaterialList> => {
+export const findByCode = async (code: string): Promise<ReadingMaterialRow | null> => {
+  return findMaterialRowWithExecutor(getDatabaseClient(), code);
+};
+
+export const findByCodeInTransaction = async (
+  trx: DatabaseReservedConnection,
+  code: string,
+): Promise<ReadingMaterialRow | null> => {
+  return findMaterialRowWithExecutor(trx, code);
+};
+
+export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<ReadingMaterialListRow[]> => {
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
   const offset = (input.page - 1) * input.limit;
-  const levels = 'levels' in input ? input.levels : null;
+  const levels = input.levels ?? null;
   const levelValues = database.array(levels ?? [], 'TEXT');
-  const [rows, [count]] = await Promise.all([
-    database<ReadingMaterialListRow[]>`
+  return database<ReadingMaterialListRow[]>`
       WITH material_summary AS (
         SELECT
           m.id,
@@ -267,7 +259,7 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
         word_count,
         tags,
         source,
-        CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END AS status,
+        is_completed,
         question_count,
         answered_question_count,
         created_at
@@ -280,7 +272,11 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
       ))
         AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
-        AND (${input.status}::TEXT IS NULL OR CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END = ${input.status})
+        AND (
+          ${input.status}::TEXT IS NULL
+          OR (${input.status}::TEXT = 'completed' AND is_completed)
+          OR (${input.status}::TEXT = 'unanswered' AND NOT is_completed)
+        )
       ORDER BY
         CASE WHEN ${input.sort} = 'oldest' THEN created_at END ASC,
         CASE WHEN ${input.sort} = 'newest' THEN created_at END DESC,
@@ -288,8 +284,15 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
         CASE WHEN ${input.sort} = 'newest' THEN id END DESC
       LIMIT ${input.limit}
       OFFSET ${offset}
-    `,
-    database<CountRow[]>`
+    `;
+};
+
+export const countMaterials = async (input: ListReadingMaterialsQuery): Promise<CountRow> => {
+  const database = getDatabaseClient();
+  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+  const levels = input.levels ?? null;
+  const levelValues = database.array(levels ?? [], 'TEXT');
+  const [count] = await database<CountRow[]>`
       WITH material_summary AS (
         SELECT
           m.id,
@@ -316,46 +319,32 @@ export const listMaterials = async (input: ListReadingMaterialsRequest): Promise
       ))
         AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
-        AND (${input.status}::TEXT IS NULL OR CASE WHEN is_completed THEN 'completed' ELSE 'unanswered' END = ${input.status})
-    `,
-  ]);
-  const total = Number(count?.total ?? 0);
+        AND (
+          ${input.status}::TEXT IS NULL
+          OR (${input.status}::TEXT = 'completed' AND is_completed)
+          OR (${input.status}::TEXT = 'unanswered' AND NOT is_completed)
+        )
+    `;
 
-  return {
-    items: rows.map(toReadingMaterialListItem),
-    meta: {
-      page: input.page,
-      limit: input.limit,
-      total,
-      total_pages: Math.ceil(total / input.limit),
-    },
-  };
+  if (count === undefined) {
+    throw new Error('Reading material count query did not return a row.');
+  }
+
+  return count;
 };
 
-export const getQuestions = async (materialId: number): Promise<ReadingQuestion[]> => {
-  const rows = await getDatabaseClient()<ReadingQuestionWithAnswerRow[]>`
-    SELECT
-      q.question_number,
-      q.question_text,
-      a.user_answer
-    FROM reading_questions q
-    LEFT JOIN reading_submissions s ON s.material_id = q.material_id AND s.deleted_at IS NULL
-    LEFT JOIN reading_answers a ON a.submission_id = s.id AND a.question_id = q.id AND a.deleted_at IS NULL
-    WHERE q.material_id = ${materialId} AND q.deleted_at IS NULL
-    ORDER BY q.question_number ASC
-  `;
-  return rows.map((row) => ({
-    question_number: row.question_number,
-    question_text: row.question_text,
-    user_answer: row.user_answer,
-  }));
+export const getQuestions = async (materialId: number): Promise<ReadingQuestionWithAnswerRow[]> => {
+  return getQuestionsWithExecutor(getDatabaseClient(), materialId);
 };
 
-export const insertSubmission = async (
+export const getQuestionsInTransaction = async (
   trx: DatabaseReservedConnection,
-  code: string,
-  input: SaveReadingSubmissionRequest,
-): Promise<InsertReadingSubmissionResult> => {
+  materialId: number,
+): Promise<ReadingQuestionWithAnswerRow[]> => {
+  return getQuestionsWithExecutor(trx, materialId);
+};
+
+export const insertSubmission = async (trx: DatabaseReservedConnection, code: string): Promise<IdRow | null> => {
   // Keep the existence check and single-submission insert deterministic for concurrent requests.
   await trx`
     SELECT pg_advisory_xact_lock(${readingSubmissionLockNamespace}::INTEGER, hashtext(${code}))
@@ -364,22 +353,19 @@ export const insertSubmission = async (
   const [submission] = await trx<IdRow[]>`
     INSERT INTO reading_submissions (material_id)
     SELECT id FROM reading_materials WHERE code = ${code} AND deleted_at IS NULL
-    ON CONFLICT (material_id) DO NOTHING
+    ON CONFLICT (material_id) WHERE deleted_at IS NULL DO NOTHING
     RETURNING id
   `;
 
-  if (submission === undefined) {
-    const [status] = await trx<{ material_exists: boolean }[]>`
-      SELECT EXISTS (
-        SELECT 1
-        FROM reading_materials
-        WHERE code = ${code} AND deleted_at IS NULL
-      ) AS material_exists
-    `;
+  return submission ?? null;
+};
 
-    return status?.material_exists ? 'already_submitted' : 'material_not_found';
-  }
-
+export const insertAnswers = async (
+  trx: DatabaseReservedConnection,
+  code: string,
+  submissionId: number,
+  input: SaveReadingSubmissionPayload,
+): Promise<void> => {
   const questionNumbers = input.answers.map((answer) => answer.question_number);
   const userAnswers = input.answers.map((answer) => answer.user_answer);
   await trx`
@@ -389,7 +375,7 @@ export const insertSubmission = async (
       user_answer
     )
     SELECT
-      ${submission.id},
+      ${submissionId},
       q.id,
       payload.user_answer
     FROM reading_questions q
@@ -398,11 +384,10 @@ export const insertSubmission = async (
       ON payload.question_number = q.question_number
     WHERE m.code = ${code} AND q.deleted_at IS NULL
   `;
-  return 'created';
 };
 
-export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedAnswer[]> => {
-  const rows = await getDatabaseClient()<ReadingExpectedAnswerRow[]>`
+export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedAnswerRow[]> => {
+  return getDatabaseClient()<ReadingExpectedAnswerRow[]>`
     SELECT
       q.question_number,
       q.question_text,
@@ -412,9 +397,4 @@ export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedA
     WHERE m.code = ${code} AND m.deleted_at IS NULL AND q.deleted_at IS NULL
     ORDER BY q.question_number ASC
   `;
-  return rows.map((row) => ({
-    question_number: row.question_number,
-    question_text: row.question_text,
-    expected_answer: row.expected_answer,
-  }));
 };

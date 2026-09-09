@@ -94,6 +94,49 @@ export type ReadingService = {
 };
 
 // ====================================================================================================
+// Repository payloads
+// ====================================================================================================
+
+export type CreateReadingMaterialPayload = {
+  topic: string;
+  level: string;
+  genre: string;
+  tags: string[];
+  target_word_count: number;
+  passage_text: string;
+  source: ReadingSource;
+  questions: Array<{
+    question_number: number;
+    question_text: string;
+    expected_answer: string;
+  }>;
+};
+
+export type ListReadingMaterialsQuery = {
+  q?: string;
+  status?: 'unanswered' | 'completed';
+  levels?: string[];
+  genre?: string;
+  page: number;
+  limit: number;
+  sort: 'newest' | 'oldest';
+};
+
+export type SaveReadingSubmissionPayload = {
+  answers: Array<{
+    question_number: number;
+    user_answer: string;
+  }>;
+};
+
+export type UpdateReadingSettingsPayload = {
+  default_level?: string;
+  default_word_count?: number;
+  min_word_count?: number;
+  max_word_count?: number;
+};
+
+// ====================================================================================================
 // Repository responses
 // ====================================================================================================
 
@@ -104,7 +147,6 @@ export type IdRow = {
 export type SequenceRow = {
   sequence: number;
 };
-export type InsertReadingSubmissionResult = 'created' | 'material_not_found' | 'already_submitted';
 export type ReadingSettingsRow = {
   default_level: string;
   default_word_count: number;
@@ -144,7 +186,7 @@ export type ReadingMaterialListRow = {
   word_count: number;
   tags: string[];
   source: ReadingSource;
-  status: 'unanswered' | 'completed';
+  is_completed: boolean;
   question_count: number | string;
   answered_question_count: number | string;
   created_at: Date | string;

@@ -33,7 +33,7 @@ Use the following sources in this order when implementing a screen:
 2. `docs/frontend-screens/<module>.md` for screen behavior, routes, states, and API availability.
 3. `docs/frontend-screens.md` for shared navigation, layout, content, accessibility, and responsive conventions.
 4. The matching image in `docs/frontend-design/` for visual composition.
-5. `docs/frontend.md`, `docs/architecture.md`, `docs/api-conventions.md`, and `docs/coding-conventions.md` for technical boundaries.
+5. `docs/frontend.md`, `docs/architecture.md`, and `docs/coding-conventions.md` for technical boundaries.
 
 The screen guide and module specification take precedence when an older visual reference contains a different navigation structure, label, or unsupported control. A visual mismatch that affects product behavior must be resolved in documentation before implementation.
 

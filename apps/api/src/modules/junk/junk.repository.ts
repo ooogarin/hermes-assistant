@@ -1,35 +1,20 @@
 import { getDatabaseClient } from '../../core/database/client';
-import { toIsoTimestamp } from '../../shared/date/date';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateJunkRequest,
-  JunkItem,
+  CreateJunkPayload,
   JunkItemRow,
   JunkSequenceRow,
-  ListJunkRequest,
-  UpdateJunkRequest,
+  ListJunkRepositoryQuery,
+  UpdateJunkPayload,
 } from './junk.types';
 
 const junkCodeLockNamespace = 271_828_182;
 
-const toJunkItem = (row: JunkItemRow): JunkItem => ({
-  code: row.code,
-  title: row.title,
-  category: row.category,
-  raw_text: row.raw_text,
-  content_text: row.content_text,
-  source_url: row.source_url,
-  tags: row.tags,
-  created_at: toIsoTimestamp(row.created_at),
-  updated_at: toIsoTimestamp(row.updated_at),
-  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
-});
-
-export const generateCode = async (
+export const getNextSequence = async (
   trx: DatabaseReservedConnection,
   dateKey: number,
   dateSegment: string,
-): Promise<string> => {
+): Promise<JunkSequenceRow> => {
   await trx`
     SELECT pg_advisory_xact_lock(${junkCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
@@ -40,16 +25,18 @@ export const generateCode = async (
     FROM junk_items
     WHERE code LIKE ${`JK-${dateSegment}-%`}
   `;
-  const nextSequence = (row?.sequence ?? 0) + 1;
+  if (row === undefined) {
+    throw new Error('Junk sequence query did not return a row.');
+  }
 
-  return `JK-${dateSegment}-${String(nextSequence).padStart(3, '0')}`;
+  return row;
 };
 
 export const insert = async (
   trx: DatabaseReservedConnection,
   code: string,
-  input: CreateJunkRequest,
-): Promise<JunkItem> => {
+  input: CreateJunkPayload,
+): Promise<JunkItemRow> => {
   const [row] = await trx<JunkItemRow[]>`
     INSERT INTO junk_items (
       code,
@@ -85,10 +72,10 @@ export const insert = async (
     throw new Error('Junk item creation did not return a row.');
   }
 
-  return toJunkItem(row);
+  return row;
 };
 
-export const findByCode = async (code: string): Promise<JunkItem | null> => {
+export const findByCode = async (code: string): Promise<JunkItemRow | null> => {
   const [row] = await getDatabaseClient()<JunkItemRow[]>`
     SELECT
       code,
@@ -106,10 +93,10 @@ export const findByCode = async (code: string): Promise<JunkItem | null> => {
       AND deleted_at IS NULL
   `;
 
-  return row === undefined ? null : toJunkItem(row);
+  return row === undefined ? null : row;
 };
 
-export const getAll = async (input: ListJunkRequest): Promise<JunkItem[]> => {
+export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRow[]> => {
   const database = getDatabaseClient();
   const query = input.q ?? null;
   const tag = input.tag ?? null;
@@ -142,10 +129,10 @@ export const getAll = async (input: ListJunkRequest): Promise<JunkItem[]> => {
     LIMIT ${input.limit}
   `;
 
-  return rows.map(toJunkItem);
+  return rows;
 };
 
-export const updateByCode = async (code: string, input: UpdateJunkRequest): Promise<JunkItem | null> => {
+export const updateByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {
   const database = getDatabaseClient();
   const [row] = await database<JunkItemRow[]>`
     UPDATE junk_items
@@ -171,10 +158,10 @@ export const updateByCode = async (code: string, input: UpdateJunkRequest): Prom
       deleted_at
   `;
 
-  return row === undefined ? null : toJunkItem(row);
+  return row === undefined ? null : row;
 };
 
-export const softDeleteByCode = async (code: string): Promise<boolean> => {
+export const softDeleteByCode = async (code: string): Promise<{ code: string } | null> => {
   const [row] = await getDatabaseClient()<{ code: string }[]>`
     UPDATE junk_items
     SET
@@ -185,5 +172,5 @@ export const softDeleteByCode = async (code: string): Promise<boolean> => {
     RETURNING code
   `;
 
-  return row !== undefined;
+  return row ?? null;
 };

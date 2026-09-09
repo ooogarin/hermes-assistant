@@ -1,9 +1,20 @@
 import { commitTransaction, rollbackTransaction, startTransaction } from '../../core/database/client';
-import { AppError } from '../../core/errors/app-error';
-import { getJakartaDateCodeParts } from '../../shared/date/date';
+import { formatPublicCode } from '../../shared/code/public-code';
+import { getJakartaDateCodeParts, toIsoTimestamp } from '../../shared/date/date';
+import { noteNotFound } from '../../shared/errors/note-errors';
 import * as notesRepository from './notes.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
-import type { CreateNoteRequest, ListNotesRequest, Note, NoteReferenceRequest, UpdateNoteRequest } from './notes.types';
+import type {
+  CreateNotePayload,
+  CreateNoteRequest,
+  ListNotesRepositoryQuery,
+  ListNotesRequest,
+  Note,
+  NoteReferenceRequest,
+  NoteRow,
+  UpdateNotePayload,
+  UpdateNoteRequest,
+} from './notes.types';
 
 export const create = async (input: CreateNoteRequest): Promise<Note> => {
   let trx: DatabaseReservedConnection | undefined;
@@ -12,14 +23,25 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
     const date = getJakartaDateCodeParts(new Date());
     trx = await startTransaction();
 
-    const code = await notesRepository.generateCode(trx, date.key, date.segment);
-    const note = await notesRepository.insert(trx, code, input);
+    const sequenceRow = await notesRepository.getNextSequence(trx, date.key, date.segment);
+    const code = formatPublicCode('NT', date.segment, sequenceRow.sequence + 1);
+    const payload: CreateNotePayload = {
+      title: input.title,
+      content: input.content,
+      type: input.type,
+      category: input.category,
+      source: input.source,
+      source_context: input.source_context,
+      source_reference: input.source_reference,
+      tags: input.tags,
+    };
+    const noteRow = await notesRepository.insert(trx, code, payload);
     const trxToCommit = trx;
     trx = undefined;
 
     await commitTransaction(trxToCommit);
 
-    return note;
+    return toNote(noteRow);
   } catch (error) {
     if (trx !== undefined) {
       const trxToRollback = trx;
@@ -33,27 +55,46 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
 };
 
 export const getDetail = async ({ code }: NoteReferenceRequest): Promise<Note> => {
-  const note = await notesRepository.findByCode(code);
+  const noteRow = await notesRepository.findByCode(code);
 
-  if (note === null) {
+  if (noteRow === null) {
     throw noteNotFound();
   }
 
-  return note;
+  return toNote(noteRow);
 };
 
-export const list = (input: ListNotesRequest): Promise<Note[]> => {
-  return notesRepository.getAll(input);
+export const list = async (input: ListNotesRequest): Promise<Note[]> => {
+  const query: ListNotesRepositoryQuery = {
+    q: input.q,
+    type: input.type,
+    tag: input.tag,
+    category: input.category,
+    limit: input.limit,
+  };
+
+  const rows = await notesRepository.getAll(query);
+  return rows.map(toNote);
 };
 
 export const update = async ({ code }: NoteReferenceRequest, input: UpdateNoteRequest): Promise<Note> => {
-  const note = await notesRepository.updateByCode(code, input);
+  const payload: UpdateNotePayload = {
+    title: input.title,
+    content: input.content,
+    type: input.type,
+    category: input.category,
+    source: input.source,
+    source_context: input.source_context,
+    source_reference: input.source_reference,
+    tags: input.tags,
+  };
+  const noteRow = await notesRepository.updateByCode(code, payload);
 
-  if (note === null) {
+  if (noteRow === null) {
     throw noteNotFound();
   }
 
-  return note;
+  return toNote(noteRow);
 };
 
 export const remove = async ({ code }: NoteReferenceRequest): Promise<void> => {
@@ -68,10 +109,17 @@ export const remove = async ({ code }: NoteReferenceRequest): Promise<void> => {
 // Helper functions
 // ====================================================================================================
 
-const noteNotFound = (): AppError => {
-  return new AppError({
-    code: 'NOTE_NOT_FOUND',
-    statusCode: 404,
-    message: 'Note not found',
-  });
-};
+const toNote = (row: NoteRow): Note => ({
+  code: row.code,
+  title: row.title,
+  content: row.content,
+  type: row.type,
+  category: row.category,
+  source: row.source,
+  source_context: row.source_context,
+  source_reference: row.source_reference,
+  tags: row.tags,
+  created_at: toIsoTimestamp(row.created_at),
+  updated_at: toIsoTimestamp(row.updated_at),
+  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
+});

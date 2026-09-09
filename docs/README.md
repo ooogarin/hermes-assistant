@@ -7,9 +7,7 @@ Read the relevant document before changing code or defining a feature.
 | Document | Purpose |
 | --- | --- |
 | [architecture.md](architecture.md) | Application structure, key decisions, and security baseline |
-| [tech-stack.md](tech-stack.md) | Chosen technology and deliberate exclusions |
 | [coding-conventions.md](coding-conventions.md) | Code, database, migration, and test conventions |
-| [api-conventions.md](api-conventions.md) | REST response and error contract |
 | [frontend.md](frontend.md) | React report frontend, local proxy, and security boundary |
 | [frontend-implementation-plan.md](frontend-implementation-plan.md) | Frontend foundation, delivery phases, blockers, testing, and definition of done |
 | [frontend-screens.md](frontend-screens.md) | Cross-cutting screen, navigation, state, and accessibility conventions |

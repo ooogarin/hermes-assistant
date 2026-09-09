@@ -47,6 +47,40 @@ export type NotesService = {
 };
 
 // ====================================================================================================
+// Repository payloads
+// ====================================================================================================
+
+export type CreateNotePayload = {
+  title: string;
+  content: string;
+  type: NoteType;
+  category: string;
+  source: string | null;
+  source_context: string | null;
+  source_reference: string | null;
+  tags: string[];
+};
+
+export type ListNotesRepositoryQuery = {
+  q?: string;
+  type?: NoteType;
+  tag?: string;
+  category?: string;
+  limit: number;
+};
+
+export type UpdateNotePayload = {
+  title?: string;
+  content?: string;
+  type?: NoteType;
+  category?: string;
+  source?: string | null;
+  source_context?: string | null;
+  source_reference?: string | null;
+  tags?: string[];
+};
+
+// ====================================================================================================
 // Repository responses
 // ====================================================================================================
 

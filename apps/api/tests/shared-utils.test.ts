@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { formatPublicCode } from '../src/shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../src/shared/date/date';
 import { countWords } from '../src/shared/text/word-count';
 
@@ -7,6 +8,10 @@ test('builds a code date from the Asia/Jakarta calendar day', () => {
     key: 20260905,
     segment: '20260905',
   });
+});
+
+test('formats public codes with a three-digit sequence', () => {
+  expect(formatPublicCode('NT', '20260905', 7)).toBe('NT-20260905-007');
 });
 
 test('normalizes database timestamps to ISO 8601', () => {

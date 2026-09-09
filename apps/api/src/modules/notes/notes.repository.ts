@@ -1,37 +1,20 @@
 import { getDatabaseClient } from '../../core/database/client';
-import { toIsoTimestamp } from '../../shared/date/date';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateNoteRequest,
-  ListNotesRequest,
-  Note,
+  CreateNotePayload,
+  ListNotesRepositoryQuery,
   NoteRow,
   NoteSequenceRow,
-  UpdateNoteRequest,
+  UpdateNotePayload,
 } from './notes.types';
 
 const noteCodeLockNamespace = 314_159_265;
 
-const toNote = (row: NoteRow): Note => ({
-  code: row.code,
-  title: row.title,
-  content: row.content,
-  type: row.type,
-  category: row.category,
-  source: row.source,
-  source_context: row.source_context,
-  source_reference: row.source_reference,
-  tags: row.tags,
-  created_at: toIsoTimestamp(row.created_at),
-  updated_at: toIsoTimestamp(row.updated_at),
-  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
-});
-
-export const generateCode = async (
+export const getNextSequence = async (
   trx: DatabaseReservedConnection,
   dateKey: number,
   dateSegment: string,
-): Promise<string> => {
+): Promise<NoteSequenceRow> => {
   await trx`
     SELECT pg_advisory_xact_lock(${noteCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
@@ -42,16 +25,18 @@ export const generateCode = async (
     FROM notes
     WHERE code LIKE ${`NT-${dateSegment}-%`}
   `;
-  const nextSequence = (row?.sequence ?? 0) + 1;
+  if (row === undefined) {
+    throw new Error('Note sequence query did not return a row.');
+  }
 
-  return `NT-${dateSegment}-${String(nextSequence).padStart(3, '0')}`;
+  return row;
 };
 
 export const insert = async (
   trx: DatabaseReservedConnection,
   code: string,
-  input: CreateNoteRequest,
-): Promise<Note> => {
+  input: CreateNotePayload,
+): Promise<NoteRow> => {
   const [row] = await trx<NoteRow[]>`
     INSERT INTO notes (
       code,
@@ -93,10 +78,10 @@ export const insert = async (
     throw new Error('Note creation did not return a row.');
   }
 
-  return toNote(row);
+  return row;
 };
 
-export const findByCode = async (code: string): Promise<Note | null> => {
+export const findByCode = async (code: string): Promise<NoteRow | null> => {
   const [row] = await getDatabaseClient()<NoteRow[]>`
     SELECT
       code,
@@ -116,10 +101,10 @@ export const findByCode = async (code: string): Promise<Note | null> => {
       AND deleted_at IS NULL
   `;
 
-  return row === undefined ? null : toNote(row);
+  return row === undefined ? null : row;
 };
 
-export const getAll = async (input: ListNotesRequest): Promise<Note[]> => {
+export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]> => {
   const database = getDatabaseClient();
   const query = input.q ?? null;
   const type = input.type ?? null;
@@ -154,10 +139,10 @@ export const getAll = async (input: ListNotesRequest): Promise<Note[]> => {
     LIMIT ${input.limit}
   `;
 
-  return rows.map(toNote);
+  return rows;
 };
 
-export const updateByCode = async (code: string, input: UpdateNoteRequest): Promise<Note | null> => {
+export const updateByCode = async (code: string, input: UpdateNotePayload): Promise<NoteRow | null> => {
   const database = getDatabaseClient();
   const [row] = await database<NoteRow[]>`
     UPDATE notes
@@ -191,10 +176,10 @@ export const updateByCode = async (code: string, input: UpdateNoteRequest): Prom
       deleted_at
   `;
 
-  return row === undefined ? null : toNote(row);
+  return row === undefined ? null : row;
 };
 
-export const softDeleteByCode = async (code: string): Promise<boolean> => {
+export const softDeleteByCode = async (code: string): Promise<{ code: string } | null> => {
   const [row] = await getDatabaseClient()<{ code: string }[]>`
     UPDATE notes
     SET
@@ -205,5 +190,5 @@ export const softDeleteByCode = async (code: string): Promise<boolean> => {
     RETURNING code
   `;
 
-  return row !== undefined;
+  return row ?? null;
 };

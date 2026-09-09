@@ -39,23 +39,23 @@ export const listMaterials = async (context: Context<AppEnv>) => {
 };
 
 export const getMaterial = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, materialCodeSchema);
-  const result = await readingService.getMaterial(code);
+  const params = getParam(context, materialCodeSchema);
+  const result = await readingService.getMaterial(params.code);
 
   return successResponse({ context, data: result });
 };
 
 export const saveSubmission = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, materialCodeSchema);
+  const params = getParam(context, materialCodeSchema);
   const data = getBody(context, saveSubmissionSchema);
-  const result = await readingService.saveSubmission(code, data);
+  const result = await readingService.saveSubmission(params.code, data);
 
   return successResponse({ context, data: result });
 };
 
 export const getExpectedAnswers = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, materialCodeSchema);
-  const result = await readingService.getExpectedAnswers(code);
+  const params = getParam(context, materialCodeSchema);
+  const result = await readingService.getExpectedAnswers(params.code);
 
   return successResponse({ context, data: { items: result } });
 };

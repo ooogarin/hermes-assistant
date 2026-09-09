@@ -40,16 +40,16 @@ export const listMaterials = async (context: Context<AppEnv>) => {
 };
 
 export const getMaterial = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, materialCodeSchema);
-  const result = await writingService.getMaterial(code);
+  const params = getParam(context, materialCodeSchema);
+  const result = await writingService.getMaterial(params.code);
 
   return successResponse({ context, data: result });
 };
 
 export const createSubmission = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, materialCodeSchema);
+  const params = getParam(context, materialCodeSchema);
   const data = getBody(context, createSubmissionSchema);
-  const result = await writingService.createSubmission(code, data);
+  const result = await writingService.createSubmission(params.code, data);
 
   return successResponse({ context, data: result, statusCode: 201 });
 };

@@ -41,6 +41,35 @@ export type JunkService = {
 };
 
 // ====================================================================================================
+// Repository payloads
+// ====================================================================================================
+
+export type CreateJunkPayload = {
+  title: string | null;
+  category: string;
+  raw_text: string | null;
+  content_text: string | null;
+  source_url: string | null;
+  tags: string[];
+};
+
+export type ListJunkRepositoryQuery = {
+  q?: string;
+  tag?: string;
+  category?: string;
+  source_url?: string;
+  limit: number;
+};
+
+export type UpdateJunkPayload = {
+  title?: string | null;
+  category?: string;
+  content_text?: string | null;
+  source_url?: string | null;
+  tags?: string[];
+};
+
+// ====================================================================================================
 // Repository responses
 // ====================================================================================================
 

@@ -1,12 +1,10 @@
 import { getDatabaseClient } from '../../core/database/client';
-import { toIsoTimestamp } from '../../shared/date/date';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  Category,
   CategoryRow,
+  DailyNumberRow,
   FinanceSummaryCategoryRow,
   FinanceSummaryTotalsRow,
-  FinanceTransaction,
   FinanceTransactionInsertPayload,
   FinanceTransactionRow,
   FinanceTransactionUpdatePayload,
@@ -14,38 +12,7 @@ import type {
   TransactionType,
 } from './finance.types';
 
-const toIsoDate = (value: Date | string): string => {
-  return value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10);
-};
-
-const toCategory = (row: CategoryRow): Category => ({
-  code: row.code,
-  name: row.name,
-  description: row.description,
-  type: row.type,
-});
-
-const toFinanceTransaction = (row: FinanceTransactionRow): FinanceTransaction => ({
-  daily_number: row.daily_number,
-  display_number: Number(row.display_number),
-  type: row.type,
-  amount: Number(row.amount),
-  name: row.name,
-  location: row.location,
-  note: row.note,
-  date: toIsoDate(row.date),
-  raw_text: row.raw_text,
-  category: {
-    code: row.category_code,
-    name: row.category_name,
-    description: row.category_description,
-    type: row.category_type,
-  },
-  created_at: toIsoTimestamp(row.created_at),
-  updated_at: toIsoTimestamp(row.updated_at),
-});
-
-export const getActiveCategories = async (type?: TransactionType): Promise<Category[]> => {
+export const getActiveCategories = async (type?: TransactionType): Promise<CategoryRow[]> => {
   const rows = await getDatabaseClient()<CategoryRow[]>`
     SELECT
       id,
@@ -59,7 +26,7 @@ export const getActiveCategories = async (type?: TransactionType): Promise<Categ
     ORDER BY name ASC, code ASC
   `;
 
-  return rows.map(toCategory);
+  return rows;
 };
 
 export const getActiveCategoriesByCodes = async (codes: string[], type: TransactionType): Promise<CategoryRow[]> => {
@@ -79,17 +46,21 @@ export const getActiveCategoriesByCodes = async (codes: string[], type: Transact
   `;
 };
 
-export const getNextDailyNumber = async (trx: DatabaseReservedConnection, date: string): Promise<number> => {
+export const getNextDailyNumber = async (trx: DatabaseReservedConnection, date: string): Promise<DailyNumberRow> => {
   await trx`SELECT pg_advisory_xact_lock(hashtext(${date}))`;
 
-  const [row] = await trx<{ daily_number: number | null }[]>`
+  const [row] = await trx<DailyNumberRow[]>`
     SELECT
       MAX(daily_number) AS daily_number
     FROM transactions
     WHERE date = ${date}::DATE
   `;
 
-  return (row?.daily_number ?? 0) + 1;
+  if (row === undefined) {
+    throw new Error('Daily transaction number query did not return a row.');
+  }
+
+  return row;
 };
 
 export const insertBatch = async (
@@ -99,7 +70,7 @@ export const insertBatch = async (
   type: TransactionType,
   raw_text: string,
   payloads: FinanceTransactionInsertPayload[],
-): Promise<FinanceTransaction[]> => {
+): Promise<FinanceTransactionRow[]> => {
   const amounts = payloads.map((payload) => payload.amount);
   const categoryIds = payloads.map((payload) => payload.category_id);
   const dailyNumbers = payloads.map((payload) => payload.daily_number);
@@ -183,10 +154,10 @@ export const insertBatch = async (
     ORDER BY inserted.id ASC
   `;
 
-  return rows.map(toFinanceTransaction);
+  return rows;
 };
 
-export const findByReference = async (date: string, daily_number: number): Promise<FinanceTransaction | null> => {
+export const findByReference = async (date: string, daily_number: number): Promise<FinanceTransactionRow | null> => {
   const [row] = await getDatabaseClient()<FinanceTransactionRow[]>`
     WITH numbered AS (
       SELECT
@@ -218,10 +189,10 @@ export const findByReference = async (date: string, daily_number: number): Promi
     WHERE numbered.daily_number = ${daily_number}
   `;
 
-  return row === undefined ? null : toFinanceTransaction(row);
+  return row === undefined ? null : row;
 };
 
-export const getAllByDate = async (date: string): Promise<FinanceTransaction[]> => {
+export const getAllByDate = async (date: string): Promise<FinanceTransactionRow[]> => {
   const rows = await getDatabaseClient()<FinanceTransactionRow[]>`
     SELECT
       transactions.id,
@@ -247,14 +218,14 @@ export const getAllByDate = async (date: string): Promise<FinanceTransaction[]> 
     ORDER BY transactions.id ASC
   `;
 
-  return rows.map(toFinanceTransaction);
+  return rows;
 };
 
 export const updateByReference = async (
   date: string,
   daily_number: number,
   input: FinanceTransactionUpdatePayload,
-): Promise<FinanceTransaction | null> => {
+): Promise<FinanceTransactionRow | null> => {
   const database = getDatabaseClient();
   const [row] = await database<FinanceTransactionRow[]>`
     WITH updated AS (
@@ -312,10 +283,10 @@ export const updateByReference = async (
     JOIN categories ON categories.id = updated.category_id
   `;
 
-  return row === undefined ? null : toFinanceTransaction(row);
+  return row === undefined ? null : row;
 };
 
-export const softDeleteByReference = async (date: string, daily_number: number): Promise<boolean> => {
+export const softDeleteByReference = async (date: string, daily_number: number): Promise<{ id: number } | null> => {
   const [row] = await getDatabaseClient()<{ id: number }[]>`
     UPDATE transactions
     SET
@@ -327,7 +298,7 @@ export const softDeleteByReference = async (date: string, daily_number: number):
     RETURNING id
   `;
 
-  return row !== undefined;
+  return row ?? null;
 };
 
 export const getSummaryTotals = async (
@@ -345,7 +316,11 @@ export const getSummaryTotals = async (
       AND (${mode} = 'net' OR type::TEXT = ${mode})
   `;
 
-  return row ?? { expense_total: 0, income_total: 0 };
+  if (row === undefined) {
+    throw new Error('Finance summary query did not return a row.');
+  }
+
+  return row;
 };
 
 export const getSummaryByCategory = async (

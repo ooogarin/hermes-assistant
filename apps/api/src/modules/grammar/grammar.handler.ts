@@ -13,25 +13,32 @@ import type { Context } from 'hono';
 import type { AppEnv } from '../../core/http/app-env';
 
 export const getSettings = async (context: Context<AppEnv>) => {
-  return successResponse({ context, data: await grammarService.getSettings() });
+  const result = await grammarService.getSettings();
+
+  return successResponse({ context, data: result });
 };
 
 export const updateSettings = async (context: Context<AppEnv>) => {
   const data = getBody(context, updateSettingsSchema);
 
-  return successResponse({ context, data: await grammarService.updateSettings(data) });
+  const result = await grammarService.updateSettings(data);
+
+  return successResponse({ context, data: result });
 };
 
 export const createSession = async (context: Context<AppEnv>) => {
   const data = getBody(context, createSessionSchema);
 
-  return successResponse({ context, data: await grammarService.createSession(data), statusCode: 201 });
+  const result = await grammarService.createSession(data);
+
+  return successResponse({ context, data: result, statusCode: 201 });
 };
 
 export const getSession = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, sessionCodeSchema);
+  const params = getParam(context, sessionCodeSchema);
+  const result = await grammarService.getSession(params.code);
 
-  return successResponse({ context, data: await grammarService.getSession(code) });
+  return successResponse({ context, data: result });
 };
 
 export const removeSession = async (context: Context<AppEnv>) => {
@@ -43,27 +50,31 @@ export const removeSession = async (context: Context<AppEnv>) => {
 };
 
 export const saveAnswer = async (context: Context<AppEnv>) => {
-  const { code, question_number } = getParam(context, questionReferenceSchema);
+  const params = getParam(context, questionReferenceSchema);
   const data = getBody(context, saveAnswerSchema);
+  const result = await grammarService.saveAnswer(params.code, params.question_number, data);
 
-  return successResponse({ context, data: await grammarService.saveAnswer(code, question_number, data) });
+  return successResponse({ context, data: result });
 };
 
 export const getExplanation = async (context: Context<AppEnv>) => {
-  const { code, question_number } = getParam(context, questionReferenceSchema);
+  const params = getParam(context, questionReferenceSchema);
+  const result = await grammarService.getExplanation(params.code, params.question_number);
 
-  return successResponse({ context, data: await grammarService.getExplanation(code, question_number) });
+  return successResponse({ context, data: result });
 };
 
 export const evaluateSession = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, sessionCodeSchema);
+  const params = getParam(context, sessionCodeSchema);
   const data = getBody(context, evaluateSessionSchema);
+  const result = await grammarService.evaluateSession(params.code, data);
 
-  return successResponse({ context, data: await grammarService.evaluateSession(code, data) });
+  return successResponse({ context, data: result });
 };
 
 export const getReport = async (context: Context<AppEnv>) => {
-  const { code } = getParam(context, sessionCodeSchema);
+  const params = getParam(context, sessionCodeSchema);
+  const result = await grammarService.getReport(params.code);
 
-  return successResponse({ context, data: await grammarService.getReport(code) });
+  return successResponse({ context, data: result });
 };

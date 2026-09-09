@@ -1,15 +1,21 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 import { fileURLToPath } from 'node:url';
-import { configureDatabaseClient } from '../src/core/database/client';
+import {
+  commitTransaction,
+  configureDatabaseClient,
+  rollbackTransaction,
+  startTransaction,
+} from '../src/core/database/client';
 import { loadMigrations, migrateDatabase } from '../src/core/database/migration-runner';
 import * as financeService from '../src/modules/finance/finance.service';
+import * as grammarRepository from '../src/modules/grammar/grammar.repository';
 import * as grammarService from '../src/modules/grammar/grammar.service';
 import * as junkService from '../src/modules/junk/junk.service';
 import * as readingService from '../src/modules/reading/reading.service';
 import * as writingService from '../src/modules/writing/writing.service';
 import { writingAnalysis } from './fixtures/writing';
 import { createTestDatabaseClient, hasTestDatabaseUrl, resetTestDatabase } from './helpers/database';
-import type { DatabaseClient } from '../src/core/database/database.types';
+import type { DatabaseClient, DatabaseReservedConnection } from '../src/core/database/database.types';
 
 const migrationDirectory = fileURLToPath(new URL('../migrations', import.meta.url));
 
@@ -148,6 +154,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         },
       ],
     });
+    expect(practice.questions.map(({ question_number }) => question_number)).toEqual([1]);
     const answeredPractice = await grammarService.saveAnswer(practice.code, 1, {
       user_answer: 'went',
       result: 'correct',
@@ -197,6 +204,52 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     await expect(grammarService.getSession(practice.code)).rejects.toMatchObject({ code: 'GRAMMAR_SESSION_NOT_FOUND' });
   });
 
+  test('locks a grammar session before deciding whether it is still active', async () => {
+    const exam = await grammarService.createSession({
+      mode: 'exam',
+      source: 'request',
+      level: 'A1',
+      questions: [
+        {
+          question_type: 'fill_blank',
+          grammar_area: 'tenses',
+          grammar_point: 'simple past',
+          level: 'A1',
+          question_text: 'She ___ yesterday.',
+          correct_answer: 'went',
+          explanation: 'Use the simple past.',
+        },
+      ],
+    });
+    let firstTrx: DatabaseReservedConnection | undefined = await startTransaction();
+    let secondTrx: DatabaseReservedConnection | undefined = await startTransaction();
+
+    try {
+      const initialSession = await grammarRepository.getSessionForUpdate(firstTrx, exam.code);
+      expect(initialSession?.status).toBe('active');
+
+      await grammarRepository.completeSession(firstTrx, exam.code, 1, 1);
+      const waitingSession = grammarRepository.getSessionForUpdate(secondTrx, exam.code);
+
+      const trxToCommit = firstTrx;
+      firstTrx = undefined;
+      await commitTransaction(trxToCommit);
+
+      const lockedSession = await waitingSession;
+      expect(lockedSession?.status).toBe('completed');
+    } finally {
+      if (firstTrx !== undefined) {
+        await rollbackTransaction(firstTrx);
+      }
+
+      if (secondTrx !== undefined) {
+        const trxToRollback = secondTrx;
+        secondTrx = undefined;
+        await rollbackTransaction(trxToRollback);
+      }
+    }
+  });
+
   test('persists one complete reading submission and protects expected answers', async () => {
     const material = await readingService.createMaterial({
       topic: 'Morning market',
@@ -215,6 +268,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     expect(material.code).toMatch(/^RD-\d{8}-001$/);
     expect(material.word_count).toBe(8);
+    expect(material.questions.map(({ question_number }) => question_number)).toEqual([1, 2, 3]);
     expect(material.questions.every(({ user_answer }) => user_answer === null)).toBe(true);
 
     const expectedAnswers = await readingService.getExpectedAnswers(material.code);
@@ -246,7 +300,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         sort: 'newest',
       }),
     ).resolves.toMatchObject({
-      items: [{ code: material.code, status: 'completed', question_count: 3, answered_question_count: 3 }],
+      items: [{ code: material.code, status: 'completed', question_count: 3, answeredQuestionCount: 3 }],
       meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
     });
 
@@ -259,6 +313,25 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         ],
       }),
     ).rejects.toMatchObject({ code: 'READING_SUBMISSION_ALREADY_EXISTS', statusCode: 409 });
+
+    await getDatabase()`
+      UPDATE reading_submissions
+      SET deleted_at = NOW()
+      WHERE material_id = (SELECT id FROM reading_materials WHERE code = ${material.code})
+    `;
+
+    const resubmitted = await readingService.saveSubmission(material.code, {
+      answers: [
+        { question_number: 1, user_answer: 'Mira.' },
+        { question_number: 2, user_answer: 'Sunday morning.' },
+        { question_number: 3, user_answer: 'The market.' },
+      ],
+    });
+    expect(resubmitted.questions.map(({ user_answer }) => user_answer)).toEqual([
+      'Mira.',
+      'Sunday morning.',
+      'The market.',
+    ]);
   });
 
   test('persists structured writing feedback and serializes concurrent draft numbers', async () => {

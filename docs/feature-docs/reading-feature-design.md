@@ -212,6 +212,8 @@ One row represents one answer session/attempt for a reading material.
 | `updated_at`   | timestamp                    |                                        |
 | `deleted_at`   | timestamp, nullable          | Soft delete.                           |
 
+Only one active submission is allowed per material. The uniqueness is enforced by a partial unique index on `material_id` where `deleted_at IS NULL`, so a new active submission can be created after an earlier submission is soft-deleted.
+
 ### `reading_answers`
 
 One row per answered question.
@@ -317,4 +319,4 @@ Request bodies, query parameters, path parameters, and every response field use 
 
 `GET /materials` searches `topic`, `genre`, `tags`, and `code` case-insensitively. It supports `levels` as a comma-separated list of exact level values, exact `genre`, `status` (`unanswered` or `completed`), `page`, `limit` (maximum 100), and `sort` (`newest` or `oldest`). The legacy single `level` parameter remains accepted, but clients must not send it together with `levels`. PostgreSQL applies the filtering, stable `created_at`/`id` ordering, pagination, and active-row counts. `completed` means the material has one active complete submission; soft-deleted materials, submissions, questions, and answers are excluded.
 
-The backend calculates response field `word_count` from the stored passage. A submission must contain every question exactly once; MVP permits one complete submission per material and returns `409 READING_SUBMISSION_ALREADY_EXISTS` for a repeated submission. Material detail excludes `expected_answer`; expected answers are retrieved only by the dedicated endpoint after submission or by explicit request.
+The backend calculates response field `word_count` from the stored passage. A submission must contain every question exactly once; MVP permits one active complete submission per material and returns `409 READING_SUBMISSION_ALREADY_EXISTS` for a repeated submission while an active submission exists. Material detail excludes `expected_answer`; expected answers are retrieved only by the dedicated endpoint after submission or by explicit request.

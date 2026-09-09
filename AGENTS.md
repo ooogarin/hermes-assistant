@@ -2,11 +2,9 @@
 
 Read the relevant documents before changing code:
 
-1. `docs/tech-stack.md` — chosen technology and non-negotiable decisions.
-2. `docs/architecture.md` — layers, ownership, and application flow.
-3. `docs/coding-conventions.md` — code, database, migration, and test rules.
-4. `docs/api-conventions.md` — HTTP contract.
-5. `docs/feature-docs/` — only when working on the matching domain.
+1. `docs/architecture.md` — technology baseline, HTTP boundary, layers, ownership, and application flow.
+2. `docs/coding-conventions.md` — code, database, migration, and test rules.
+3. `docs/feature-docs/` — only when working on the matching domain.
 
 If documents conflict, the newest explicit user decision wins. Update the affected documents together. Do not invent domain behavior absent from its feature design; mark it as an open decision.
 

@@ -94,6 +94,10 @@ export type FinanceTransactionInsertPayload = {
   note: string | null;
 };
 
+export type DailyNumberRow = {
+  daily_number: number | null;
+};
+
 export type FinanceTransactionUpdatePayload = {
   amount?: number;
   category_id?: number;

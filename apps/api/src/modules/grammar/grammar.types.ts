@@ -100,8 +100,55 @@ export type GrammarService = {
 };
 
 // ====================================================================================================
-// Repository payloads and responses
+// Repository payloads
 // ====================================================================================================
+
+export type CreateGrammarSessionPayload = {
+  mode: GrammarMode;
+  source: GrammarSource;
+  level: string;
+  questions: Array<{
+    question_number: number;
+    question_type: string;
+    grammar_area: string;
+    grammar_point: string;
+    level: string;
+    question_text: string;
+    correct_answer: string;
+    explanation: string;
+  }>;
+};
+
+export type SaveGrammarAnswerPayload = {
+  user_answer: string;
+  result?: GrammarAnswerResult;
+  feedback?: string | null;
+};
+
+export type EvaluateGrammarSessionPayload = {
+  answers: Array<{
+    question_number: number;
+    result: GrammarAnswerResult;
+    feedback: string | null;
+  }>;
+};
+
+export type UpdateGrammarSettingsPayload = {
+  default_level?: string;
+  daily_question_count?: number;
+};
+
+// ====================================================================================================
+// Repository responses
+// ====================================================================================================
+
+export type IdRow = {
+  id: number;
+};
+
+export type SequenceRow = {
+  sequence: number;
+};
 
 export type GrammarSessionRow = {
   id: number;
@@ -115,6 +162,12 @@ export type GrammarSessionRow = {
   max_score: number | null;
   started_at: Date | string;
   completed_at: Date | string | null;
+};
+
+export type GrammarSettingsRow = {
+  default_level: string;
+  daily_question_count: number;
+  updated_at: Date | string;
 };
 
 export type GrammarQuestionRow = {
