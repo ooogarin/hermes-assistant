@@ -26,23 +26,23 @@ const toCategory = (row: CategoryRow): Category => ({
 });
 
 const toFinanceTransaction = (row: FinanceTransactionRow): FinanceTransaction => ({
-  dailyNumber: row.daily_number,
-  displayNumber: Number(row.display_number),
+  daily_number: row.daily_number,
+  display_number: Number(row.display_number),
   type: row.type,
   amount: Number(row.amount),
   name: row.name,
   location: row.location,
   note: row.note,
   date: toIsoDate(row.date),
-  rawText: row.raw_text,
+  raw_text: row.raw_text,
   category: {
     code: row.category_code,
     name: row.category_name,
     description: row.category_description,
     type: row.category_type,
   },
-  createdAt: toIsoTimestamp(row.created_at),
-  updatedAt: toIsoTimestamp(row.updated_at),
+  created_at: toIsoTimestamp(row.created_at),
+  updated_at: toIsoTimestamp(row.updated_at),
 });
 
 export const getActiveCategories = async (type?: TransactionType): Promise<Category[]> => {
@@ -97,12 +97,12 @@ export const insertBatch = async (
   batchId: string,
   date: string,
   type: TransactionType,
-  rawText: string,
+  raw_text: string,
   payloads: FinanceTransactionInsertPayload[],
 ): Promise<FinanceTransaction[]> => {
   const amounts = payloads.map((payload) => payload.amount);
-  const categoryIds = payloads.map((payload) => payload.categoryId);
-  const dailyNumbers = payloads.map((payload) => payload.dailyNumber);
+  const categoryIds = payloads.map((payload) => payload.category_id);
+  const dailyNumbers = payloads.map((payload) => payload.daily_number);
   const names = payloads.map((payload) => payload.name);
   const locations = payloads.map((payload) => payload.location);
   const notes = payloads.map((payload) => payload.note);
@@ -130,7 +130,7 @@ export const insertBatch = async (
         payload.note,
         ${date}::DATE,
         payload.daily_number,
-        ${rawText}
+        ${raw_text}
       FROM UNNEST(
         ${trx.array(amounts, 'INTEGER')},
         ${trx.array(categoryIds, 'INTEGER')},
@@ -186,7 +186,7 @@ export const insertBatch = async (
   return rows.map(toFinanceTransaction);
 };
 
-export const findByReference = async (date: string, dailyNumber: number): Promise<FinanceTransaction | null> => {
+export const findByReference = async (date: string, daily_number: number): Promise<FinanceTransaction | null> => {
   const [row] = await getDatabaseClient()<FinanceTransactionRow[]>`
     WITH numbered AS (
       SELECT
@@ -215,7 +215,7 @@ export const findByReference = async (date: string, dailyNumber: number): Promis
       numbered.updated_at
     FROM numbered
     JOIN categories ON categories.id = numbered.category_id
-    WHERE numbered.daily_number = ${dailyNumber}
+    WHERE numbered.daily_number = ${daily_number}
   `;
 
   return row === undefined ? null : toFinanceTransaction(row);
@@ -252,7 +252,7 @@ export const getAllByDate = async (date: string): Promise<FinanceTransaction[]> 
 
 export const updateByReference = async (
   date: string,
-  dailyNumber: number,
+  daily_number: number,
   input: FinanceTransactionUpdatePayload,
 ): Promise<FinanceTransaction | null> => {
   const database = getDatabaseClient();
@@ -261,13 +261,13 @@ export const updateByReference = async (
       UPDATE transactions
       SET
         amount = CASE WHEN ${input.amount !== undefined} THEN ${input.amount ?? 0} ELSE amount END,
-        category_id = CASE WHEN ${input.categoryId !== undefined} THEN ${input.categoryId ?? 0} ELSE category_id END,
+        category_id = CASE WHEN ${input.category_id !== undefined} THEN ${input.category_id ?? 0} ELSE category_id END,
         name = CASE WHEN ${input.name !== undefined} THEN ${input.name ?? ''} ELSE name END,
         location = CASE WHEN ${input.location !== undefined} THEN ${input.location ?? null} ELSE location END,
         note = CASE WHEN ${input.note !== undefined} THEN ${input.note ?? null} ELSE note END,
         updated_at = NOW()
       WHERE date = ${date}::DATE
-        AND daily_number = ${dailyNumber}
+        AND daily_number = ${daily_number}
         AND deleted_at IS NULL
       RETURNING
         id,
@@ -315,14 +315,14 @@ export const updateByReference = async (
   return row === undefined ? null : toFinanceTransaction(row);
 };
 
-export const softDeleteByReference = async (date: string, dailyNumber: number): Promise<boolean> => {
+export const softDeleteByReference = async (date: string, daily_number: number): Promise<boolean> => {
   const [row] = await getDatabaseClient()<{ id: number }[]>`
     UPDATE transactions
     SET
       deleted_at = NOW(),
       updated_at = NOW()
     WHERE date = ${date}::DATE
-      AND daily_number = ${dailyNumber}
+      AND daily_number = ${daily_number}
       AND deleted_at IS NULL
     RETURNING id
   `;

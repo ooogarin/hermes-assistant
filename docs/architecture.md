@@ -69,7 +69,7 @@ src/modules/<module>/
 └── <module>.types.ts
 ```
 
-Small modules may combine files when responsibilities remain clear. HTTP DTOs, domain types, and database rows may have different shapes. Use `camelCase` for TypeScript and request JSON. The shared HTTP response boundary recursively serializes response keys to `snake_case`, matching PostgreSQL naming without leaking database rows directly.
+Small modules may combine files when responsibilities remain clear. HTTP DTOs, domain types, and database rows may have different shapes, but every data field crossing or used by the API/service boundary uses `snake_case`. The shared HTTP response boundary recursively preserves that convention and guards against accidental non-snake response keys.
 
 Routes apply the shared `appValidator` wrapper around `@hono/zod-validator` before a handler runs. Handlers export named operations directly, read parsed input through `getBody`, `getParam`, or `getQuery` (which delegate to Hono's `request.valid(...)`), compose explicit `*Request` contracts from it and any request scope, then format the HTTP response with the core HTTP response helpers. Services export named operations directly and never receive a Hono context.
 

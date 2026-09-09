@@ -20,13 +20,13 @@ export const createGrammarRoutes = () => {
   route.get('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.getSession);
   route.delete('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.removeSession);
   route.put(
-    '/sessions/:code/questions/:questionNumber/answer',
+    '/sessions/:code/questions/:question_number/answer',
     appValidator('param', questionReferenceSchema),
     appValidator('json', saveAnswerSchema),
     grammarHandler.saveAnswer,
   );
   route.get(
-    '/sessions/:code/questions/:questionNumber/explanation',
+    '/sessions/:code/questions/:question_number/explanation',
     appValidator('param', questionReferenceSchema),
     grammarHandler.getExplanation,
   );

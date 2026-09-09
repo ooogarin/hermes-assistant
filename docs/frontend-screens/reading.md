@@ -1,6 +1,6 @@
 # Reading Screen List
 
-> Status: Settings and known-code workflows implemented; material-list integration remains blocked by a missing list API. Visual references: [Reading list](../frontend-design/reading-list.png), [Reading detail](../frontend-design/reading-detail.png), and [Reading settings](../frontend-design/reading-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Reading screens.
+> Status: List, settings, and known-code workflows implemented. Visual references: [Reading list](../frontend-design/reading-list.png), [Reading detail](../frontend-design/reading-detail.png), and [Reading settings](../frontend-design/reading-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Reading screens.
 
 ## Scope
 
@@ -23,7 +23,7 @@ The first web scope is reviewing material, answering questions, viewing permitte
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-READ-001 | Reading material list | `/english/reading` | Unavailable state implemented; integration deferred | List endpoint missing |
+| SCR-READ-001 | Reading material list | `/english/reading` | Implemented | Available |
 | SCR-READ-002 | Reading settings | `/english/reading/settings` | Implemented | Available |
 | SCR-READ-003 | Reading material and answer workspace | `/english/reading/:code` | Implemented for a known code | Available |
 | SCR-READ-004 | Expected answers | `/english/reading/:code/expected-answers` | Implemented, conditional | Available |
@@ -38,13 +38,14 @@ Find a reading material and continue or review it.
 **UI composition**
 
 - Header: `Reading`, the short purpose statement `Latihan pemahaman bacaan.`, and a local `Pengaturan` action.
-- Search field for topic, genre, or tag; status quick filters `Semua`, `Belum dijawab`, and `Selesai`; plus level and genre filters.
+- Search field for topic, genre, or tag; status quick filters `Semua`, `Belum dijawab`, and `Selesai`; plus a multi-select level filter and genre filter.
 - One grouped table-like list with topic, genre, level, word count/reading time, tags, created date, source, status, and stable material code.
 - Selecting a row opens SCR-READ-003.
 
-**Known API limitation**
+**Data contract**
 
-- The current API has no `GET /api/v1/reading/materials` collection endpoint, search parameters, status filter, or pagination metadata. Do not implement this visual list with incomplete client-side data or browser-only mock records. Its controls remain design-only until the collection contract exists.
+- `GET /api/v1/reading/materials` supports keyword, status, `levels` as a comma-separated list, genre, page, limit, and sort parameters. The legacy single `level` parameter remains accepted.
+- Search/filter state is represented in the URL. Filtering and pagination remain API-authoritative.
 
 **Out of scope**
 
@@ -129,7 +130,7 @@ Read one known passage and submit one complete set of answers to its questions.
 
 **UI composition**
 
-- Local `Pengaturan` action and compact material metadata: code, topic, genre, level, target/actual word count, reading time if the frontend has a documented display rule, tags, and source.
+- Compact `Semua Reading` return action, the same bordered `Pengaturan` action used by the other English modules, and material metadata: code, topic, genre, level, target/actual word count, reading time if the frontend has a documented display rule, tags, and source.
 - Passage column with a comfortable reading width.
 - Question-and-answer column showing all stored questions in order and free-form answer fields.
 - One primary `Kirim jawaban` action after the final answer field.

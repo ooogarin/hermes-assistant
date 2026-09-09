@@ -23,13 +23,13 @@ export type JunkItem = {
   code: string;
   title: string | null;
   category: string;
-  rawText: string | null;
-  contentText: string | null;
-  sourceUrl: string | null;
+  raw_text: string | null;
+  content_text: string | null;
+  source_url: string | null;
   tags: string[];
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 };
 
 export type JunkService = {

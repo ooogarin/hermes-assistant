@@ -20,11 +20,11 @@ export const getSettings = (): Promise<WritingSettings> => writingRepository.get
 
 export const updateSettings = async (input: UpdateWritingSettingsRequest): Promise<WritingSettings> => {
   const currentSettings = await getSettings();
-  const minWordCount = input.minWordCount ?? currentSettings.minWordCount;
-  const maxWordCount = input.maxWordCount ?? currentSettings.maxWordCount;
-  const defaultWordCount = input.defaultWordCount ?? currentSettings.defaultWordCount;
+  const min_word_count = input.min_word_count ?? currentSettings.min_word_count;
+  const max_word_count = input.max_word_count ?? currentSettings.max_word_count;
+  const default_word_count = input.default_word_count ?? currentSettings.default_word_count;
 
-  if (minWordCount > maxWordCount || defaultWordCount < minWordCount || defaultWordCount > maxWordCount) {
+  if (min_word_count > max_word_count || default_word_count < min_word_count || default_word_count > max_word_count) {
     throw invalidSettings();
   }
 
@@ -41,9 +41,10 @@ export const createMaterial = async (input: CreateWritingMaterialRequest): Promi
     trx = await startTransaction();
 
     const code = await writingRepository.generateCode(trx, date.key, date.segment);
-    const isOverride = input.level !== settings.defaultLevel || input.targetWordCount !== settings.defaultWordCount;
+    const is_override =
+      input.level !== settings.default_level || input.target_word_count !== settings.default_word_count;
 
-    await writingRepository.insertMaterial(trx, code, input, isOverride);
+    await writingRepository.insertMaterial(trx, code, input, is_override);
     const trxToCommit = trx;
     trx = undefined;
 
@@ -84,7 +85,7 @@ export const createSubmission = async (
   try {
     trx = await startTransaction();
 
-    const submission = await writingRepository.insertSubmission(trx, code, input, countWords(input.originalText));
+    const submission = await writingRepository.insertSubmission(trx, code, input, countWords(input.original_text));
 
     if (submission === null) {
       throw materialNotFound();
@@ -106,8 +107,8 @@ export const createSubmission = async (
   }
 };
 
-export const getSubmission = async (code: string, submissionNumber: number): Promise<WritingSubmission> => {
-  const submission = await writingRepository.getSubmission(code, submissionNumber);
+export const getSubmission = async (code: string, submission_number: number): Promise<WritingSubmission> => {
+  const submission = await writingRepository.getSubmission(code, submission_number);
 
   if (submission === null) {
     throw submissionNotFound();
@@ -116,10 +117,10 @@ export const getSubmission = async (code: string, submissionNumber: number): Pro
   return submission;
 };
 
-export const getCorrectedText = async (code: string, submissionNumber: number): Promise<WritingCorrectedText> => {
-  const submission = await getSubmission(code, submissionNumber);
+export const getCorrectedText = async (code: string, submission_number: number): Promise<WritingCorrectedText> => {
+  const submission = await getSubmission(code, submission_number);
 
-  return { submissionNumber, correctedText: submission.analysis.correctedText };
+  return { submission_number, corrected_text: submission.analysis.corrected_text };
 };
 
 // ====================================================================================================

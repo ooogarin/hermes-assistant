@@ -76,7 +76,7 @@ When values come from the user, JSON-encode them correctly. Never interpolate ra
 
 ## Interpret Responses
 
-Successful responses use `{ "success": true, "data": ... }`. Errors use `{ "success": false, "error": { "code": ..., "message": ..., "details": ... }, "request_id": ... }`. All response fields are recursively serialized as `snake_case`; request bodies, query parameters, and path parameters use `camelCase`.
+Successful responses use `{ "success": true, "data": ... }`. Errors use `{ "success": false, "error": { "code": ..., "message": ..., "details": ... }, "request_id": ... }`. All API request and response fields, including body, query, path parameters, and nested objects, use `snake_case`.
 
 - On `400`, correct an agent-generated payload if the intended behavior is unambiguous; otherwise ask the user.
 - On `401` or `403`, report a configuration/authentication problem without mentioning the key value.

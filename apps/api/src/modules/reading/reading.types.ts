@@ -23,17 +23,17 @@ export type ReadingMaterialParams = z.infer<typeof materialCodeSchema>;
 // ====================================================================================================
 
 export type ReadingSettings = {
-  defaultLevel: string;
-  defaultWordCount: number;
-  minWordCount: number;
-  maxWordCount: number;
-  updatedAt: string;
+  default_level: string;
+  default_word_count: number;
+  min_word_count: number;
+  max_word_count: number;
+  updated_at: string;
 };
 
 export type ReadingQuestion = {
-  questionNumber: number;
-  questionText: string;
-  userAnswer: string | null;
+  question_number: number;
+  question_text: string;
+  user_answer: string | null;
 };
 
 export type ReadingMaterial = {
@@ -42,18 +42,18 @@ export type ReadingMaterial = {
   level: string;
   genre: string;
   tags: string[];
-  targetWordCount: number;
-  wordCount: number;
-  passageText: string;
-  isOverride: boolean;
+  target_word_count: number;
+  word_count: number;
+  passage_text: string;
+  is_override: boolean;
   source: ReadingSource;
   questions: ReadingQuestion[];
 };
 
 export type ReadingExpectedAnswer = {
-  questionNumber: number;
-  questionText: string;
-  expectedAnswer: string;
+  question_number: number;
+  question_text: string;
+  expected_answer: string;
 };
 
 export type ReadingMaterialListItem = {
@@ -61,14 +61,14 @@ export type ReadingMaterialListItem = {
   topic: string;
   genre: string;
   level: string;
-  targetWordCount: number;
-  wordCount: number;
+  target_word_count: number;
+  word_count: number;
   tags: string[];
   source: ReadingSource;
   status: 'unanswered' | 'completed';
-  questionCount: number;
-  answeredQuestionCount: number;
-  createdAt: string;
+  question_count: number;
+  answered_question_count: number;
+  created_at: string;
 };
 
 export type ReadingMaterialList = {
@@ -80,7 +80,7 @@ export type PaginationMeta = {
   page: number;
   limit: number;
   total: number;
-  totalPages: number;
+  total_pages: number;
 };
 
 export type ReadingService = {

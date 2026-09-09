@@ -5,12 +5,12 @@ import type { ReadingMaterial, ReadingSettings } from '../src/modules/reading/re
 import type { WritingSettings, WritingSubmission } from '../src/modules/writing/writing.types';
 
 const grammarQuestion: GrammarQuestion = {
-  questionNumber: 1,
-  questionType: 'fill_blank',
-  grammarArea: 'tenses',
-  grammarPoint: 'simple past',
+  question_number: 1,
+  question_type: 'fill_blank',
+  grammar_area: 'tenses',
+  grammar_point: 'simple past',
   level: 'A1',
-  questionText: 'She ___ (go) yesterday.',
+  question_text: 'She ___ (go) yesterday.',
   answer: null,
 };
 
@@ -20,20 +20,20 @@ const grammarSession: GrammarSession = {
   source: 'request',
   status: 'active',
   level: 'A1',
-  questionCount: 1,
+  question_count: 1,
   score: null,
-  maxScore: null,
-  startedAt: '2026-09-05T10:00:00.000Z',
-  completedAt: null,
+  max_score: null,
+  started_at: '2026-09-05T10:00:00.000Z',
+  completed_at: null,
   questions: [grammarQuestion],
 };
 
 const readingSettings: ReadingSettings = {
-  defaultLevel: 'A1',
-  defaultWordCount: 300,
-  minWordCount: 250,
-  maxWordCount: 350,
-  updatedAt: '2026-09-05T10:00:00.000Z',
+  default_level: 'A1',
+  default_word_count: 300,
+  min_word_count: 250,
+  max_word_count: 350,
+  updated_at: '2026-09-05T10:00:00.000Z',
 };
 
 const readingMaterial: ReadingMaterial = {
@@ -42,33 +42,33 @@ const readingMaterial: ReadingMaterial = {
   level: 'A1',
   genre: 'story',
   tags: [],
-  targetWordCount: 300,
-  wordCount: 5,
-  passageText: 'Mira visits the morning market.',
-  isOverride: false,
+  target_word_count: 300,
+  word_count: 5,
+  passage_text: 'Mira visits the morning market.',
+  is_override: false,
   source: 'request',
   questions: [
-    { questionNumber: 1, questionText: 'Who visits?', userAnswer: null },
-    { questionNumber: 2, questionText: 'Where?', userAnswer: null },
-    { questionNumber: 3, questionText: 'When?', userAnswer: null },
+    { question_number: 1, question_text: 'Who visits?', user_answer: null },
+    { question_number: 2, question_text: 'Where?', user_answer: null },
+    { question_number: 3, question_text: 'When?', user_answer: null },
   ],
 };
 
 const writingSettings: WritingSettings = {
-  defaultLevel: 'A1',
-  defaultWordCount: 150,
-  minWordCount: 120,
-  maxWordCount: 180,
-  updatedAt: '2026-09-05T10:00:00.000Z',
+  default_level: 'A1',
+  default_word_count: 150,
+  min_word_count: 120,
+  max_word_count: 180,
+  updated_at: '2026-09-05T10:00:00.000Z',
 };
 
 const writingSubmission: WritingSubmission = {
-  submissionNumber: 1,
-  originalText: 'I go yesterday.',
-  wordCount: 3,
-  estimatedLevel: 'A1',
+  submission_number: 1,
+  original_text: 'I go yesterday.',
+  word_count: 3,
+  estimated_level: 'A1',
   analysis: writingAnalysis,
-  submittedAt: '2026-09-05T10:00:00.000Z',
+  submitted_at: '2026-09-05T10:00:00.000Z',
 };
 
 let financeCategories: Array<{ id: number; code: string; name: string; description: string; type: 'expense' }> = [];
@@ -145,8 +145,8 @@ test('finance rejects a category that does not match the transaction type', asyn
     financeService.createTransactions({
       date: '2026-09-05',
       type: 'expense',
-      rawText: '12, lunch',
-      transactions: [{ amount: 12_000, categoryCode: 'salary', name: 'Lunch', location: null, note: null }],
+      raw_text: '12, lunch',
+      transactions: [{ amount: 12_000, category_code: 'salary', name: 'Lunch', location: null, note: null }],
     }),
   ).rejects.toMatchObject({
     code: 'INVALID_TRANSACTION_CATEGORY',
@@ -158,8 +158,8 @@ test('finance rejects a category that does not match the transaction type', asyn
 test('finance calculates numeric totals from repository aggregate rows', async () => {
   const result = await financeService.getSummary({ from: '2026-09-01', to: '2026-09-05', mode: 'net' });
 
-  expect(result).toMatchObject({ expenseTotal: 12_500, incomeTotal: 50_000, netTotal: 37_500 });
-  expect(result.byCategory[0]?.total).toBe(12_500);
+  expect(result).toMatchObject({ expense_total: 12_500, income_total: 50_000, net_total: 37_500 });
+  expect(result.by_category[0]?.total).toBe(12_500);
 });
 
 test('notes returns a stable domain error when a note is absent', async () => {
@@ -177,7 +177,7 @@ test('junk returns a stable domain error when an item is absent', async () => {
 });
 
 test('grammar requires immediate evaluation for practice answers', async () => {
-  await expect(grammarService.saveAnswer(grammarSession.code, 1, { userAnswer: 'went' })).rejects.toMatchObject({
+  await expect(grammarService.saveAnswer(grammarSession.code, 1, { user_answer: 'went' })).rejects.toMatchObject({
     code: 'PRACTICE_EVALUATION_REQUIRED',
     statusCode: 400,
   });
@@ -187,7 +187,7 @@ test('grammar defers individual evaluation for exam answers', async () => {
   grammarSessionResult = { ...grammarSession, mode: 'exam' };
 
   await expect(
-    grammarService.saveAnswer(grammarSession.code, 1, { userAnswer: 'went', result: 'correct', feedback: null }),
+    grammarService.saveAnswer(grammarSession.code, 1, { user_answer: 'went', result: 'correct', feedback: null }),
   ).rejects.toMatchObject({ code: 'EXAM_EVALUATION_DEFERRED', statusCode: 400 });
 });
 
@@ -195,29 +195,29 @@ test('grammar rejects an incomplete exam evaluation', async () => {
   grammarSessionResult = {
     ...grammarSession,
     mode: 'exam',
-    questionCount: 2,
+    question_count: 2,
     questions: [
       {
         ...grammarQuestion,
-        answer: { userAnswer: 'went', result: null, feedback: null, answeredAt: null, evaluatedAt: null },
+        answer: { user_answer: 'went', result: null, feedback: null, answered_at: null, evaluated_at: null },
       },
       {
         ...grammarQuestion,
-        questionNumber: 2,
-        answer: { userAnswer: 'did', result: null, feedback: null, answeredAt: null, evaluatedAt: null },
+        question_number: 2,
+        answer: { user_answer: 'did', result: null, feedback: null, answered_at: null, evaluated_at: null },
       },
     ],
   };
 
   await expect(
     grammarService.evaluateSession(grammarSession.code, {
-      answers: [{ questionNumber: 1, result: 'correct', feedback: null }],
+      answers: [{ question_number: 1, result: 'correct', feedback: null }],
     }),
   ).rejects.toMatchObject({ code: 'INCOMPLETE_EXAM_EVALUATION', statusCode: 400 });
 });
 
 test('reading settings keep the default word count inside the configured range', async () => {
-  await expect(readingService.updateSettings({ minWordCount: 320 })).rejects.toMatchObject({
+  await expect(readingService.updateSettings({ min_word_count: 320 })).rejects.toMatchObject({
     code: 'INVALID_READING_SETTINGS',
     statusCode: 400,
   });
@@ -227,16 +227,16 @@ test('reading requires every question exactly once in a submission', async () =>
   await expect(
     readingService.saveSubmission(readingMaterial.code, {
       answers: [
-        { questionNumber: 1, userAnswer: 'Mira' },
-        { questionNumber: 1, userAnswer: 'Mira again' },
-        { questionNumber: 3, userAnswer: 'Morning' },
+        { question_number: 1, user_answer: 'Mira' },
+        { question_number: 1, user_answer: 'Mira again' },
+        { question_number: 3, user_answer: 'Morning' },
       ],
     }),
   ).rejects.toMatchObject({ code: 'INCOMPLETE_READING_SUBMISSION', statusCode: 400 });
 });
 
 test('writing settings keep the default word count inside the configured range', async () => {
-  await expect(writingService.updateSettings({ maxWordCount: 140 })).rejects.toMatchObject({
+  await expect(writingService.updateSettings({ max_word_count: 140 })).rejects.toMatchObject({
     code: 'INVALID_WRITING_SETTINGS',
     statusCode: 400,
   });
@@ -244,7 +244,7 @@ test('writing settings keep the default word count inside the configured range',
 
 test('writing exposes corrected text without rebuilding the analysis', async () => {
   await expect(writingService.getCorrectedText('WR-20260905-001', 1)).resolves.toEqual({
-    submissionNumber: 1,
-    correctedText: writingAnalysis.correctedText,
+    submission_number: 1,
+    corrected_text: writingAnalysis.corrected_text,
   });
 });

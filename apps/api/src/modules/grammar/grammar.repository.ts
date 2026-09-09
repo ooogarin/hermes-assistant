@@ -24,27 +24,27 @@ const toSettings = (row: {
   daily_question_count: number;
   updated_at: Date | string;
 }): GrammarSettings => ({
-  defaultLevel: row.default_level,
-  dailyQuestionCount: row.daily_question_count,
-  updatedAt: toIsoTimestamp(row.updated_at),
+  default_level: row.default_level,
+  daily_question_count: row.daily_question_count,
+  updated_at: toIsoTimestamp(row.updated_at),
 });
 
 const toQuestion = (row: GrammarQuestionRow): GrammarQuestion => ({
-  questionNumber: row.question_number,
-  questionType: row.question_type,
-  grammarArea: row.grammar_area,
-  grammarPoint: row.grammar_point,
+  question_number: row.question_number,
+  question_type: row.question_type,
+  grammar_area: row.grammar_area,
+  grammar_point: row.grammar_point,
   level: row.level,
-  questionText: row.question_text,
+  question_text: row.question_text,
   answer:
     row.user_answer === null
       ? null
       : {
-          userAnswer: row.user_answer,
+          user_answer: row.user_answer,
           result: row.answer_result,
           feedback: row.feedback,
-          answeredAt: row.answered_at === null ? null : toIsoTimestamp(row.answered_at),
-          evaluatedAt: row.evaluated_at === null ? null : toIsoTimestamp(row.evaluated_at),
+          answered_at: row.answered_at === null ? null : toIsoTimestamp(row.answered_at),
+          evaluated_at: row.evaluated_at === null ? null : toIsoTimestamp(row.evaluated_at),
         },
 });
 
@@ -54,11 +54,11 @@ const toSession = (row: GrammarSessionRow, questions: GrammarQuestion[]): Gramma
   source: row.source,
   status: row.status,
   level: row.level,
-  questionCount: row.question_count,
+  question_count: row.question_count,
   score: row.score,
-  maxScore: row.max_score,
-  startedAt: toIsoTimestamp(row.started_at),
-  completedAt: row.completed_at === null ? null : toIsoTimestamp(row.completed_at),
+  max_score: row.max_score,
+  started_at: toIsoTimestamp(row.started_at),
+  completed_at: row.completed_at === null ? null : toIsoTimestamp(row.completed_at),
   questions,
 });
 
@@ -88,9 +88,9 @@ export const updateSettings = async (input: UpdateGrammarSettingsRequest): Promi
   >`
     UPDATE grammar_settings
     SET
-      default_level = CASE WHEN ${input.defaultLevel !== undefined} THEN ${input.defaultLevel ?? ''} ELSE default_level END,
+      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''} ELSE default_level END,
       daily_question_count = CASE
-        WHEN ${input.dailyQuestionCount !== undefined} THEN ${input.dailyQuestionCount ?? 0}
+        WHEN ${input.daily_question_count !== undefined} THEN ${input.daily_question_count ?? 0}
         ELSE daily_question_count
       END,
       updated_at = NOW()
@@ -149,12 +149,12 @@ export const insertSession = async (
   }
 
   const questionNumbers = input.questions.map((_, index) => index + 1);
-  const questionTypes = input.questions.map((question) => question.questionType);
-  const grammarAreas = input.questions.map((question) => question.grammarArea);
-  const grammarPoints = input.questions.map((question) => question.grammarPoint);
+  const questionTypes = input.questions.map((question) => question.question_type);
+  const grammarAreas = input.questions.map((question) => question.grammar_area);
+  const grammarPoints = input.questions.map((question) => question.grammar_point);
   const levels = input.questions.map((question) => question.level);
-  const questionTexts = input.questions.map((question) => question.questionText);
-  const correctAnswers = input.questions.map((question) => question.correctAnswer);
+  const questionTexts = input.questions.map((question) => question.question_text);
+  const correctAnswers = input.questions.map((question) => question.correct_answer);
   const explanations = input.questions.map((question) => question.explanation);
 
   await trx`
@@ -260,7 +260,7 @@ export const getSession = async (code: string): Promise<GrammarSession | null> =
 
 export const upsertAnswer = async (
   code: string,
-  questionNumber: number,
+  question_number: number,
   input: SaveGrammarAnswerRequest,
 ): Promise<boolean> => {
   const [row] = await getDatabaseClient()<{ id: number }[]>`
@@ -274,7 +274,7 @@ export const upsertAnswer = async (
     )
     SELECT
       grammar_questions.id,
-      ${input.userAnswer},
+      ${input.user_answer},
       ${input.result ?? null}::grammar_answer_result,
       ${input.feedback ?? null},
       NOW(),
@@ -283,7 +283,7 @@ export const upsertAnswer = async (
     JOIN grammar_sessions ON grammar_sessions.id = grammar_questions.session_id
     WHERE grammar_sessions.code = ${code}
       AND grammar_sessions.deleted_at IS NULL
-      AND grammar_questions.question_number = ${questionNumber}
+      AND grammar_questions.question_number = ${question_number}
       AND grammar_questions.deleted_at IS NULL
     ON CONFLICT (question_id) DO UPDATE
     SET
@@ -300,7 +300,7 @@ export const upsertAnswer = async (
   return row !== undefined;
 };
 
-export const getExplanation = async (code: string, questionNumber: number): Promise<GrammarExplanation | null> => {
+export const getExplanation = async (code: string, question_number: number): Promise<GrammarExplanation | null> => {
   const [row] = await getDatabaseClient()<GrammarExplanationRow[]>`
     SELECT
       grammar_questions.question_number,
@@ -312,17 +312,17 @@ export const getExplanation = async (code: string, questionNumber: number): Prom
     JOIN grammar_sessions ON grammar_sessions.id = grammar_questions.session_id
     WHERE grammar_sessions.code = ${code}
       AND grammar_sessions.deleted_at IS NULL
-      AND grammar_questions.question_number = ${questionNumber}
+      AND grammar_questions.question_number = ${question_number}
       AND grammar_questions.deleted_at IS NULL
   `;
 
   return row === undefined
     ? null
     : {
-        questionNumber: row.question_number,
-        questionText: row.question_text,
-        grammarArea: row.grammar_area,
-        grammarPoint: row.grammar_point,
+        question_number: row.question_number,
+        question_text: row.question_text,
+        grammar_area: row.grammar_area,
+        grammar_point: row.grammar_point,
         explanation: row.explanation,
       };
 };
@@ -332,7 +332,7 @@ export const saveEvaluation = async (
   code: string,
   input: EvaluateGrammarSessionRequest,
 ): Promise<void> => {
-  const questionNumbers = input.answers.map((answer) => answer.questionNumber);
+  const questionNumbers = input.answers.map((answer) => answer.question_number);
   const results = input.answers.map((answer) => answer.result);
   const feedback = input.answers.map((answer) => answer.feedback);
   await trx`
@@ -361,14 +361,14 @@ export const completeSession = async (
   trx: DatabaseReservedConnection,
   code: string,
   score: number,
-  maxScore: number,
+  max_score: number,
 ): Promise<void> => {
   await trx`
     UPDATE grammar_sessions
     SET
       status = 'completed',
       score = ${score},
-      max_score = ${maxScore},
+      max_score = ${max_score},
       completed_at = NOW(),
       updated_at = NOW()
     WHERE code = ${code}
@@ -406,9 +406,9 @@ export const getReport = async (code: string): Promise<GrammarReport | null> => 
     code: first.code,
     status: first.status,
     score: first.score,
-    maxScore: first.max_score,
+    max_score: first.max_score,
     breakdown: rows.map((row) => ({
-      grammarArea: row.grammar_area,
+      grammar_area: row.grammar_area,
       correct: Number(row.correct),
       partial: Number(row.partial),
       incorrect: Number(row.incorrect),

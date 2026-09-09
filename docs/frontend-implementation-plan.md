@@ -1,19 +1,19 @@
 # Hermes Frontend Implementation Plan
 
-> Status: Foundation, Finance, and Notes vertical slices implemented. This document plans the frontend foundation and screen delivery; it does not change domain behavior or API contracts.
+> Status: Foundation, Finance, Notes, Junk, Reading, Writing, and Grammar settings implemented. This document plans the frontend foundation and screen delivery; it does not change domain behavior or API contracts.
 
 ## Current progress
 
 Completed foundation work:
 
-- Responsive application shell with desktop sidebar and keyboard-operable mobile drawer.
+- Responsive application shell with a persistent collapsible desktop sidebar and keyboard-operable mobile drawer.
 - Route tree, active navigation, expandable English group, direct routes, and safe not-found state.
 - Semantic Tailwind design tokens and global accessibility rules.
 - Runtime-validated API client, typed safe errors, query-string construction, and `204` support.
 - Indonesian currency, number, percentage, date, and month formatting.
 - Initial buttons, selector, proportional bar, page header, skeleton, and shared content states.
 - Frontend unit/component test setup included in the repository-wide test command.
-- Finance monthly report with API-backed totals, expense-category proportions, period selection, responsive layout, and shared loading/empty/error states.
+- Finance daily and range reports plus manual batch create, edit, and confirmed delete flows.
 - Notes list and detail with API-backed keyword, type, category, and tag filtering, direct detail routes, and responsive list/detail behavior.
 - Junk list, preview, and standalone detail with API-backed keyword, category, tag, and source-URL filtering plus safe nullable-title handling.
 
@@ -49,7 +49,7 @@ Before implementing Finance, add a Finance screen specification using the templa
 - Typed and runtime-validated API access.
 - Reusable controls, layouts, and data-backed screen states.
 - Finance report as the first integrated vertical slice.
-- Notes and Junk list/detail screens.
+- Notes and Junk create/list/detail/edit/delete screens.
 - Reading, Writing, and Grammar settings.
 - Known-code Reading, Writing, and Grammar workflows after their settings screens.
 - Automated tests and visual verification proportional to each phase.
@@ -238,7 +238,7 @@ Every interactive component must have an accessible name, keyboard behavior, vis
 
 ### Phase 6 — Finance vertical slice
 
-Implement `/finance` first with:
+The Finance slice now includes:
 
 - Current month as the initial period.
 - Period selection reflected in the request.
@@ -246,12 +246,15 @@ Implement `/finance` first with:
 - Category breakdown and proportional bars.
 - Loading skeleton, empty state, recoverable error, and retry.
 - Responsive report layout.
+- Manual multi-transaction create using the API batch contract directly.
+- Changed-fields-only edit and confirmed soft deletion from Daily view.
+- Shared Finance transaction fields for batch create and single edit, plus the cross-feature confirmation dialog.
 
 The slice validates routing, shell, API parsing, request cancellation, formatting, shared feedback states, and visual tokens before those abstractions are reused elsewhere.
 
 ### Phase 7 — Notes and Junk
 
-Implement Notes and Junk together as separate features sharing proven list/detail primitives:
+Implement Notes and Junk together as separate features sharing proven list/detail and form primitives:
 
 - List, explicit search submission, supported filters, and supported ordering.
 - Query state represented in the URL where it improves navigation and reload behavior.
@@ -259,30 +262,31 @@ Implement Notes and Junk together as separate features sharing proven list/detai
 - Primary detail screen on narrow screens or direct visits.
 - Loading, initial empty, no-results, not-found, and recoverable-error states.
 - Safe external-link handling for Junk source URLs.
+- Manual create forms backed by the existing POST contracts, with one shared form per feature for create and edit.
 
-Do not enable unsupported date filters, old-to-new sorting, or pagination. Editing and deletion remain deferred according to the module screen specifications.
+Do not enable unsupported date filters, old-to-new sorting, or pagination. Editing and confirmed deletion are implemented from the full-page detail routes using their existing API contracts.
 
 ### Phase 8 — English settings
 
-Reading and Writing settings are implemented through one shared English-learning settings component. Grammar remains pending.
+Reading and Writing settings are implemented through one shared English-learning settings component. Grammar settings use the same interaction conventions with their feature-specific daily-question contract.
 
 Implement settings in this order:
 
 1. Reading settings.
 2. Writing settings.
-3. Grammar settings.
+3. Grammar settings. Implemented.
 
 Use a shared settings pattern for load-before-edit, dirty-state detection, field and cross-field validation, pending state, unsaved-change confirmation, success toast, and synchronized read-only summary.
 
 ### Phase 9 — Known-code English workflows
 
-The Reading workflow is implemented. Writing prompt, feedback, and corrected-text screens are implemented; browser-originated Writing submission remains blocked by its current request contract. Grammar remains pending.
+Reading and Grammar known-code workflows are implemented. Writing prompt, feedback, and corrected-text screens are implemented; browser-originated Writing submission remains blocked by its current request contract. Browser-originated Grammar grading remains owned by Hermes.
 
 Implement screens that already have detail contracts:
 
 1. Reading material, complete submission, and expected-answer review.
 2. Writing prompt, draft submission, feedback review, and corrected text.
-3. Grammar practice/exam session, explanations, evaluation, and report.
+3. Grammar practice/exam session, explanations, and report. Implemented; authoritative evaluation remains outside FE.
 
 These screens must support direct navigation with a known public code. They must not rely on a collection screen that the API cannot yet populate.
 
@@ -292,9 +296,7 @@ Implement the following only after their missing contracts are designed and avai
 
 | Screen or behavior | Current blocker |
 | --- | --- |
-| Reading material list | No collection/search/filter/pagination endpoint |
 | Grammar session list | No collection/search/filter/pagination endpoint |
-| Writing material list | No collection/search/filter/pagination endpoint |
 | Writing draft submission | Current POST requires caller-authored estimated level and complete analysis |
 | General English Q&A | No authenticated browser conversation contract |
 | Save General English response to Notes | Save/preview payload and confirmation contract missing |

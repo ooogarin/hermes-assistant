@@ -17,12 +17,12 @@ const note: Note = {
   type: 'fact',
   category: 'Tech/Programming',
   source: 'postgresql.org',
-  sourceContext: null,
-  sourceReference: null,
+  source_context: null,
+  source_reference: null,
   tags: ['postgres', 'database'],
-  createdAt: '2026-07-26T10:00:00.000Z',
-  updatedAt: '2026-07-26T10:00:00.000Z',
-  deletedAt: null,
+  created_at: '2026-07-26T10:00:00.000Z',
+  updated_at: '2026-07-26T10:00:00.000Z',
+  deleted_at: null,
 };
 
 const createNotesServiceStub = (overrides: Partial<NotesService> = {}): NotesService => ({
@@ -97,14 +97,14 @@ test('accepts an explicit General English save through Notes', async () => {
       content: 'Both introduce contrast; even though is more emphatic.',
       type: 'fact',
       category: 'English',
-      sourceContext: 'general_chat',
-      sourceReference: null,
+      source_context: 'general_chat',
+      source_reference: null,
       tags: ['english', 'grammar'],
     }),
   });
 
   expect(response.status).toBe(201);
-  expect(createInput).toMatchObject({ sourceContext: 'general_chat', sourceReference: null });
+  expect(createInput).toMatchObject({ source_context: 'general_chat', source_reference: null });
 });
 
 test('rejects an invalid note payload without calling the service', async () => {

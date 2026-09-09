@@ -43,6 +43,7 @@ Hermes
 - When an English child is active, the group is expanded and the active child receives the primary visual indicator.
 - A top-level active item uses a restrained tinted background plus an emerald leading indicator.
 - Detail pages retain their parent item as active and provide an explicit back link within content.
+- The desktop sidebar expands or reduces to an icon rail through explicit button interaction, never hover; changing its state moves the content frame with the same transition.
 - On narrow screens, the sidebar becomes a dismissible drawer. The hierarchy and active states remain unchanged.
 
 ## 4. Reusable screen patterns

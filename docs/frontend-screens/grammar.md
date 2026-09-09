@@ -1,6 +1,6 @@
 # Grammar Screen List
 
-> Status: Settings ready for implementation; session-list integration is blocked by a missing list API. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
+> Status: Settings and known-code workflows implemented; session-list integration is blocked by a missing list API. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
 
 ## Scope
 
@@ -25,11 +25,11 @@ The initial web scope is to update persistent defaults, open a known session, an
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-GRAM-001 | Grammar session list | `/english/grammar` | Design ready; integration deferred | List endpoint missing |
-| SCR-GRAM-002 | Grammar settings | `/english/grammar/settings` | In scope | Available |
-| SCR-GRAM-003 | Grammar session workspace | `/english/grammar/:code` | In scope for a known code | Available |
-| SCR-GRAM-004 | Grammar explanation | `/english/grammar/:code/questions/:number/explanation` | In scope, on demand | Available |
-| SCR-GRAM-005 | Grammar report | `/english/grammar/:code/report` | In scope for evaluated sessions | Available |
+| SCR-GRAM-001 | Grammar session list | `/english/grammar` | Honest unavailable state implemented | List endpoint missing |
+| SCR-GRAM-002 | Grammar settings | `/english/grammar/settings` | Implemented | Available |
+| SCR-GRAM-003 | Grammar session workspace | `/english/grammar/:code` | Implemented for a known code | Available |
+| SCR-GRAM-004 | Grammar explanation | `/english/grammar/:code/questions/:number/explanation` | Implemented on demand | Available |
+| SCR-GRAM-005 | Grammar report | `/english/grammar/:code/report` | Implemented for evaluated sessions | Available |
 
 Proposed web routes are frontend navigation only. They do not alter the REST API contract.
 
@@ -126,6 +126,7 @@ POST /api/v1/grammar/sessions/:code/evaluate
 - Practice answer saves include an evaluated result and optional concise feedback; exam answers are stored unevaluated until the complete exam is evaluated.
 - Ordinary session detail deliberately excludes correct answers and full explanations.
 - Evaluation applies to exam answers and produces SCR-GRAM-005.
+- The browser saves unevaluated exam answers. Practice grading and final exam evaluation remain owned by Hermes because the API requires caller-supplied evaluation results; the frontend does not infer authoritative correctness.
 
 ## SCR-GRAM-004 — Grammar explanation
 

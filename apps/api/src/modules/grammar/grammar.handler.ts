@@ -43,16 +43,16 @@ export const removeSession = async (context: Context<AppEnv>) => {
 };
 
 export const saveAnswer = async (context: Context<AppEnv>) => {
-  const { code, questionNumber } = getParam(context, questionReferenceSchema);
+  const { code, question_number } = getParam(context, questionReferenceSchema);
   const data = getBody(context, saveAnswerSchema);
 
-  return successResponse({ context, data: await grammarService.saveAnswer(code, questionNumber, data) });
+  return successResponse({ context, data: await grammarService.saveAnswer(code, question_number, data) });
 };
 
 export const getExplanation = async (context: Context<AppEnv>) => {
-  const { code, questionNumber } = getParam(context, questionReferenceSchema);
+  const { code, question_number } = getParam(context, questionReferenceSchema);
 
-  return successResponse({ context, data: await grammarService.getExplanation(code, questionNumber) });
+  return successResponse({ context, data: await grammarService.getExplanation(code, question_number) });
 };
 
 export const evaluateSession = async (context: Context<AppEnv>) => {

@@ -53,6 +53,7 @@ const transactionSchema = z
   }));
 
 const transactionListSchema = z.object({ items: z.array(transactionSchema) }).transform(({ items }) => items);
+const categoryListSchema = z.object({ items: z.array(categorySchema) }).transform(({ items }) => items);
 
 const dailySummarySchema = z.object({
   items: z.array(
@@ -69,7 +70,25 @@ const dailySummarySchema = z.object({
 
 export type FinanceSummary = z.output<typeof financeSummarySchema>;
 export type FinanceTransaction = z.output<typeof transactionSchema>;
+export type FinanceCategory = z.output<typeof categorySchema>;
 export type FinanceDailySummary = z.output<typeof dailySummarySchema>['items'];
+export type FinanceTransactionType = FinanceTransaction['type'];
+export type FinanceTransactionInput = {
+  amount: number;
+  categoryCode: string;
+  location: string | null;
+  name: string;
+  note: string | null;
+};
+export type CreateFinanceTransactionsInput = {
+  date: string;
+  rawText: string;
+  transactions: FinanceTransactionInput[];
+  type: FinanceTransactionType;
+};
+export type UpdateFinanceTransactionInput = Partial<
+  Pick<FinanceTransactionInput, 'amount' | 'categoryCode' | 'location' | 'name' | 'note'>
+>;
 
 export const getFinanceSummary = (range: FinanceRange, signal?: AbortSignal): Promise<FinanceSummary> =>
   apiRequest(`/api/v1/finance/summary${buildQueryString({ ...range, mode: 'net' })}`, financeSummarySchema, {
@@ -78,6 +97,35 @@ export const getFinanceSummary = (range: FinanceRange, signal?: AbortSignal): Pr
 
 export const getFinanceTransactions = (date: string, signal?: AbortSignal): Promise<FinanceTransaction[]> =>
   apiRequest(`/api/v1/finance/transactions${buildQueryString({ date })}`, transactionListSchema, { signal });
+
+export const getFinanceCategories = (type: FinanceTransactionType, signal?: AbortSignal): Promise<FinanceCategory[]> =>
+  apiRequest(`/api/v1/finance/categories${buildQueryString({ type })}`, categoryListSchema, { signal });
+
+export const getFinanceTransaction = (
+  date: string,
+  dailyNumber: number,
+  signal?: AbortSignal,
+): Promise<FinanceTransaction> =>
+  apiRequest(`/api/v1/finance/transactions/${date}/${dailyNumber}`, transactionSchema, { signal });
+
+export const createFinanceTransactions = (input: CreateFinanceTransactionsInput): Promise<FinanceTransaction[]> =>
+  apiRequest('/api/v1/finance/transactions', transactionListSchema, {
+    body: input,
+    method: 'POST',
+  });
+
+export const updateFinanceTransaction = (
+  date: string,
+  dailyNumber: number,
+  input: UpdateFinanceTransactionInput,
+): Promise<FinanceTransaction> =>
+  apiRequest(`/api/v1/finance/transactions/${date}/${dailyNumber}`, transactionSchema, {
+    body: input,
+    method: 'PATCH',
+  });
+
+export const deleteFinanceTransaction = (date: string, dailyNumber: number): Promise<void> =>
+  apiRequest(`/api/v1/finance/transactions/${date}/${dailyNumber}`, z.undefined(), { method: 'DELETE' });
 
 export const getFinanceDailySummary = async (
   range: FinanceRange,

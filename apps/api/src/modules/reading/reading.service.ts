@@ -19,10 +19,10 @@ export const getSettings = (): Promise<ReadingSettings> => readingRepository.get
 
 export const updateSettings = async (input: UpdateReadingSettingsRequest): Promise<ReadingSettings> => {
   const currentSettings = await getSettings();
-  const minWordCount = input.minWordCount ?? currentSettings.minWordCount;
-  const maxWordCount = input.maxWordCount ?? currentSettings.maxWordCount;
-  const defaultWordCount = input.defaultWordCount ?? currentSettings.defaultWordCount;
-  if (minWordCount > maxWordCount || defaultWordCount < minWordCount || defaultWordCount > maxWordCount) {
+  const min_word_count = input.min_word_count ?? currentSettings.min_word_count;
+  const max_word_count = input.max_word_count ?? currentSettings.max_word_count;
+  const default_word_count = input.default_word_count ?? currentSettings.default_word_count;
+  if (min_word_count > max_word_count || default_word_count < min_word_count || default_word_count > max_word_count) {
     throw invalidSettings();
   }
 
@@ -39,9 +39,10 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
     trx = await startTransaction();
 
     const code = await readingRepository.generateCode(trx, date.key, date.segment);
-    const isOverride = input.level !== settings.defaultLevel || input.targetWordCount !== settings.defaultWordCount;
+    const is_override =
+      input.level !== settings.default_level || input.target_word_count !== settings.default_word_count;
 
-    await readingRepository.insertMaterial(trx, code, input, countWords(input.passageText), isOverride);
+    await readingRepository.insertMaterial(trx, code, input, countWords(input.passage_text), is_override);
     const trxToCommit = trx;
     trx = undefined;
 
@@ -122,12 +123,12 @@ export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedA
 // Helper functions
 // ====================================================================================================
 const validateSubmission = (material: ReadingMaterial, input: SaveReadingSubmissionRequest): void => {
-  const actual = new Set(input.answers.map((answer) => answer.questionNumber));
-  const expected = new Set(material.questions.map((question) => question.questionNumber));
+  const actual = new Set(input.answers.map((answer) => answer.question_number));
+  const expected = new Set(material.questions.map((question) => question.question_number));
 
   if (
     actual.size !== material.questions.length ||
-    [...expected].some((questionNumber) => !actual.has(questionNumber))
+    [...expected].some((question_number) => !actual.has(question_number))
   ) {
     throw new AppError({
       code: 'INCOMPLETE_READING_SUBMISSION',

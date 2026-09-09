@@ -3,7 +3,7 @@
 ## General
 
 - Use strict TypeScript. Avoid `any`; use `unknown` and narrow external data safely.
-- Use `camelCase` for TypeScript and request JSON, `PascalCase` for types/errors, and `snake_case` for response JSON and PostgreSQL. Convert response keys only at the shared HTTP response boundary; keep domain and service models independent of transport casing.
+- Use `snake_case` for API request and response fields, service/domain data contracts, and PostgreSQL columns. Use `PascalCase` for types/errors and idiomatic `camelCase` only for non-data TypeScript identifiers such as functions, local variables, and class members. The shared HTTP response boundary preserves this contract and remains a defensive serializer for future callers.
 - Prefer small, single-purpose functions, guard clauses, explicit types at boundaries, and comments that explain non-obvious reasoning.
 - Do not add a dependency, broad abstraction, or unrelated refactor without a concrete need.
 - Bind handler request types to their Zod schemas; do not let handlers assert arbitrary validated-input types.

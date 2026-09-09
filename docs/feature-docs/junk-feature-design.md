@@ -400,14 +400,14 @@ MVP focuses on saving, classifying, and searching lightweight URL/text-based jun
 
 The Junk API is mounted below `/api/v1/junk` and requires the internal bearer token.
 
-Request bodies use `camelCase`; every response field is serialized recursively as `snake_case`.
+Request bodies and every response field use `snake_case` recursively.
 
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `POST` | `/api/v1/junk` | Create a junk item. The backend generates the `code`. |
-| `GET` | `/api/v1/junk` | List/search active items. Optional filters: `q`, `tag`, `category`, `sourceUrl`, and `limit` (default `20`, maximum `100`). Filters combine with AND. |
+| `GET` | `/api/v1/junk` | List/search active items. Optional filters: `q`, `tag`, `category`, `source_url`, and `limit` (default `20`, maximum `100`). Filters combine with AND. |
 | `GET` | `/api/v1/junk/:code` | Fetch one active junk item. |
-| `PATCH` | `/api/v1/junk/:code` | Update supplied fields. A `tags` payload replaces the full tag list. `rawText` is preserved and cannot be changed. |
+| `PATCH` | `/api/v1/junk/:code` | Update supplied fields. A `tags` payload replaces the full tag list. `raw_text` is preserved and cannot be changed. |
 | `DELETE` | `/api/v1/junk/:code` | Soft delete a junk item. |
 
 Codes are generated atomically by the backend in the format `JK-YYYYMMDD-###`, using the `Asia/Jakarta` calendar date. The daily suffix is sequential and codes are never reused.

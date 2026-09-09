@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { apiRequest } from '../../lib/api/api-client';
+import { buildQueryString } from '../../lib/api/query-string';
 import type { LearningSettingsInput } from '../../components/english/learning-settings';
 
 const settingsSchema = z
@@ -119,9 +120,52 @@ const correctedTextSchema = z
     submissionNumber: submission_number,
   }));
 
+const writingListItemSchema = z
+  .object({
+    code: z.string(),
+    topic: z.string(),
+    prompt_excerpt: z.string(),
+    genre: z.string(),
+    level: z.string(),
+    target_word_count: z.number().int().positive(),
+    tags: z.array(z.string()),
+    source: z.enum(['cron', 'request']),
+    status: z.enum(['unsubmitted', 'reviewed']),
+    submission_count: z.number().int().nonnegative(),
+    latest_submission_number: z.number().int().positive().nullable(),
+    created_at: z.string(),
+  })
+  .transform(
+    ({ created_at, latest_submission_number, prompt_excerpt, submission_count, target_word_count, ...item }) => ({
+      ...item,
+      createdAt: created_at,
+      latestSubmissionNumber: latest_submission_number,
+      promptExcerpt: prompt_excerpt,
+      submissionCount: submission_count,
+      targetWordCount: target_word_count,
+    }),
+  );
+
+const paginationSchema = z
+  .object({ page: z.number().int(), limit: z.number().int(), total: z.number().int(), total_pages: z.number().int() })
+  .transform(({ total_pages, ...meta }) => ({ ...meta, totalPages: total_pages }));
+
+const writingListSchema = z.object({ items: z.array(writingListItemSchema), meta: paginationSchema });
+
 export type WritingSettings = z.output<typeof settingsSchema>;
 export type WritingMaterial = z.output<typeof materialSchema>;
 export type WritingSubmission = z.output<typeof submissionSchema>;
+export type WritingMaterialListItem = z.output<typeof writingListItemSchema>;
+export type WritingMaterialList = z.output<typeof writingListSchema>;
+export type WritingListFilters = {
+  genre?: string;
+  levels?: string[];
+  limit?: number;
+  page?: number;
+  q?: string;
+  sort?: 'newest' | 'oldest';
+  status?: 'unsubmitted' | 'reviewed';
+};
 
 export const getWritingSettings = (signal?: AbortSignal): Promise<WritingSettings> =>
   apiRequest('/api/v1/writing/settings', settingsSchema, { signal });
@@ -131,6 +175,18 @@ export const updateWritingSettings = (input: LearningSettingsInput): Promise<Wri
 
 export const getWritingMaterial = (code: string, signal?: AbortSignal): Promise<WritingMaterial> =>
   apiRequest(`/api/v1/writing/materials/${encodeURIComponent(code)}`, materialSchema, { signal });
+
+export const getWritingMaterials = (
+  filters: WritingListFilters,
+  signal?: AbortSignal,
+): Promise<WritingMaterialList> => {
+  const { levels, ...query } = filters;
+  return apiRequest(
+    `/api/v1/writing/materials${buildQueryString({ ...query, levels: levels?.join(',') })}`,
+    writingListSchema,
+    { signal },
+  );
+};
 
 export const getWritingSubmission = (
   code: string,

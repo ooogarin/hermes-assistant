@@ -1,10 +1,10 @@
 # Finance Screen List
 
-> Status: The Finance information architecture is ready for frontend implementation. Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Finance screens.
+> Status: Finance daily, range, create, edit, and delete flows are implemented. Read [Frontend Screen Guide](../frontend-screens.md) with this document before changing Finance screens.
 
 ## Scope
 
-Finance is a read-only area for reviewing transactions and their summaries. Transaction capture and correction remain owned by Hermes/Telegram and the Finance API. The browser formats API data and may derive presentational proportions from returned totals; transaction totals and category aggregation remain API-owned.
+Finance supports reviewing summaries and transactions, manually adding one or more transactions in a batch, correcting mutable transaction fields, and confirmed deletion. Hermes/Telegram remains the primary capture flow. The browser formats API data and may derive presentational proportions from returned totals; transaction totals and category aggregation remain API-owned.
 
 ## Screen map
 
@@ -14,12 +14,24 @@ Finance is a read-only area for reviewing transactions and their summaries. Tran
 
 /finance/report?from=YYYY-MM-DD&to=YYYY-MM-DD
 └── SCR-FIN-002  Range view
+
+/finance/new?date=YYYY-MM-DD
+└── SCR-FIN-003  Create transaction
+
+/finance/transactions/:date/:dailyNumber/edit
+└── SCR-FIN-004  Edit transaction
+
+/finance?date=YYYY-MM-DD
+└── SCR-FIN-005  Delete transaction dialog
 ```
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-FIN-001 | Daily view | `/finance?date=YYYY-MM-DD` | In scope | Available |
-| SCR-FIN-002 | Range view | `/finance/report?from=YYYY-MM-DD&to=YYYY-MM-DD` | In scope after daily aggregate API is available | Partially available; see API gap |
+| SCR-FIN-001 | Daily view | `/finance?date=YYYY-MM-DD` | Implemented | Available |
+| SCR-FIN-002 | Range view | `/finance/report?from=YYYY-MM-DD&to=YYYY-MM-DD` | Implemented with capability state | Partially available; see API gap |
+| SCR-FIN-003 | Create transaction | `/finance/new?date=YYYY-MM-DD` | Implemented | Available |
+| SCR-FIN-004 | Edit transaction | `/finance/transactions/:date/:dailyNumber/edit` | Implemented | Available |
+| SCR-FIN-005 | Delete transaction dialog | Daily view overlay | Implemented | Available |
 
 ## SCR-FIN-001 — Daily view
 
@@ -42,17 +54,18 @@ Review every recorded transaction and the income/expense distribution for one se
 **UI composition**
 
 - Header: `Finance`, selected date, date navigation, and `Lihat laporan periode`.
-- Compact daily totals: `Pengeluaran`, `Pemasukan`, and `Saldo bersih`.
-- Primary section: a transaction list for the selected date. Each row shows flow (`Pemasukan` or `Pengeluaran`), transaction name, category, optional location or note, and Rupiah amount. Use the stable daily reference when a visible reference is needed.
+- The top content row pairs stacked daily totals (`Pengeluaran`, `Pemasukan`, and `Saldo bersih`) with `Ringkasan kategori` in two balanced columns when space permits.
+- Primary section: a transaction list for the selected date. Each row shows flow (`Pemasukan` or `Pengeluaran`), transaction name, category, optional note and location, time, Rupiah amount, and row actions. Missing optional text uses a quiet dash rather than a raw null value. Use the stable daily reference when a visible reference is needed.
 - Supporting section: `Ringkasan kategori`, visibly split into `Pengeluaran` and `Pemasukan`. Each group shows category, total, and its percentage of that flow's total.
-- The transaction list is the dominant section; the category summary is a quiet secondary column on desktop and follows the list on narrow screens.
+- The transaction list is the dominant full-width section below both summaries. On narrow screens, the daily totals, category summary, and transaction list stack in that order.
 - No pagination in this version.
 
 **Interactions**
 
 - Changing the date replaces both the transaction list and the daily summary, and cancels previous in-flight requests.
-- The initial read-only version does not expose edit or delete controls in the browser.
-- A transaction row does not require a detail page for this version. It may become an explicit detail link only when the related Finance behavior is designed.
+- `Tambah transaksi` opens the manual create route while retaining the selected date.
+- Each transaction row exposes edit and delete actions with accessible names.
+- Edit opens the dedicated correction route. Delete first opens a confirmation dialog and refreshes the selected date after success.
 
 **Data contract**
 
@@ -85,7 +98,6 @@ GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
 
 **Out of scope**
 
-- Creating, editing, or deleting transactions in the browser.
 - Budgets, goals, trends, charts, comparisons, account balances, and payment-method tracking.
 
 ## SCR-FIN-002 — Range view
@@ -124,7 +136,7 @@ GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
 
 - This existing endpoint supplies the period totals and complete-range `byCategory` data.
 
-Required before the daily aggregate list can be implemented:
+Required to populate the daily aggregate list:
 
 ```text
 GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
@@ -132,7 +144,7 @@ GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 
 - This is a proposed API requirement, not an existing endpoint.
 - Its response must provide one row per date with at least `date`, `expenseTotal`, `incomeTotal`, and `netTotal`.
-- Confirm whether dates with no transactions are returned as zero-value rows or omitted before implementation. The initial screen should not infer missing dates in the browser.
+- Confirm whether dates with no transactions are returned as zero-value rows or omitted before implementation. The screen does not infer missing dates in the browser.
 - Once this endpoint exists, all authoritative daily and period totals still come from the API. The browser only formats values and derives display-only category percentages from returned totals.
 
 **States**
@@ -157,8 +169,68 @@ GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 - Individual transactions inside Range view; Daily view owns that detail.
 - Charts, trend analysis, comparisons with previous periods, budgets, forecasts, and export.
 
+## SCR-FIN-003 — Create transaction
+
+**Purpose**
+Add one or more transactions of the same type and date from the browser.
+
+**UI and behavior**
+
+- The optional `date` query preselects a safe non-future date; otherwise the form uses today.
+- Date, type, and required source text apply to the complete batch.
+- Each transaction captures a positive Rupiah amount, matching category, name, optional location, and optional note.
+- The user can add or remove transaction rows, with a minimum of one and the API maximum of 100.
+- Changing the transaction type clears every selected category and reloads categories for the selected type.
+- The form sends the API batch contract directly and never fabricates `rawText`.
+- Save remains unavailable until required fields are valid. Cancel and navigation protect unsaved changes.
+- Success returns to Daily view for the created transaction date and shows a short status notice.
+
+**Data contract**
+
+```text
+GET  /api/v1/finance/categories?type=expense|income
+POST /api/v1/finance/transactions
+```
+
+## SCR-FIN-004 — Edit transaction
+
+**Purpose**
+Correct mutable fields on an existing transaction.
+
+**UI and behavior**
+
+- The route loads the transaction by its public date and daily number.
+- Date, type, and original source text are immutable and shown only as context where useful.
+- Amount, category, name, location, and note are editable. The request contains changed fields only.
+- Save remains unavailable when the form is unchanged or invalid. Cancel and navigation protect unsaved changes.
+- Success returns to Daily view for the transaction date and shows a short status notice.
+
+**Data contract**
+
+```text
+GET   /api/v1/finance/transactions/:date/:dailyNumber
+GET   /api/v1/finance/categories?type=expense|income
+PATCH /api/v1/finance/transactions/:date/:dailyNumber
+```
+
+## SCR-FIN-005 — Delete transaction dialog
+
+**Purpose**
+Prevent accidental deletion while keeping the user in the Daily context.
+
+**Behavior**
+
+- The dialog names the selected transaction, explains its report impact, traps focus, and supports cancel.
+- Confirm performs the delete once, prevents duplicate submission while pending, closes on success, and refreshes the selected date.
+- Failure closes the dialog and shows a safe retry message without exposing backend details.
+
+```text
+DELETE /api/v1/finance/transactions/:date/:dailyNumber
+```
+
 ## Implementation order
 
-1. Implement Daily view using the existing transactions and summary endpoints.
-2. Agree and implement the Finance API contract for daily aggregates over a date range.
-3. Implement Range view, including the date-row link back to Daily view.
+1. Daily and Range views.
+2. Shared transaction fields, batch-create form, and category loading.
+3. Create and edit routes.
+4. Confirmed delete action from Daily view.

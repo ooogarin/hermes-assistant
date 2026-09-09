@@ -7,10 +7,21 @@ import { AppShell } from '../components/layout/app-shell';
 import { PageHeader } from '../components/layout/page-header';
 
 const FinanceDailyPage = lazy(() => import('../features/finance/daily/page'));
+const FinanceCreatePage = lazy(() => import('../features/finance/create/page'));
+const FinanceEditPage = lazy(() => import('../features/finance/edit/page'));
 const FinanceReportPage = lazy(() => import('../features/finance/report/page'));
+const GrammarExplanationPage = lazy(() => import('../features/grammar/explanation/page'));
+const GrammarListPage = lazy(() => import('../features/grammar/list/page'));
+const GrammarReportPage = lazy(() => import('../features/grammar/report/page'));
+const GrammarSessionPage = lazy(() => import('../features/grammar/session/page'));
+const GrammarSettingsPage = lazy(() => import('../features/grammar/settings/page'));
+const JunkCreatePage = lazy(() => import('../features/junk/create/page'));
 const JunkDetailPage = lazy(() => import('../features/junk/detail/page'));
+const JunkEditPage = lazy(() => import('../features/junk/edit/page'));
 const JunkListPage = lazy(() => import('../features/junk/list/page'));
+const NotesCreatePage = lazy(() => import('../features/notes/create/page'));
 const NotesDetailPage = lazy(() => import('../features/notes/detail/page'));
+const NotesEditPage = lazy(() => import('../features/notes/edit/page'));
 const NotesListPage = lazy(() => import('../features/notes/list/page'));
 const ReadingDetailPage = lazy(() => import('../features/reading/detail/page'));
 const ReadingExpectedAnswersPage = lazy(() => import('../features/reading/expected-answers/page'));
@@ -68,6 +79,22 @@ export const AppRoutes = () => (
         }
       />
       <Route
+        path='finance/new'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <FinanceCreatePage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='finance/transactions/:date/:dailyNumber/edit'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <FinanceEditPage />
+          </Suspense>
+        }
+      />
+      <Route
         path='finance/report'
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
@@ -84,10 +111,26 @@ export const AppRoutes = () => (
         }
       />
       <Route
+        path='notes/new'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <NotesCreatePage />
+          </Suspense>
+        }
+      />
+      <Route
         path='notes/:code'
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
             <NotesDetailPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='notes/:code/edit'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <NotesEditPage />
           </Suspense>
         }
       />
@@ -100,6 +143,14 @@ export const AppRoutes = () => (
         }
       />
       <Route
+        path='junk/new'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <JunkCreatePage />
+          </Suspense>
+        }
+      />
+      <Route
         path='junk/:code'
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
@@ -108,12 +159,56 @@ export const AppRoutes = () => (
         }
       />
       <Route
+        path='junk/:code/edit'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <JunkEditPage />
+          </Suspense>
+        }
+      />
+      <Route
         path='english/general'
         element={<FeaturePlaceholder title='General English' description='Tanya apa saja tentang bahasa Inggris.' />}
       />
       <Route
-        path='english/grammar/*'
-        element={<FeaturePlaceholder title='Grammar' description='Latihan grammar dalam mode practice atau exam.' />}
+        path='english/grammar'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <GrammarListPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/grammar/settings'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <GrammarSettingsPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/grammar/:code/questions/:number/explanation'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <GrammarExplanationPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/grammar/:code/report'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <GrammarReportPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/grammar/:code'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <GrammarSessionPage />
+          </Suspense>
+        }
       />
       <Route
         path='english/reading'

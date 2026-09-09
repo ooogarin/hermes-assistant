@@ -24,7 +24,7 @@ export type SummaryRequest = z.infer<typeof summaryQuerySchema>;
 
 export type TransactionReferenceRequest = {
   date: string;
-  dailyNumber: number;
+  daily_number: number;
 };
 
 // ====================================================================================================
@@ -39,18 +39,18 @@ export type Category = {
 };
 
 export type FinanceTransaction = {
-  dailyNumber: number;
-  displayNumber: number;
+  daily_number: number;
+  display_number: number;
   type: TransactionType;
   amount: number;
   name: string;
   location: string | null;
   note: string | null;
   date: string;
-  rawText: string;
+  raw_text: string;
   category: Category;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type FinanceSummaryCategory = {
@@ -62,10 +62,10 @@ export type FinanceSummary = {
   from: string;
   to: string;
   mode: SummaryMode;
-  expenseTotal: number;
-  incomeTotal: number;
-  netTotal: number;
-  byCategory: FinanceSummaryCategory[];
+  expense_total: number;
+  income_total: number;
+  net_total: number;
+  by_category: FinanceSummaryCategory[];
 };
 
 export type FinanceService = {
@@ -87,8 +87,8 @@ export type FinanceService = {
 
 export type FinanceTransactionInsertPayload = {
   amount: number;
-  categoryId: number;
-  dailyNumber: number;
+  category_id: number;
+  daily_number: number;
   name: string;
   location: string | null;
   note: string | null;
@@ -96,7 +96,7 @@ export type FinanceTransactionInsertPayload = {
 
 export type FinanceTransactionUpdatePayload = {
   amount?: number;
-  categoryId?: number;
+  category_id?: number;
   name?: string;
   location?: string | null;
   note?: string | null;

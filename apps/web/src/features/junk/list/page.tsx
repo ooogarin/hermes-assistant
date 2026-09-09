@@ -1,6 +1,8 @@
+import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { NavigationNotice } from '../../../components/feedback/navigation-notice';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { JunkDetailPane } from '../../../components/junk/junk-detail-pane';
 import { JunkList } from '../../../components/junk/junk-list';
@@ -87,7 +89,19 @@ const JunkListPage = () => {
 
   return (
     <div className='space-y-7'>
-      <PageHeader title='Junk' description='Simpan temuan menarik untuk dicari lagi nanti.' />
+      <NavigationNotice />
+      <PageHeader
+        actions={
+          <Link
+            className='inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-primary bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-strong'
+            to='/junk/new'
+          >
+            <Plus aria-hidden='true' size={18} /> Tambah Junk
+          </Link>
+        }
+        title='Junk'
+        description='Simpan temuan menarik untuk dicari lagi nanti.'
+      />
       <JunkToolbar
         activeCategory={filters.category}
         activeFilterCount={activeFilterCount}

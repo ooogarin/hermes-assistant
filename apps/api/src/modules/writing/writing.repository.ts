@@ -22,47 +22,47 @@ const writingCodeLockNamespace = 173_205_080;
 const writingSubmissionLockNamespace = 223_606_797;
 
 const toWritingSettings = (row: WritingSettingsRow): WritingSettings => ({
-  defaultLevel: row.default_level,
-  defaultWordCount: row.default_word_count,
-  minWordCount: row.min_word_count,
-  maxWordCount: row.max_word_count,
-  updatedAt: toIsoTimestamp(row.updated_at),
+  default_level: row.default_level,
+  default_word_count: row.default_word_count,
+  min_word_count: row.min_word_count,
+  max_word_count: row.max_word_count,
+  updated_at: toIsoTimestamp(row.updated_at),
 });
 
 const toWritingMaterial = (row: WritingMaterialRow): WritingMaterial => ({
   code: row.code,
   topic: row.topic,
-  promptText: row.prompt_text,
+  prompt_text: row.prompt_text,
   level: row.level,
   genre: row.genre,
   tags: row.tags,
-  targetWordCount: row.target_word_count,
-  isOverride: row.is_override,
+  target_word_count: row.target_word_count,
+  is_override: row.is_override,
   source: row.source,
 });
 
 const toWritingSubmission = (row: WritingSubmissionRow): WritingSubmission => ({
-  submissionNumber: row.submission_number,
-  originalText: row.original_text,
-  wordCount: row.word_count,
-  estimatedLevel: row.estimated_level,
+  submission_number: row.submission_number,
+  original_text: row.original_text,
+  word_count: row.word_count,
+  estimated_level: row.estimated_level,
   analysis: row.analysis,
-  submittedAt: toIsoTimestamp(row.submitted_at),
+  submitted_at: toIsoTimestamp(row.submitted_at),
 });
 
 const toWritingMaterialListItem = (row: WritingMaterialListRow): WritingMaterialListItem => ({
   code: row.code,
   topic: row.topic,
-  promptExcerpt: row.prompt_excerpt,
+  prompt_excerpt: row.prompt_excerpt,
   genre: row.genre,
   level: row.level,
-  targetWordCount: row.target_word_count,
+  target_word_count: row.target_word_count,
   tags: row.tags,
   source: row.source,
   status: row.status,
-  submissionCount: Number(row.submission_count),
-  latestSubmissionNumber: row.latest_submission_number === null ? null : Number(row.latest_submission_number),
-  createdAt: toIsoTimestamp(row.created_at),
+  submission_count: Number(row.submission_count),
+  latest_submission_number: row.latest_submission_number === null ? null : Number(row.latest_submission_number),
+  created_at: toIsoTimestamp(row.created_at),
 });
 
 export const getSettings = async (): Promise<WritingSettings> => {
@@ -88,10 +88,10 @@ export const updateSettings = async (input: UpdateWritingSettingsRequest): Promi
   const [row] = await getDatabaseClient()<WritingSettingsRow[]>`
     UPDATE writing_settings
     SET
-      default_level = CASE WHEN ${input.defaultLevel !== undefined} THEN ${input.defaultLevel ?? ''} ELSE default_level END,
-      default_word_count = CASE WHEN ${input.defaultWordCount !== undefined} THEN ${input.defaultWordCount ?? 0} ELSE default_word_count END,
-      min_word_count = CASE WHEN ${input.minWordCount !== undefined} THEN ${input.minWordCount ?? 0} ELSE min_word_count END,
-      max_word_count = CASE WHEN ${input.maxWordCount !== undefined} THEN ${input.maxWordCount ?? 0} ELSE max_word_count END,
+      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''} ELSE default_level END,
+      default_word_count = CASE WHEN ${input.default_word_count !== undefined} THEN ${input.default_word_count ?? 0} ELSE default_word_count END,
+      min_word_count = CASE WHEN ${input.min_word_count !== undefined} THEN ${input.min_word_count ?? 0} ELSE min_word_count END,
+      max_word_count = CASE WHEN ${input.max_word_count !== undefined} THEN ${input.max_word_count ?? 0} ELSE max_word_count END,
       updated_at = NOW()
     WHERE id = (SELECT id FROM writing_settings ORDER BY id ASC LIMIT 1)
     RETURNING
@@ -127,7 +127,7 @@ export const insertMaterial = async (
   trx: DatabaseReservedConnection,
   code: string,
   input: CreateWritingMaterialRequest,
-  isOverride: boolean,
+  is_override: boolean,
 ): Promise<void> => {
   await trx`
     INSERT INTO writing_materials (
@@ -144,12 +144,12 @@ export const insertMaterial = async (
     VALUES (
       ${code},
       ${input.topic},
-      ${input.promptText},
+      ${input.prompt_text},
       ${input.level},
       ${input.genre},
       ${trx.array(input.tags, 'TEXT')},
-      ${input.targetWordCount},
-      ${isOverride},
+      ${input.target_word_count},
+      ${is_override},
       ${input.source}::writing_source
     )
   `;
@@ -177,6 +177,8 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
   const offset = (input.page - 1) * input.limit;
+  const levels = 'levels' in input ? input.levels : null;
+  const levelValues = database.array(levels ?? [], 'TEXT');
   const [rows, [count]] = await Promise.all([
     database<WritingMaterialListRow[]>`
       WITH material_summary AS (
@@ -228,7 +230,7 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
         OR code ILIKE ${searchPattern}
         OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
       ))
-        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
         AND (${input.status}::TEXT IS NULL OR CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END = ${input.status})
       ORDER BY
@@ -266,7 +268,7 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
         OR code ILIKE ${searchPattern}
         OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
       ))
-        AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+        AND (${levels === null} OR level = ANY(${levelValues}))
         AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
         AND (${input.status}::TEXT IS NULL OR CASE WHEN submission_count > 0 THEN 'reviewed' ELSE 'unsubmitted' END = ${input.status})
     `,
@@ -279,7 +281,7 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
       page: input.page,
       limit: input.limit,
       total,
-      totalPages: Math.ceil(total / input.limit),
+      total_pages: Math.ceil(total / input.limit),
     },
   };
 };
@@ -288,7 +290,7 @@ export const insertSubmission = async (
   trx: DatabaseReservedConnection,
   code: string,
   input: CreateWritingSubmissionRequest,
-  wordCount: number,
+  word_count: number,
 ): Promise<WritingSubmission | null> => {
   // Submission numbers are scoped to a material, so serialize the MAX + 1 lookup for the same code.
   await trx`
@@ -314,9 +316,9 @@ export const insertSubmission = async (
     SELECT
       target.id,
       next_submission.submission_number,
-      ${input.originalText},
-      ${wordCount},
-      ${input.estimatedLevel},
+      ${input.original_text},
+      ${word_count},
+      ${input.estimated_level},
       ${JSON.stringify(input.analysis)}::JSONB
     FROM target, next_submission
     RETURNING
@@ -330,7 +332,7 @@ export const insertSubmission = async (
   return row === undefined ? null : toWritingSubmission(row);
 };
 
-export const getSubmission = async (code: string, submissionNumber: number): Promise<WritingSubmission | null> => {
+export const getSubmission = async (code: string, submission_number: number): Promise<WritingSubmission | null> => {
   const [row] = await getDatabaseClient()<WritingSubmissionRow[]>`
     SELECT
       s.submission_number,
@@ -341,7 +343,7 @@ export const getSubmission = async (code: string, submissionNumber: number): Pro
       s.submitted_at
     FROM writing_submissions s
     JOIN writing_materials m ON m.id = s.material_id
-    WHERE m.code = ${code} AND m.deleted_at IS NULL AND s.submission_number = ${submissionNumber} AND s.deleted_at IS NULL
+    WHERE m.code = ${code} AND m.deleted_at IS NULL AND s.submission_number = ${submission_number} AND s.deleted_at IS NULL
   `;
   return row === undefined ? null : toWritingSubmission(row);
 };

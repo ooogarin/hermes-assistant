@@ -1,6 +1,7 @@
-import { Settings } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { PageHeader } from '../../../components/layout/page-header';
@@ -35,18 +36,17 @@ const ReadingDetailPage = () => {
 
   return (
     <div className='space-y-7'>
+      <Link
+        className='inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline'
+        to='/english/reading'
+      >
+        <ArrowLeft aria-hidden='true' size={18} />
+        Semua Reading
+      </Link>
       <PageHeader
         title='Reading'
         description='Latihan pemahaman bacaan.'
-        actions={
-          <Link
-            className='inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary hover:underline'
-            to='/english/reading/settings'
-          >
-            <Settings aria-hidden='true' size={18} />
-            Pengaturan
-          </Link>
-        }
+        actions={<EnglishSettingsLink to='/english/reading/settings' />}
       />
 
       {material.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}

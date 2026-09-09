@@ -17,7 +17,7 @@ Use Finance for expenses, income, transaction corrections/deletions, category lo
 - `GET /api/v1/finance/categories` with optional query `type=expense|income`.
 - `POST /api/v1/finance/transactions` creates 1–100 transactions.
 - `GET /api/v1/finance/transactions` requires query `date=YYYY-MM-DD`.
-- `GET|PATCH|DELETE /api/v1/finance/transactions/:date/:dailyNumber` targets a stable daily reference.
+- `GET|PATCH|DELETE /api/v1/finance/transactions/:date/:daily_number` targets a stable daily reference.
 - `GET /api/v1/finance/summary` requires `from`, `to`, and optional `mode=expense|income|net`.
 
 Create body:
@@ -26,11 +26,11 @@ Create body:
 {
   "date": "2026-09-05",
   "type": "expense",
-  "rawText": "kopi 25 di kantor",
+  "raw_text": "kopi 25 di kantor",
   "transactions": [
     {
       "amount": 25000,
-      "categoryCode": "food_drink",
+      "category_code": "food_drink",
       "name": "kopi",
       "location": "kantor",
       "note": null
@@ -39,7 +39,7 @@ Create body:
 }
 ```
 
-Patch supports only `amount`, `categoryCode`, `name`, `location`, and `note`. Date, type, raw text, and daily number are immutable.
+Patch supports only `amount`, `category_code`, `name`, `location`, and `note`. Date, type, raw text, and daily number are immutable.
 
 ## Target Resolution
 

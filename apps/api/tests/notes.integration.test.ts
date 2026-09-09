@@ -48,8 +48,8 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
       type: 'fact',
       category: 'Tech/Programming',
       source: 'postgresql.org',
-      sourceContext: null,
-      sourceReference: null,
+      source_context: null,
+      source_reference: null,
       tags: ['postgres', 'database'],
     });
     const secondNote = await notesService.create({
@@ -58,8 +58,8 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
       type: 'idea',
       category: 'Tech/Programming',
       source: null,
-      sourceContext: null,
-      sourceReference: null,
+      source_context: null,
+      source_reference: null,
       tags: ['database'],
     });
 

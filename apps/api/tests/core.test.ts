@@ -6,8 +6,8 @@ test('creates a success response without empty metadata', () => {
   expect(
     createSuccessResponse(
       {
-        createdAt: '2026-09-06T10:00:00.000Z',
-        nestedItems: [{ sourceReference: 'RD-20260906-001' }],
+        created_at: '2026-09-06T10:00:00.000Z',
+        nestedItems: [{ source_reference: 'RD-20260906-001' }],
       },
       { pageSize: 20 },
     ),
@@ -27,7 +27,7 @@ test('creates an error response with a request ID', () => {
       {
         code: 'EXAMPLE_ERROR',
         message: 'Example error',
-        details: { fieldName: 'createdAt' },
+        details: { fieldName: 'created_at' },
       },
       'req_123',
     ),
@@ -36,18 +36,18 @@ test('creates an error response with a request ID', () => {
     error: {
       code: 'EXAMPLE_ERROR',
       message: 'Example error',
-      details: { field_name: 'createdAt' },
+      details: { field_name: 'created_at' },
     },
     request_id: 'req_123',
   });
 });
 
 test('preserves non-plain JSON values while converting object keys', () => {
-  const createdAt = new Date('2026-09-06T10:00:00.000Z');
+  const created_at = new Date('2026-09-06T10:00:00.000Z');
 
-  expect(createSuccessResponse({ createdAt })).toEqual({
+  expect(createSuccessResponse({ created_at })).toEqual({
     success: true,
-    data: { created_at: createdAt },
+    data: { created_at: created_at },
   });
 });
 

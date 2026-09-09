@@ -1,16 +1,29 @@
-import { ArrowDown, ArrowUp, ReceiptText } from 'lucide-react';
+import { ArrowDown, ArrowUp, Pencil, ReceiptText, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../lib/formatting/formatters';
 import type { FinanceTransaction } from '../../features/finance/finance-api';
 
 const timeFormatter = new Intl.DateTimeFormat('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
 const formatTime = (value: string): string => timeFormatter.format(new Date(value)).replace('.', ':');
-const transactionColumns = 'md:grid-cols-[7rem_minmax(7rem,0.9fr)_minmax(6rem,0.8fr)_minmax(7rem,1fr)_3.5rem_7rem]';
+const transactionColumns =
+  'lg:grid-cols-[7.5rem_minmax(8rem,1fr)_minmax(7rem,0.8fr)_minmax(8rem,1fr)_4rem_minmax(7.5rem,0.8fr)_5.5rem]';
+const getTransactionNote = ({ location, note }: FinanceTransaction): string => {
+  const details = [note, location].filter(
+    (value): value is string => value !== null && value.trim() !== '' && value.trim().toLowerCase() !== 'null',
+  );
+
+  return details.join(' · ') || '—';
+};
 
 export const FinanceTransactionList = ({
   dateLabel,
+  editTo,
+  onDelete,
   transactions,
 }: {
   dateLabel: string;
+  editTo: (transaction: FinanceTransaction) => string;
+  onDelete: (transaction: FinanceTransaction) => void;
   transactions: FinanceTransaction[];
 }) => (
   <section
@@ -31,7 +44,7 @@ export const FinanceTransactionList = ({
     ) : (
       <>
         <div
-          className={`hidden gap-3 border-b border-border px-6 py-3 text-xs text-ink-muted md:grid ${transactionColumns}`}
+          className={`hidden gap-4 border-b border-border px-6 py-3 text-xs font-medium text-ink-muted lg:grid ${transactionColumns}`}
         >
           <span>Jenis</span>
           <span>Nama</span>
@@ -39,6 +52,7 @@ export const FinanceTransactionList = ({
           <span>Catatan</span>
           <span>Waktu</span>
           <span className='text-right'>Jumlah</span>
+          <span className='text-right'>Aksi</span>
         </div>
         <ul>
           {transactions.map((transaction) => {
@@ -47,7 +61,7 @@ export const FinanceTransactionList = ({
             return (
               <li
                 key={transaction.dailyNumber}
-                className={`grid gap-3 border-b border-border px-5 py-5 last:border-b-0 md:items-center md:px-6 ${transactionColumns}`}
+                className={`grid gap-4 border-b border-border px-5 py-5 last:border-b-0 lg:items-center lg:px-6 ${transactionColumns}`}
               >
                 <div className='flex items-center gap-2 text-sm'>
                   <span
@@ -61,14 +75,37 @@ export const FinanceTransactionList = ({
                   </span>
                   <span>{income ? 'Pemasukan' : 'Pengeluaran'}</span>
                 </div>
-                <strong className='min-w-0 text-sm font-medium text-ink'>{transaction.name}</strong>
-                <span className='min-w-0 text-sm text-ink-muted'>{transaction.category.name}</span>
-                <span className='min-w-0 text-sm text-ink-muted'>{transaction.note}</span>
+                <strong className='min-w-0 break-words text-sm font-medium text-ink'>{transaction.name}</strong>
+                <span className='min-w-0 break-words text-sm text-ink-muted'>{transaction.category.name}</span>
+                <span className='min-w-0 break-words text-sm text-ink-muted'>{getTransactionNote(transaction)}</span>
                 <span className='text-sm text-ink-muted'>{formatTime(transaction.createdAt)}</span>
-                <strong className={income ? 'text-sm text-primary md:text-right' : 'text-sm text-ink md:text-right'}>
+                <strong
+                  className={
+                    income
+                      ? 'whitespace-nowrap text-sm text-primary lg:text-right'
+                      : 'whitespace-nowrap text-sm text-ink lg:text-right'
+                  }
+                >
                   {income ? '+' : '-'}
                   {formatCurrency(transaction.amount)}
                 </strong>
+                <div className='flex items-center gap-2 lg:justify-end'>
+                  <Link
+                    className='grid size-9 place-items-center rounded-control border border-border text-ink-muted hover:bg-surface-subtle hover:text-ink'
+                    to={editTo(transaction)}
+                    aria-label={`Edit ${transaction.name}`}
+                  >
+                    <Pencil aria-hidden='true' size={16} />
+                  </Link>
+                  <button
+                    type='button'
+                    className='grid size-9 place-items-center rounded-control border border-border text-danger hover:bg-danger-subtle'
+                    aria-label={`Hapus ${transaction.name}`}
+                    onClick={() => onDelete(transaction)}
+                  >
+                    <Trash2 aria-hidden='true' size={16} />
+                  </button>
+                </div>
               </li>
             );
           })}
