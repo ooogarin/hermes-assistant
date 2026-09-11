@@ -18,9 +18,6 @@ const NotesCreatePage = () => {
       </Link>
       <header className='mt-7 border-b border-border pb-7'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Buat catatan</h1>
-        <p className='mt-3 max-w-2xl text-base leading-7 text-ink-muted'>
-          Simpan informasi yang ingin ditemukan kembali dalam jangka panjang.
-        </p>
       </header>
       <NoteForm cancelTo='/notes' onSubmit={save} submitLabel='Simpan catatan' />
     </div>

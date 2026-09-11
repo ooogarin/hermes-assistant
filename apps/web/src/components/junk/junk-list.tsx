@@ -4,8 +4,12 @@ import { formatDate } from '../../lib/formatting/formatters';
 import { JunkCategoryLabel, JunkTags } from './junk-badges';
 import type { JunkItem } from '../../features/junk/junk-api';
 
+const junkColumns = 'xl:grid-cols-[6.5rem_minmax(12rem,2fr)_minmax(7rem,1fr)_minmax(6.5rem,0.8fr)_6.5rem_9rem]';
+
 const Header = () => (
-  <div className='hidden grid-cols-[7rem_minmax(12rem,2fr)_9rem_8rem_6.5rem_9rem] gap-4 border-b border-border px-4 py-3 text-xs font-medium text-ink-muted xl:grid'>
+  <div
+    className={`hidden gap-4 border-b border-border px-4 py-3 text-xs font-medium text-ink-muted xl:grid ${junkColumns}`}
+  >
     <span>Kategori</span>
     <span>Judul / Cuplikan</span>
     <span>Tags</span>
@@ -44,16 +48,20 @@ export const JunkList = ({
               }
               to={toDetail(item.code)}
             >
-              <div className='grid gap-4 xl:grid-cols-[7rem_minmax(12rem,2fr)_9rem_8rem_6.5rem_9rem] xl:items-center'>
+              <div className={`grid gap-4 xl:items-start ${junkColumns}`}>
                 <JunkCategoryLabel category={item.category} />
                 <div className='min-w-0'>
                   <h3 className='text-sm font-semibold text-ink'>{getJunkTitle(item)}</h3>
-                  {excerpt === null ? null : <p className='mt-1 text-sm leading-6 text-ink-muted'>{excerpt}</p>}
+                  {excerpt === null ? null : (
+                    <p className='mt-1 break-words text-sm leading-6 text-ink-muted'>{excerpt}</p>
+                  )}
                 </div>
-                <JunkTags tags={item.tags} />
-                <span className='text-sm text-ink-muted'>{sourceHost ?? '—'}</span>
-                <span className='text-sm text-ink-muted'>{formatDate(item.createdAt)}</span>
-                <span className='text-sm text-ink-muted'>{item.code}</span>
+                <div className='min-w-0 self-start'>
+                  <JunkTags tags={item.tags} />
+                </div>
+                <span className='min-w-0 break-words text-sm text-ink-muted'>{sourceHost ?? '—'}</span>
+                <span className='whitespace-nowrap text-sm text-ink-muted'>{formatDate(item.createdAt)}</span>
+                <span className='whitespace-nowrap text-sm text-ink-muted'>{item.code}</span>
               </div>
             </Link>
           </li>

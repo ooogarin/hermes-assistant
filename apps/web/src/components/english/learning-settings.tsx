@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowLeft, ArrowUp, CircleGauge, Info, List, Tag } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { classNames } from '../../lib/class-names';
 import { formatDate } from '../../lib/formatting/formatters';
@@ -7,6 +7,7 @@ import { useApiQuery } from '../../lib/hooks/use-api-query';
 import { ErrorState } from '../feedback/content-state';
 import { Skeleton } from '../feedback/skeleton';
 import { Button } from '../ui/button';
+import { Input } from '../ui/form-field';
 import type { FormEvent } from 'react';
 
 export type LearningSettings = {
@@ -48,23 +49,28 @@ const NumberField = ({
   label: string;
   onChange: (value: number) => void;
   value: number;
-}) => (
-  <label className='grid gap-2 text-sm font-medium text-ink'>
-    {label}
-    <span className='flex min-h-12 items-center overflow-hidden rounded-control border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15'>
-      <input
-        className='min-w-0 flex-1 bg-transparent px-4 outline-none disabled:cursor-not-allowed'
-        disabled={disabled}
-        min={1}
-        max={20_000}
-        type='number'
-        value={Number.isNaN(value) ? '' : value}
-        onChange={(event) => onChange(event.target.valueAsNumber)}
-      />
-      <span className='px-4 text-ink-muted'>kata</span>
-    </span>
-  </label>
-);
+}) => {
+  const inputId = useId();
+
+  return (
+    <label className='grid gap-2 text-sm font-medium text-ink' htmlFor={inputId}>
+      {label}
+      <span className='flex min-h-12 items-center overflow-hidden rounded-control border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15'>
+        <Input
+          className='min-h-0 min-w-0 flex-1 border-0 bg-transparent px-4 focus:ring-0'
+          disabled={disabled}
+          id={inputId}
+          min={1}
+          max={20_000}
+          type='number'
+          value={Number.isNaN(value) ? '' : value}
+          onChange={(event) => onChange(event.target.valueAsNumber)}
+        />
+        <span className='px-4 text-ink-muted'>kata</span>
+      </span>
+    </label>
+  );
+};
 
 const LoadingState = () => (
   <div className='grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)]'>
@@ -177,9 +183,6 @@ const SettingsForm = ({
       </button>
       <header className='mt-8 border-b border-border pb-8'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Pengaturan {feature}</h1>
-        <p className='mt-3 text-base leading-7 text-ink-muted'>
-          Atur preferensi default untuk materi {feature.toLowerCase()} berikutnya.
-        </p>
       </header>
 
       <div className='mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)]'>

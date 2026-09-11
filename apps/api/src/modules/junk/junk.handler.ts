@@ -7,8 +7,8 @@ import type { AppEnv } from '../../core/http/app-env';
 import type { JunkReferenceRequest } from './junk.types';
 
 export const create = async (context: Context<AppEnv>) => {
-  const data = getBody(context, createJunkSchema);
-  const result = await junkService.create(data);
+  const input = getBody(context, createJunkSchema);
+  const result = await junkService.create(input);
 
   return successResponse({ context, data: result, statusCode: 201 });
 };
@@ -30,9 +30,9 @@ export const list = async (context: Context<AppEnv>) => {
 
 export const update = async (context: Context<AppEnv>) => {
   const params = getParam(context, junkCodeSchema);
-  const data = getBody(context, updateJunkSchema);
+  const input = getBody(context, updateJunkSchema);
   const request: JunkReferenceRequest = { code: params.code };
-  const result = await junkService.update(request, data);
+  const result = await junkService.update(request, input);
 
   return successResponse({ context, data: result });
 };

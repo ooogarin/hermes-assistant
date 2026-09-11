@@ -2,9 +2,11 @@ import { beforeEach, expect, mock, test } from 'bun:test';
 import { writingAnalysis } from './fixtures/writing';
 import type { DatabaseReservedConnection } from '../src/core/database/database.types';
 import type {
+  GrammarCountRow,
   GrammarQuestion,
   GrammarQuestionRow,
   GrammarSession,
+  GrammarSessionListRow,
   GrammarSessionRow,
 } from '../src/modules/grammar/grammar.types';
 import type {
@@ -14,6 +16,7 @@ import type {
   ReadingQuestionWithAnswerRow,
   ReadingSettings,
   ReadingSettingsRow,
+  SaveReadingSubmissionPayload,
 } from '../src/modules/reading/reading.types';
 import type {
   WritingCountRow,
@@ -164,6 +167,8 @@ const writingSubmissionRow: WritingSubmissionRow = {
 
 let financeCategories: Array<{ id: number; code: string; name: string; description: string; type: 'expense' }> = [];
 let grammarLockedSessionResult: GrammarSession = grammarSession;
+let grammarListResult: GrammarSessionListRow[] = [];
+let grammarCountResult: GrammarCountRow = { total: 0 };
 let grammarAnswerWriteCount = 0;
 let committedTransactionCount = 0;
 let rolledBackTransactionCount = 0;
@@ -174,6 +179,7 @@ let readingMaterialResult: ReadingMaterialRow | null = readingMaterialRow;
 let readingQuestionsResult: ReadingQuestionWithAnswerRow[] = readingQuestionRows;
 let readingListResult: ReadingMaterialListRow[] = [];
 let readingCountResult: { total: number | string } = { total: 0 };
+let readingSubmissionPayloadResult: SaveReadingSubmissionPayload | null = null;
 let readingFindByCodeCallCount = 0;
 let writingSettingsResult = writingSettingsRow;
 let writingSubmissionResult: WritingSubmissionRow | null = writingSubmissionRow;
@@ -251,6 +257,8 @@ mock.module('../src/modules/grammar/grammar.repository', () => ({
   getNextSequence: async () => ({ sequence: 0 }),
   insertSession: async () => ({ id: 1 }),
   insertQuestions: async () => undefined,
+  listSessions: async () => grammarListResult,
+  countSessions: async () => grammarCountResult,
   getSessionForUpdate: async () => toGrammarSessionRow(grammarLockedSessionResult),
   getQuestionsInTransaction: async () => grammarLockedSessionResult.questions.map(toGrammarQuestionRow),
   upsertAnswer: async () => {
@@ -275,7 +283,14 @@ mock.module('../src/modules/reading/reading.repository', () => ({
   listMaterials: async () => readingListResult,
   countMaterials: async () => readingCountResult,
   insertSubmission: async () => ({ id: 1 }),
-  insertAnswers: async () => undefined,
+  insertAnswers: async (
+    _trx: DatabaseReservedConnection,
+    _code: string,
+    _submissionId: number,
+    payload: SaveReadingSubmissionPayload,
+  ) => {
+    readingSubmissionPayloadResult = payload;
+  },
 }));
 
 mock.module('../src/modules/writing/writing.repository', () => ({
@@ -302,6 +317,8 @@ const writingService = await import('../src/modules/writing/writing.service');
 beforeEach(() => {
   financeCategories = [];
   grammarLockedSessionResult = grammarSession;
+  grammarListResult = [];
+  grammarCountResult = { total: 0 };
   grammarAnswerWriteCount = 0;
   committedTransactionCount = 0;
   rolledBackTransactionCount = 0;
@@ -312,6 +329,7 @@ beforeEach(() => {
   readingQuestionsResult = readingQuestionRows;
   readingListResult = [];
   readingCountResult = { total: 0 };
+  readingSubmissionPayloadResult = null;
   readingFindByCodeCallCount = 0;
   writingSettingsResult = writingSettingsRow;
   writingSubmissionResult = writingSubmissionRow;
@@ -390,6 +408,13 @@ test('create flows return the transaction-local result without a post-commit rea
   expect(createdReadingMaterial).toEqual(readingMaterial);
   expect(createdWritingMaterial).toEqual(writingMaterial);
   expect(submittedReadingMaterial).toEqual(readingMaterial);
+  expect(readingSubmissionPayloadResult).toEqual({
+    answers: [
+      { question_number: 1, user_answer: 'Mira.' },
+      { question_number: 2, user_answer: 'The market.' },
+      { question_number: 3, user_answer: 'Morning.' },
+    ],
+  });
   expect(readingFindByCodeCallCount).toBe(1);
   expect(writingGetMaterialCallCount).toBe(0);
   expect(committedTransactionCount).toBe(4);
@@ -465,6 +490,58 @@ test('reading and writing services compose list responses from repository rows',
         submission_count: 2,
         latest_submission_number: 2,
         created_at: '2026-09-05T10:00:00.000Z',
+      },
+    ],
+    meta: { page: 2, limit: 20, total: 21, total_pages: 2 },
+  });
+});
+
+test('grammar service composes list responses from repository rows', async () => {
+  grammarListResult = [
+    {
+      code: grammarSession.code,
+      mode: grammarSession.mode,
+      source: grammarSession.source,
+      status: grammarSession.status,
+      level: grammarSession.level,
+      grammar_area: 'tenses',
+      grammar_point: 'simple past',
+      question_count: '5',
+      answered_question_count: '3',
+      score: null,
+      max_score: null,
+      started_at: '2026-09-05T10:00:00.000Z',
+      completed_at: null,
+    },
+  ];
+  grammarCountResult = { total: '21' };
+
+  await expect(
+    grammarService.listSessions({
+      q: 'past',
+      status: 'active',
+      mode: 'practice',
+      level: 'A1',
+      page: 2,
+      limit: 20,
+      sort: 'newest',
+    }),
+  ).resolves.toEqual({
+    items: [
+      {
+        code: grammarSession.code,
+        mode: 'practice',
+        source: 'request',
+        status: 'active',
+        level: 'A1',
+        grammar_area: 'tenses',
+        grammar_point: 'simple past',
+        question_count: 5,
+        answered_question_count: 3,
+        score: null,
+        max_score: null,
+        started_at: '2026-09-05T10:00:00.000Z',
+        completed_at: null,
       },
     ],
     meta: { page: 2, limit: 20, total: 21, total_pages: 2 },

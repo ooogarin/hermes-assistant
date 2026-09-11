@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
 import { Button } from '../ui/button';
-import { parseTags, TextAreaField, TextField } from '../ui/form-field';
+import { TextAreaField, TextField } from '../ui/form-field';
+import { TagInput } from '../ui/tag-input';
 import type { FormEvent } from 'react';
 
 export type JunkFormValues = {
@@ -29,19 +30,18 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
   const [category, setCategory] = useState(initial.category);
   const [contentText, setContentText] = useState(initial.contentText ?? '');
   const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl ?? '');
-  const [tags, setTags] = useState(initial.tags.join(', '));
+  const [tags, setTags] = useState(initial.tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
-  const parsedTags = useMemo(() => parseTags(tags), [tags]);
   const validUrl = sourceUrl.trim() === '' || URL.canParse(sourceUrl.trim());
-  const valid =
-    category.trim().length > 0 && parsedTags.length <= 50 && parsedTags.every((tag) => tag.length <= 64) && validUrl;
+  const valid = category.trim().length > 0 && tags.length <= 50 && tags.every((tag) => tag.length <= 64) && validUrl;
   const dirty =
     title !== (initial.title ?? '') ||
     category !== initial.category ||
     contentText !== (initial.contentText ?? '') ||
     sourceUrl !== (initial.sourceUrl ?? '') ||
-    tags !== initial.tags.join(', ');
+    tags.length !== initial.tags.length ||
+    tags.some((tag, index) => tag !== initial.tags[index]);
   const canLeave = useUnsavedChanges(dirty);
 
   const submit = async (event: FormEvent) => {
@@ -54,7 +54,7 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
         category: category.trim(),
         contentText: optionalValue(contentText),
         sourceUrl: optionalValue(sourceUrl),
-        tags: parsedTags,
+        tags,
         title: optionalValue(title),
       });
     } catch {
@@ -96,13 +96,7 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
           type='url'
           value={sourceUrl}
         />
-        <TextField
-          disabled={saving}
-          helper='Pisahkan dengan koma'
-          label='Tags'
-          onChange={(event) => setTags(event.target.value)}
-          value={tags}
-        />
+        <TagInput disabled={saving} label='Tags' onChange={setTags} value={tags} />
       </div>
       {!valid && dirty ? (
         <p className='mt-4 text-sm text-danger'>Kategori wajib diisi, URL harus valid, dan maksimal 50 tag.</p>

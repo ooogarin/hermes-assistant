@@ -4,6 +4,7 @@ import * as grammarHandler from './grammar.handler';
 import {
   createSessionSchema,
   evaluateSessionSchema,
+  listSessionsSchema,
   questionReferenceSchema,
   saveAnswerSchema,
   sessionCodeSchema,
@@ -17,6 +18,7 @@ export const createGrammarRoutes = () => {
   route.get('/settings', grammarHandler.getSettings);
   route.patch('/settings', appValidator('json', updateSettingsSchema), grammarHandler.updateSettings);
   route.post('/sessions', appValidator('json', createSessionSchema), grammarHandler.createSession);
+  route.get('/sessions', appValidator('query', listSessionsSchema), grammarHandler.listSessions);
   route.get('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.getSession);
   route.delete('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.removeSession);
   route.put(

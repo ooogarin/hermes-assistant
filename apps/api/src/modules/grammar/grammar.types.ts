@@ -2,6 +2,7 @@ import type { z } from 'zod';
 import type {
   createSessionSchema,
   evaluateSessionSchema,
+  listSessionsSchema,
   questionReferenceSchema,
   saveAnswerSchema,
   sessionCodeSchema,
@@ -20,6 +21,7 @@ export type GrammarAnswerResult = 'correct' | 'partial' | 'incorrect';
 export type CreateGrammarSessionRequest = z.infer<typeof createSessionSchema>;
 export type SaveGrammarAnswerRequest = z.infer<typeof saveAnswerSchema>;
 export type EvaluateGrammarSessionRequest = z.infer<typeof evaluateSessionSchema>;
+export type ListGrammarSessionsRequest = z.infer<typeof listSessionsSchema>;
 export type UpdateGrammarSettingsRequest = z.infer<typeof updateSettingsSchema>;
 export type GrammarSessionParams = z.infer<typeof sessionCodeSchema>;
 export type GrammarQuestionParams = z.infer<typeof questionReferenceSchema>;
@@ -64,6 +66,34 @@ export type GrammarSession = {
   questions: GrammarQuestion[];
 };
 
+export type GrammarSessionListItem = {
+  code: string;
+  mode: GrammarMode;
+  source: GrammarSource;
+  status: GrammarSessionStatus;
+  level: string;
+  grammar_area: string | null;
+  grammar_point: string | null;
+  question_count: number;
+  answered_question_count: number;
+  score: number | null;
+  max_score: number | null;
+  started_at: string;
+  completed_at: string | null;
+};
+
+export type GrammarSessionList = {
+  items: GrammarSessionListItem[];
+  meta: GrammarPaginationMeta;
+};
+
+export type GrammarPaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+};
+
 export type GrammarExplanation = {
   question_number: number;
   question_text: string;
@@ -91,6 +121,7 @@ export type GrammarService = {
   getSettings: () => Promise<GrammarSettings>;
   updateSettings: (input: UpdateGrammarSettingsRequest) => Promise<GrammarSettings>;
   createSession: (input: CreateGrammarSessionRequest) => Promise<GrammarSession>;
+  listSessions: (input: ListGrammarSessionsRequest) => Promise<GrammarSessionList>;
   getSession: (code: string) => Promise<GrammarSession>;
   removeSession: (code: string) => Promise<void>;
   saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) => Promise<GrammarSession>;
@@ -138,6 +169,16 @@ export type UpdateGrammarSettingsPayload = {
   daily_question_count?: number;
 };
 
+export type ListGrammarSessionsQuery = {
+  q?: string;
+  status?: GrammarSessionStatus;
+  mode?: GrammarMode;
+  level?: string;
+  page: number;
+  limit: number;
+  sort: 'newest' | 'oldest';
+};
+
 // ====================================================================================================
 // Repository responses
 // ====================================================================================================
@@ -162,6 +203,26 @@ export type GrammarSessionRow = {
   max_score: number | null;
   started_at: Date | string;
   completed_at: Date | string | null;
+};
+
+export type GrammarSessionListRow = {
+  code: string;
+  mode: GrammarMode;
+  source: GrammarSource;
+  status: GrammarSessionStatus;
+  level: string;
+  grammar_area: string | null;
+  grammar_point: string | null;
+  question_count: number | string;
+  answered_question_count: number | string;
+  score: number | string | null;
+  max_score: number | string | null;
+  started_at: Date | string;
+  completed_at: Date | string | null;
+};
+
+export type GrammarCountRow = {
+  total: number | string;
 };
 
 export type GrammarSettingsRow = {

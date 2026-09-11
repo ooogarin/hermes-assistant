@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { classNames } from '../../lib/class-names';
+import { controlClassName, Field } from './form-field';
 import type { SelectHTMLAttributes } from 'react';
 
 type SelectFieldProps = SelectHTMLAttributes<HTMLSelectElement> & {
@@ -15,13 +16,12 @@ export const SelectField = ({ className, error, helperText, id, label, ...props 
   const messageId = message === undefined ? undefined : `${selectId}-message`;
 
   return (
-    <label className='grid gap-2 text-sm font-medium text-ink' htmlFor={selectId}>
-      {label}
+    <Field error={error} helper={helperText} htmlFor={selectId} label={label} messageId={messageId}>
       <select
         id={selectId}
         className={classNames(
-          'min-h-11 rounded-control border bg-surface px-3 py-2 text-sm text-ink transition-colors',
-          'disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:text-ink-muted',
+          controlClassName,
+          'py-2',
           error === undefined ? 'border-border-strong' : 'border-danger',
           className,
         )}
@@ -29,14 +29,6 @@ export const SelectField = ({ className, error, helperText, id, label, ...props 
         aria-invalid={error === undefined ? undefined : true}
         {...props}
       />
-      {message === undefined ? null : (
-        <span
-          id={messageId}
-          className={classNames('text-xs font-normal', error === undefined ? 'text-ink-muted' : 'text-danger')}
-        >
-          {message}
-        </span>
-      )}
-    </label>
+    </Field>
   );
 };

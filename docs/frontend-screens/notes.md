@@ -58,14 +58,14 @@ Find a saved note, narrow the collection, then open a note for reading. The defa
 
 **UI composition**
 
-- Header: `Notes` and the short purpose statement “Temukan kembali hal yang ingin kamu simpan.”
+- Header: `Notes` with no supporting subtitle.
 - A single control row below the header, in this order: search field with a `Cari` button, `Filter` button, then `Urutkan` control.
 - `Cari` is disabled while the trimmed search field is empty. It is enabled only after the user has entered a non-whitespace keyword.
 - `Filter` opens a dismissible advanced-filter popover. The intended fields are type, category, tag, source, and created-date range, with `Reset` and `Terapkan filter` actions.
 - `Urutkan` is a compact ordinary sorter. The initial design offers newest first and oldest first by created date.
 - An always-visible quick filter chip row directly below the controls: `Semua`, `Fact`, `Personal`, `Idea`, and `Quote`. It is a shortcut for a note-type filter; the soft-text `category` field remains an advanced-filter field. This wording avoids conflating the domain's fixed `type` enum with its free-form `category`.
-- One grouped list surface with lightweight row separators.
-- Each row displays type, title, content excerpt, tags, created date, and stable note code.
+- One grouped, table-like list surface matching the Junk list structure, with a column header and lightweight row separators.
+- Each full-width row displays type, title/content excerpt, tags, created date, and stable note code. While the supporting preview is open, the list uses a compact variant without the redundant code column because the selected code is already visible in the detail pane.
 - The outer page stacks the header, toolbar, and content region vertically. The content region uses the full available width while no note is selected.
 - The application content frame and toolbar use the full available width; the search group absorbs remaining toolbar space while Filter and Sort retain compact widths and equal heights.
 - The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, records the selection as `/notes?preview=:code`, shrinks the list, and opens SCR-NOTE-002 in a right supporting pane on wide screens. On narrow screens, the preview becomes the primary content.

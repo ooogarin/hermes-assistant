@@ -1,5 +1,6 @@
 import { Bookmark, FileText, Music2, Quote, Video, Wrench } from 'lucide-react';
 import { classNames } from '../../lib/class-names';
+import { TagList } from '../ui/chip';
 import type { LucideIcon } from 'lucide-react';
 
 const categoryStyles: Record<string, { icon: LucideIcon; text: string }> = {
@@ -25,16 +26,4 @@ export const JunkCategoryLabel = ({ category }: { category: string }) => {
   );
 };
 
-export const JunkTags = ({ tags }: { tags: string[] }) => {
-  if (tags.length === 0) return null;
-
-  return (
-    <ul className='flex flex-wrap gap-1.5' aria-label='Tag Junk'>
-      {tags.map((tag) => (
-        <li key={tag} className='rounded-control border border-primary/25 px-2 py-0.5 text-xs font-medium text-primary'>
-          {tag}
-        </li>
-      ))}
-    </ul>
-  );
-};
+export const JunkTags = ({ tags }: { tags: string[] }) => <TagList label='Tag Junk' tags={tags} />;

@@ -1,8 +1,9 @@
 import { ChevronDown } from 'lucide-react';
 import { Button } from '../ui/button';
+import { ChoiceDropdown } from '../ui/choice-dropdown';
 import { FilterChip } from '../ui/filter-chip';
-import { FilterDropdown } from '../ui/filter-dropdown';
 import { FilterPopover } from '../ui/filter-popover';
+import { Input, TextField } from '../ui/form-field';
 import { SearchForm } from '../ui/search-form';
 import type { NoteType } from '../../features/notes/notes-api';
 
@@ -26,12 +27,18 @@ type NotesToolbarProps = {
   tag: string;
 };
 
-const typeOptions: Array<{ label: string; value?: NoteType }> = [
-  { label: 'Semua' },
+const noteTypeOptions: Array<{ label: string; value: NoteType }> = [
   { label: 'Fact', value: 'fact' },
   { label: 'Personal', value: 'personal' },
-  { label: 'Idea', value: 'idea' },
+  { label: 'News', value: 'news' },
   { label: 'Quote', value: 'quote' },
+  { label: 'Idea', value: 'idea' },
+  { label: 'Reminder', value: 'reminder' },
+];
+
+const quickTypeOptions: Array<{ label: string; value?: NoteType }> = [
+  { label: 'Semua' },
+  ...noteTypeOptions.filter(({ value }) => !['news', 'reminder'].includes(value)),
 ];
 
 export const NotesToolbar = ({
@@ -75,51 +82,44 @@ export const NotesToolbar = ({
           <div className='space-y-4'>
             <div className='grid gap-2 text-sm font-medium text-ink'>
               Tipe
-              <FilterDropdown<NoteType | ''>
+              <ChoiceDropdown<NoteType>
+                className='w-full'
                 label='Filter tipe catatan'
-                onChange={(value) => onTypeChange(value === '' ? undefined : value)}
-                options={typeOptions.map((option) => ({ label: option.label, value: option.value ?? '' }))}
+                mode='single'
+                onChange={(value) => onTypeChange(value ?? undefined)}
+                options={noteTypeOptions}
                 placeholder='Semua tipe'
                 searchPlaceholder='Cari tipe...'
-                value={selectedType ?? ''}
+                value={selectedType ?? null}
               />
             </div>
-            <label className='grid gap-2 text-sm font-medium text-ink'>
-              Kategori
-              <input
-                className='min-h-11 rounded-control border border-border bg-surface px-3 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15'
-                placeholder='Semua kategori'
-                value={category}
-                onChange={(event) => onCategoryChange(event.target.value)}
-              />
-            </label>
-            <label className='grid gap-2 text-sm font-medium text-ink'>
-              Tag
-              <input
-                className='min-h-11 rounded-control border border-border bg-surface px-3 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/15'
-                placeholder='Semua tag'
-                value={tag}
-                onChange={(event) => onTagChange(event.target.value)}
-              />
-            </label>
-            <label className='grid gap-2 text-sm font-medium text-ink'>
-              Sumber
-              <input
-                className='min-h-11 rounded-control border border-border bg-surface-subtle px-3 font-normal text-ink-muted outline-none disabled:cursor-not-allowed'
-                disabled
-                placeholder='Semua sumber'
-                title='Filter sumber belum didukung oleh API.'
-              />
-            </label>
+            <TextField
+              label='Kategori'
+              onChange={(event) => onCategoryChange(event.target.value)}
+              placeholder='Semua kategori'
+              value={category}
+            />
+            <TextField
+              label='Tag'
+              onChange={(event) => onTagChange(event.target.value)}
+              placeholder='Semua tag'
+              value={tag}
+            />
+            <TextField
+              disabled
+              label='Sumber'
+              placeholder='Semua sumber'
+              title='Filter sumber belum didukung oleh API.'
+            />
             <div className='grid gap-2 text-sm font-medium text-ink'>
               Rentang tanggal
               <div className='grid grid-cols-2 gap-3'>
                 <label className='sr-only' htmlFor='notes-date-from'>
                   Dari tanggal
                 </label>
-                <input
+                <Input
                   id='notes-date-from'
-                  className='min-h-11 min-w-0 rounded-control border border-border bg-surface-subtle px-3 font-normal text-ink-muted outline-none disabled:cursor-not-allowed'
+                  className='min-w-0'
                   disabled
                   type='date'
                   title='Filter rentang tanggal belum didukung oleh API.'
@@ -127,9 +127,9 @@ export const NotesToolbar = ({
                 <label className='sr-only' htmlFor='notes-date-to'>
                   Sampai tanggal
                 </label>
-                <input
+                <Input
                   id='notes-date-to'
-                  className='min-h-11 min-w-0 rounded-control border border-border bg-surface-subtle px-3 font-normal text-ink-muted outline-none disabled:cursor-not-allowed'
+                  className='min-w-0'
                   disabled
                   type='date'
                   title='Filter rentang tanggal belum didukung oleh API.'
@@ -154,7 +154,7 @@ export const NotesToolbar = ({
       </div>
 
       <section className='flex flex-wrap gap-2' aria-label='Filter tipe catatan'>
-        {typeOptions.map((option) => (
+        {quickTypeOptions.map((option) => (
           <FilterChip
             key={option.label}
             active={activeType === option.value}

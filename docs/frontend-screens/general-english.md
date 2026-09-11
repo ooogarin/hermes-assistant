@@ -35,7 +35,7 @@ Ask a short English-learning question and receive a useful, readable answer with
 
 **UI composition**
 
-- Header: `General English` and the purpose statement `Tanya apa saja tentang bahasa Inggris.`
+- Header: `General English` with no supporting subtitle.
 - Persistent plain-language notice: `Percakapan tidak disimpan otomatis.`
 - A single active question-and-answer thread. The user question appears as a quiet right-aligned bubble; the assistant answer uses a constrained, readable content surface.
 - An answer may contain a short explanation, distinctions, examples, translations, and usage guidance. Preserve English material while keeping UI labels and explanatory framing in Indonesian.

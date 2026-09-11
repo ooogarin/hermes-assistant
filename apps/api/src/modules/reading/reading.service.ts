@@ -140,7 +140,10 @@ export const saveSubmission = async (code: string, input: SaveReadingSubmissionR
     trx = await startTransaction();
 
     const payload: SaveReadingSubmissionPayload = {
-      answers: input.answers,
+      answers: input.answers.map((answer) => ({
+        question_number: answer.question_number,
+        user_answer: answer.user_answer,
+      })),
     };
     const submission = await readingRepository.insertSubmission(trx, code);
 

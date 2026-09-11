@@ -1,53 +1,57 @@
-# Frontend Design QA
+# Frontend Design QA — Finance Daily and Range
 
 ## Comparison target
 
-- Source visual truth: `docs/frontend-design/finance-daily.png` and `docs/frontend-design/finance-range.png`.
-- Implementation captures: in-app browser captures of `http://127.0.0.1:5174/finance?date=2026-09-06` and `http://127.0.0.1:5174/finance/report?from=2026-09-01&to=2026-09-06`.
-- Viewport: 1487 × 1058 CSS px for desktop and 390 × 844 CSS px for responsive validation.
-- Pixels and density: both source images are 1487 × 1058 px; implementation desktop captures used the same CSS size at device scale factor 1, so no density normalization was needed.
-- State: populated daily view for 6 Sep 2026 and populated range view for 1–6 Sep 2026, using local QA responses matching the reference content. Empty daily data and unavailable daily-aggregate API states were also checked against the documented behavior.
+- Daily source visual truth: `docs/frontend-design/finance-daily.png` at 1487 × 1058 px.
+- Range source visual truth: the repository `HEAD` version of `docs/frontend-design/finance-range.png`, copied read-only to `/tmp/hermes-design-reference/finance-range.png` because the worktree copy was already deleted before this change.
+- Daily implementation capture: `/tmp/hermes-design-qa/finance-daily-implementation.jpg` at 1487 × 1058 px.
+- Range implementation capture: `/tmp/hermes-design-qa/finance-range-implementation.jpg` at 1487 × 1058 px.
+- Live routes: `http://127.0.0.1:5173/finance?date=2026-09-07` and `http://127.0.0.1:5173/finance/report?from=2026-09-01&to=2026-09-07`.
+- Viewports: 1775 × 1058 CSS px with a normalized 1487 × 1058 Finance-content crop for Daily, 1487 × 1058 CSS px for the complete Range screen, and 390 × 844 CSS px for responsive validation. Device scale factor was 1.
+- State: Daily used three real API transactions and their API-calculated totals. Range used real period totals and the documented daily-aggregate capability-unavailable state because the running API returned 404 for that endpoint.
 
 ## Evidence
 
-- Full-view comparison: each source PNG and its matching live route were rendered side by side at equal dimensions in one local comparison canvas. Page structure, hierarchy, totals, table/list composition, category grouping, palette, borders, and responsive ordering were compared together.
-- Focused comparison: the transaction table, daily aggregate rows, category totals, percentages, progress bars, date controls, and signed Rupiah values remained legible in the combined view, so a separate crop was not required.
-- Interactions checked: previous/next date behavior, date inputs, Daily → Range link, Range → Daily row link, future-date limit, loading, empty, error, and API-capability-unavailable states.
-- Browser checks: mobile document width equaled viewport width (390 px); no horizontal overflow. No application console errors were observed.
+- Full-view comparison: Daily and Range reference/implementation pairs were rendered together in two local side-by-side comparison canvases. The comparison covered hierarchy, toolbar placement, summary strip, lower-column proportions, panel heights, table structure, category groups, palette, and borders.
+- Focused comparison: the Daily transaction rows and Range unavailable state were also inspected at native capture size; all values, chips, percentages, progress bars, and controls remained legible.
+- Interactions checked: Range → Daily navigation and previous-day navigation both updated the URL and loaded the expected page. The shared calendar popover opens from Daily and both Range controls, exposes every day as a named button, enforces min/max constraints, and closes with Escape or an outside click.
+- Responsive check: Daily was inspected at 390 × 844 CSS px. Date controls fill the available width, actions wrap safely, summary values stack, transaction rows remain compact, and category details follow the transaction panel without horizontal overflow.
+- Browser console: no application errors were observed.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: existing Hermes font tokens and hierarchy are retained; weights, wrapping, compact labels, and signed values match the intended emphasis.
-- Spacing and layout: summary strip, dominant list, secondary category column, row rhythm, border radii, and responsive stacking match the reference composition.
-- Colors and tokens: existing neutral, primary green, danger red, borders, and subtle surfaces map cleanly to the reference without new one-off colors.
-- Image and asset fidelity: the Finance screens contain no required raster product imagery. Interface icons use the existing Lucide dependency; the shared Hermes shell remains unchanged.
-- Copy and content: titles, descriptions, labels, empty/error messages, transaction fields, category groups, and Indonesian formatting follow `finance.md`.
+- Fonts and typography: existing Hermes typography tokens remain authoritative; section titles, summary values, table rows, muted details, and signed amounts now match the reference hierarchy closely.
+- Spacing and layout rhythm: the Daily toolbar, full-width three-part summary, dominant transaction column, narrower category column, equal-height lower panels, and mobile stacking follow the selected composition.
+- Colors and visual tokens: existing page, surface, border, primary, danger, and muted tokens reproduce the reference without one-off colors.
+- Image and asset fidelity: Finance requires no raster content assets. Calendar, chevron, category, edit, delete, and add icons use the existing Lucide system.
+- Copy and content: labels follow the selected design and API data. The header subtitle is intentionally omitted according to the user's newer global header decision.
 
 ## Findings
 
 No actionable P0, P1, or P2 differences remain.
 
-- P3: the shared shell uses the existing text-only Hermes brand and keeps the English group collapsed when inactive, while the references show a brand mark and expanded English links. This is an intentional shared-foundation constraint and is outside the Finance-only change.
-- P3: the range reference presents one combined range control and a `Net` select. The implementation uses two explicitly labelled native date fields because `finance.md` requires distinct accessible start/end labels and does not define a mode interaction.
+- P3: the reference Daily dataset has four illustrative transactions while the local API has three; the implementation correctly renders real data rather than fabricated rows.
+- P3: the Range reference shows populated daily aggregates and a `Net` selector. The running API does not expose the daily aggregate route, and the current screen contract defines the report as net, so the implementation displays the honest capability state and omits a non-functional mode control.
 
 ## Comparison history
 
-1. Initial populated daily comparison found a P1 table overflow: the amount column was clipped because fixed column minimums exceeded the primary panel width.
-2. Fixed the transaction grid widths, gave the flow column sufficient room, and normalized visible time separators to `HH:mm`.
-3. Post-fix desktop comparison showed all six columns and long values inside the panel. The 390 px pass confirmed stacked rows without horizontal overflow.
-4. Increased summary and list-row vertical padding to align the information density with both references. The final combined daily and range comparisons found no remaining P0/P1/P2 issue.
+1. The initial implementation placed vertical totals beside category summary and pushed transactions to a separate full-width row, conflicting with the selected Daily composition (P1).
+2. Totals were converted into a full-width horizontal strip; transactions and category summary were moved into a 1.7:1 lower grid shared with the Range page.
+3. The transaction table was reduced to the selected four information groups—transaction, category, flow, and nominal—while edit/delete remain compact hover/focus actions. Mobile rows were reorganized to avoid tall, fragmented stacks (P2 fixed).
+4. Final comparison increased control, summary, table, and panel proportions to match the source rhythm. The post-fix Daily and Range comparison canvases show no remaining P0/P1/P2 issue.
+5. Follow-up QA at the expanded-sidebar desktop width found the original minimum column widths could clip the `Nominal` heading and that the transparent native date input did not open consistently (P1).
+6. Transaction columns now size fluidly inside the actual panel, row actions overlay the nominal cell only on hover/focus, and the shared calendar popover replaces the browser-dependent transparent date input. Daily and Range interaction checks pass (P1 fixed).
+7. A later review found that replacing the nominal value with row actions on hover made the table unstable and left the header/value alignment inconsistent (P1).
+8. Hover-only actions were removed from the report table. Header and row content now share the same four-column grid, with `Nominal` consistently right-aligned and visible (P1 fixed).
 
 ## Implementation checklist
 
-- [x] Daily route, date navigation, transactions, totals, and two category groups.
-- [x] Range route, validated range inputs, totals, category groups, and daily-row navigation.
-- [x] Honest unavailable state for the proposed daily aggregate endpoint.
-- [x] Loading, empty, retryable error, responsive, keyboard, and accessible-name coverage.
-- [x] Type check, automated tests, production build, and browser visual QA.
-
-## Follow-up polish
-
-- Revisit the shared brand mark and navigation expansion behavior when the application shell is implemented across all features.
+- [x] Shared Finance toolbar and reusable, browser-independent calendar picker for Daily and Range controls.
+- [x] Horizontal summary strip with signed totals and Daily net explanation.
+- [x] Dominant transaction table plus equal-height category summary.
+- [x] Range totals, range controls, daily-summary/capability state, and category summary.
+- [x] Responsive, keyboard, loading, empty, error, stable-hover, and table-alignment checks.
+- [x] Biome check, TypeScript check, frontend tests, live browser interaction, and same-canvas visual QA.
 
 final result: passed
 

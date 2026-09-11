@@ -40,7 +40,7 @@ Find a writing prompt and start, continue, or review a draft.
 
 **UI composition**
 
-- Header: `Writing`, purpose statement, and local `Pengaturan` action.
+- Header: `Writing` and the local `Pengaturan` action, with no supporting subtitle.
 - Search, status chips, a multi-select level filter, and genre filter.
 - One grouped table-like list with topic/prompt, genre, level, target word count, tags, date, source, status, code, and draft count.
 - Selecting a row opens SCR-WRITE-003 or its latest submission review.
@@ -63,7 +63,7 @@ Review and change the persistent defaults Hermes uses for future Writing prompts
 **UI composition**
 
 - Back link: `Kembali ke Writing`.
-- Header: `Pengaturan Writing` and `Atur preferensi default untuk materi writing berikutnya.`
+- Header: `Pengaturan Writing` with no supporting subtitle.
 - Main form on the left; a quiet read-only `Ringkasan default` column on the right, using divider-led rows rather than stacked cards.
 - `Level default`: CEFR segmented selector with `A1`, `A2`, `B1`, `B2`, `C1`, and `C2`.
 - `Panjang tulisan`: positive-integer fields for `Target (ideal)`, `Minimum`, and `Maksimum`, each with a visible `kata` unit.

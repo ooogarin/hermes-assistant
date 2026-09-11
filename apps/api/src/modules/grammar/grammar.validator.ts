@@ -30,6 +30,18 @@ export const questionReferenceSchema = sessionCodeSchema.extend({
   question_number: z.coerce.number().int().positive(),
 });
 
+export const listSessionsSchema = z
+  .object({
+    q: z.string().trim().min(1).max(500).optional(),
+    status: z.enum(['active', 'completed', 'abandoned']).optional(),
+    mode: grammarModeSchema.optional(),
+    level: z.string().trim().min(1).max(32).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    sort: z.enum(['newest', 'oldest']).default('newest'),
+  })
+  .strict();
+
 export const saveAnswerSchema = z
   .object({
     user_answer: textSchema,

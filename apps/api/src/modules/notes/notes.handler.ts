@@ -7,8 +7,8 @@ import type { AppEnv } from '../../core/http/app-env';
 import type { NoteReferenceRequest } from './notes.types';
 
 export const create = async (context: Context<AppEnv>) => {
-  const data = getBody(context, createNoteSchema);
-  const result = await notesService.create(data);
+  const input = getBody(context, createNoteSchema);
+  const result = await notesService.create(input);
 
   return successResponse({ context, data: result, statusCode: 201 });
 };
@@ -30,9 +30,9 @@ export const list = async (context: Context<AppEnv>) => {
 
 export const update = async (context: Context<AppEnv>) => {
   const params = getParam(context, noteCodeSchema);
-  const data = getBody(context, updateNoteSchema);
+  const input = getBody(context, updateNoteSchema);
   const request: NoteReferenceRequest = { code: params.code };
-  const result = await notesService.update(request, data);
+  const result = await notesService.update(request, input);
 
   return successResponse({ context, data: result });
 };

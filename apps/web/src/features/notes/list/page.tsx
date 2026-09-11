@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
@@ -9,6 +9,7 @@ import { NoteDetailPane } from '../../../components/notes/note-detail-pane';
 import { NoteList } from '../../../components/notes/note-list';
 import { NotesToolbar } from '../../../components/notes/notes-toolbar';
 import { Button } from '../../../components/ui/button';
+import { ButtonLink } from '../../../components/ui/button-link';
 import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getNote, getNotes, parseNoteType } from '../notes-api';
@@ -91,16 +92,8 @@ const NotesListPage = () => {
     <div className='space-y-7'>
       <NavigationNotice />
       <PageHeader
-        actions={
-          <Link
-            className='inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-primary bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-strong'
-            to='/notes/new'
-          >
-            <Plus aria-hidden='true' size={18} /> Buat catatan
-          </Link>
-        }
+        actions={<ButtonLink icon={<Plus aria-hidden='true' size={18} />} label='Buat catatan' to='/notes/new' />}
         title='Notes'
-        description='Temukan kembali hal yang ingin kamu simpan.'
       />
       <NotesToolbar
         activeFilterCount={activeFilterCount}

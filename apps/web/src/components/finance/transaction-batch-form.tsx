@@ -6,6 +6,7 @@ import { useApiQuery } from '../../lib/hooks/use-api-query';
 import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
 import { Button } from '../ui/button';
 import { TextAreaField, TextField } from '../ui/form-field';
+import { SelectField } from '../ui/select-field';
 import {
   areFinanceTransactionsEqual,
   emptyFinanceTransaction,
@@ -101,18 +102,15 @@ export const FinanceTransactionBatchForm = ({
             type='date'
             value={date}
           />
-          <label className='grid gap-2 text-sm font-medium text-ink'>
-            Jenis
-            <select
-              className='min-h-12 rounded-control border border-border bg-surface px-4 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15'
-              disabled={saving}
-              onChange={(event) => changeType(event.target.value as FinanceTransactionType)}
-              value={type}
-            >
-              <option value='expense'>Pengeluaran</option>
-              <option value='income'>Pemasukan</option>
-            </select>
-          </label>
+          <SelectField
+            disabled={saving}
+            label='Jenis'
+            onChange={(event) => changeType(event.target.value as FinanceTransactionType)}
+            value={type}
+          >
+            <option value='expense'>Pengeluaran</option>
+            <option value='income'>Pemasukan</option>
+          </SelectField>
         </div>
         <TextAreaField
           className='mt-6'

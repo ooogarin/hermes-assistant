@@ -6,6 +6,7 @@ import { NavigationNotice } from '../../../components/feedback/navigation-notice
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { JunkDetailPane } from '../../../components/junk/junk-detail-pane';
 import { Button } from '../../../components/ui/button';
+import { ButtonLink } from '../../../components/ui/button-link';
 import { ConfirmationDialog } from '../../../components/ui/confirmation-dialog';
 import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
@@ -62,12 +63,12 @@ const JunkDetailPage = () => {
           <JunkDetailPane
             actions={
               <>
-                <Link
-                  className='inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-border-strong bg-surface px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-subtle'
+                <ButtonLink
+                  icon={<Pencil aria-hidden='true' size={17} />}
+                  label='Edit'
                   to={`/junk/${code}/edit`}
-                >
-                  <Pencil aria-hidden='true' size={17} /> Edit
-                </Link>
+                  variant='secondary'
+                />
                 <Button onClick={() => setConfirmOpen(true)} variant='danger'>
                   <Trash2 aria-hidden='true' size={17} /> Hapus
                 </Button>

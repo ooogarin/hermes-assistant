@@ -37,9 +37,9 @@ Find a reading material and continue or review it.
 
 **UI composition**
 
-- Header: `Reading`, the short purpose statement `Latihan pemahaman bacaan.`, and a local `Pengaturan` action.
+- Header: `Reading` and the local `Pengaturan` action, with no supporting subtitle.
 - Search field for topic, genre, or tag; status quick filters `Semua`, `Belum dijawab`, and `Selesai`; plus a multi-select level filter and genre filter.
-- One grouped table-like list with topic, genre, level, word count/reading time, tags, created date, source, status, and stable material code.
+- One grouped table-like list with topic, genre, level, word count/reading time, tags, created date, source, status, and stable material code. Desktop columns remain on one row; long topic and genre values truncate, while tags show a compact `+N` remainder so status and code are never clipped.
 - Selecting a row opens SCR-READ-003.
 
 **Data contract**
@@ -65,7 +65,7 @@ Review and change the persistent defaults Hermes uses for future Reading materia
 **UI composition**
 
 - Back link: `Kembali ke Reading`.
-- Header: `Pengaturan Reading` and `Atur preferensi default untuk materi reading berikutnya.`
+- Header: `Pengaturan Reading` with no supporting subtitle.
 - Main form on the left; a quiet read-only `Ringkasan default` column on the right. The summary uses divider-led rows, not a stack of cards.
 - `Level default`: a CEFR segmented selector, visually offering `A1`, `A2`, `B1`, `B2`, `C1`, and `C2`. It displays the current stored default level.
 - `Panjang bacaan`: three integer fields—`Target (ideal)`, `Minimum`, and `Maksimum`—with the `kata` unit visible in each field.
