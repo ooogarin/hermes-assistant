@@ -37,7 +37,7 @@ The frontend uses a routing library for nested and direct routes, Lucide for fun
 
 Feature pages, hooks, schemas, and mapping remain inside `features/<feature>`. A multi-page feature groups each page by use case. Visual components scoped to one feature live in `components/<feature>`; cross-feature primitives belong to `components/ui`, `components/layout`, or `components/feedback`. The current foundation is intentionally small and is expanded through implemented vertical slices rather than speculative components.
 
-Filter controls use shared UI primitives: `FilterPopover` owns the toolbar trigger, anchored panel, active-count badge, outside-click handling, and Escape behavior for Notes and Junk; `FilterDropdown` owns the searchable option panel, selected-state checkbox, focus treatment, and empty search state used by fixed-option filters. Free-form API filters remain text inputs rather than being constrained to an incomplete option list.
+Form controls use the shared primitives documented in [Frontend Component Foundation](frontend-components.md). `ChoiceDropdown` owns searchable single- and multi-choice behavior, `TagInput` stores tags as discrete removable values, and the common field controls own labels, helper/error messaging, focus treatment, and disabled states. Feature components compose these primitives while retaining domain validation and payload mapping. Free-form API filters remain text inputs rather than being constrained to an incomplete option list.
 
 The desktop application sidebar can be expanded or reduced to an icon rail through its chevron button. It does not auto-expand or auto-hide on hover. Its state is retained in local browser storage, and the sidebar width and content offset transition together. The mobile drawer remains independent of this desktop preference.
 
@@ -82,14 +82,14 @@ POST  /api/v1/reading/materials/:code/submissions
 GET   /api/v1/reading/materials/:code/expected-answers
 ```
 
-The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` uses the paginated collection API for keyword search plus status, level, and genre filters.
+The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` uses the paginated collection API for keyword search plus status, multi-level, and genre filters.
 
 Writing reuses the same English settings primitive and provides known-code prompt, feedback, and corrected-text routes:
 
 ```text
 GET   /api/v1/writing/settings
 PATCH /api/v1/writing/settings
-GET   /api/v1/writing/materials?q=&status=&level=&genre=&page=&limit=&sort=
+GET   /api/v1/writing/materials?q=&status=&levels=&genre=&page=&limit=&sort=
 GET   /api/v1/writing/materials/:code
 GET   /api/v1/writing/materials/:code/submissions/:submissionNumber
 GET   /api/v1/writing/materials/:code/submissions/:submissionNumber/corrected-text

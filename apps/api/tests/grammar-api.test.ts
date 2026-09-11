@@ -7,6 +7,7 @@ import type {
   GrammarReport,
   GrammarService,
   GrammarSession,
+  GrammarSessionList,
   GrammarSettings,
   SaveGrammarAnswerRequest,
   UpdateGrammarSettingsRequest,
@@ -58,10 +59,32 @@ const report: GrammarReport = {
   breakdown: [{ grammar_area: 'tenses', correct: 1, partial: 0, incorrect: 0 }],
 };
 
+const sessionList: GrammarSessionList = {
+  items: [
+    {
+      code: session.code,
+      mode: session.mode,
+      source: session.source,
+      status: session.status,
+      level: session.level,
+      grammar_area: 'tenses',
+      grammar_point: 'simple past',
+      question_count: session.question_count,
+      answered_question_count: 0,
+      score: session.score,
+      max_score: session.max_score,
+      started_at: session.started_at,
+      completed_at: session.completed_at,
+    },
+  ],
+  meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
+};
+
 const createGrammarServiceStub = (overrides: Partial<GrammarService> = {}): GrammarService => ({
   getSettings: async () => settings,
   updateSettings: async () => settings,
   createSession: async () => session,
+  listSessions: async () => sessionList,
   getSession: async () => session,
   removeSession: async () => {},
   saveAnswer: async () => session,
@@ -77,6 +100,7 @@ mock.module('../src/modules/grammar/grammar.service', () => ({
   getSettings: () => activeGrammarService.getSettings(),
   updateSettings: (input: UpdateGrammarSettingsRequest) => activeGrammarService.updateSettings(input),
   createSession: (input: CreateGrammarSessionRequest) => activeGrammarService.createSession(input),
+  listSessions: (input: Parameters<GrammarService['listSessions']>[0]) => activeGrammarService.listSessions(input),
   getSession: (code: string) => activeGrammarService.getSession(code),
   removeSession: (code: string) => activeGrammarService.removeSession(code),
   saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) =>
@@ -151,6 +175,46 @@ test('creates a grammar session without exposing correct answers or explanations
 
   expect(response.status).toBe(201);
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(session) });
+});
+
+test('lists grammar sessions with validated filters and pagination', async () => {
+  let listInput: Parameters<GrammarService['listSessions']>[0] | undefined;
+  const response = await createGrammarApp({
+    listSessions: async (input) => {
+      listInput = input;
+      return sessionList;
+    },
+  }).request(
+    'http://localhost/api/v1/grammar/sessions?q=past&status=completed&mode=exam&level=B1&page=2&limit=10&sort=oldest',
+    { headers: { Authorization: 'Bearer test-api-key' } },
+  );
+
+  expect(response.status).toBe(200);
+  expect(listInput).toEqual({
+    q: 'past',
+    status: 'completed',
+    mode: 'exam',
+    level: 'B1',
+    page: 2,
+    limit: 10,
+    sort: 'oldest',
+  });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(sessionList) });
+});
+
+test('rejects invalid grammar session list filters without calling the service', async () => {
+  let listCalled = false;
+  const response = await createGrammarApp({
+    listSessions: async () => {
+      listCalled = true;
+      return sessionList;
+    },
+  }).request('http://localhost/api/v1/grammar/sessions?limit=101', {
+    headers: { Authorization: 'Bearer test-api-key' },
+  });
+
+  expect(response.status).toBe(400);
+  expect(listCalled).toBe(false);
 });
 
 test('reads and soft deletes a grammar session by code', async () => {

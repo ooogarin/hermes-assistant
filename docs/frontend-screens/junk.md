@@ -58,7 +58,7 @@ Find a saved external item, narrow the collection, then open it for reading. The
 
 **UI composition**
 
-- Header: `Junk` and the short purpose statement “Simpan temuan menarik untuk dicari lagi nanti.”
+- Header: `Junk` with no supporting subtitle.
 - A single control row below the header, in this order: search field with a `Cari` button, `Filter` button, then `Urutkan` control.
 - `Cari` is disabled while the trimmed search field is empty. It is enabled only after the user has entered a non-whitespace keyword.
 - `Filter` opens a dismissible advanced-filter popover. The intended fields are category, tag, source URL, and created-date range, with `Reset` and `Terapkan filter` actions.

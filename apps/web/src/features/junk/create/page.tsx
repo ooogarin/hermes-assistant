@@ -18,9 +18,6 @@ const JunkCreatePage = () => {
       </Link>
       <header className='mt-7 border-b border-border pb-7'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Tambah Junk</h1>
-        <p className='mt-3 max-w-2xl text-base leading-7 text-ink-muted'>
-          Simpan tautan atau temuan ringan agar mudah dicari kembali.
-        </p>
       </header>
       <JunkForm cancelTo='/junk' onSubmit={save} submitLabel='Simpan Junk' />
     </div>

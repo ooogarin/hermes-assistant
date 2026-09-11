@@ -43,11 +43,7 @@ const ReadingDetailPage = () => {
         <ArrowLeft aria-hidden='true' size={18} />
         Semua Reading
       </Link>
-      <PageHeader
-        title='Reading'
-        description='Latihan pemahaman bacaan.'
-        actions={<EnglishSettingsLink to='/english/reading/settings' />}
-      />
+      <PageHeader title='Reading' actions={<EnglishSettingsLink to='/english/reading/settings' />} />
 
       {material.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
       {material.status === 'error' ? (

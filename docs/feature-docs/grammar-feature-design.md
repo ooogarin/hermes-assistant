@@ -503,12 +503,29 @@ Request bodies and every response field use `snake_case` recursively.
 | `GET` | `/api/v1/grammar/settings` | Read the persistent default level and daily question count. |
 | `PATCH` | `/api/v1/grammar/settings` | Update `default_level` and/or `daily_question_count`. |
 | `POST` | `/api/v1/grammar/sessions` | Save a generated practice or exam session with all questions, correct answers, and explanations. The backend generates the session code. |
+| `GET` | `/api/v1/grammar/sessions` | List active, completed, or abandoned sessions with search, filters, sorting, and pagination. Soft-deleted sessions are excluded. |
 | `GET` | `/api/v1/grammar/sessions/:code` | Read a session, its questions, and saved user answers. Correct answers and explanations are deliberately excluded. |
 | `DELETE` | `/api/v1/grammar/sessions/:code` | Soft delete the session, questions, and answers together. |
 | `PUT` | `/api/v1/grammar/sessions/:code/questions/:question_number/answer` | Save or replace one user answer. Practice includes immediate evaluation; exam stores an unevaluated answer. |
 | `GET` | `/api/v1/grammar/sessions/:code/questions/:question_number/explanation` | Fetch the stored explanation only when Hermes/user explicitly requests it. |
 | `POST` | `/api/v1/grammar/sessions/:code/evaluate` | Save all exam results, calculate the score, and complete the session. |
 | `GET` | `/api/v1/grammar/sessions/:code/report` | Return score and result breakdown grouped by grammar area. |
+
+### Session collection
+
+`GET /api/v1/grammar/sessions` accepts the following query parameters:
+
+| Parameter | Values | Default | Notes |
+| --- | --- | --- | --- |
+| `q` | string | — | Case-insensitive search across session code, grammar area, and grammar point. |
+| `status` | `active`, `completed`, `abandoned` | — | Exact status filter. |
+| `mode` | `practice`, `exam` | — | Exact mode filter. |
+| `level` | string | — | Exact level filter. |
+| `page` | positive integer | `1` | One-based page number. |
+| `limit` | integer `1..100` | `20` | Maximum number of items returned. |
+| `sort` | `newest`, `oldest` | `newest` | Stable ordering by `started_at`, then session id. |
+
+Each item includes `grammar_area` and `grammar_point` from the first active question in question-number order. They are nullable when a session has no active questions. The response also includes question and answered-question counts, score fields, timestamps, and pagination metadata.
 
 ### Create session
 

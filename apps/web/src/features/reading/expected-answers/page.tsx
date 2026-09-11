@@ -20,10 +20,7 @@ const ReadingExpectedAnswersPage = () => {
         <ArrowLeft aria-hidden='true' size={18} />
         Kembali ke materi
       </Link>
-      <PageHeader
-        title='Jawaban acuan'
-        description={`Gunakan sebagai bahan refleksi untuk ${code}, tanpa penilaian otomatis.`}
-      />
+      <PageHeader title='Jawaban acuan' />
       {answers.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
       {answers.status === 'error' ? (
         answers.error instanceof ApiError && answers.error.status === 404 ? (

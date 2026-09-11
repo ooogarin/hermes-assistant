@@ -5,6 +5,7 @@ import { ContentState, ErrorState } from '../../../components/feedback/content-s
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { GrammarSessionHeader } from '../../../components/grammar/grammar-session-header';
 import { Button } from '../../../components/ui/button';
+import { Textarea } from '../../../components/ui/form-field';
 import { ApiError } from '../../../lib/api/api-error';
 import { classNames } from '../../../lib/class-names';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
@@ -102,10 +103,11 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
             {question.questionType} · {question.grammarArea} · {question.grammarPoint}
           </p>
           <h2 className='mt-7 text-xl font-medium leading-8 text-ink'>{question.questionText}</h2>
-          <label className='mt-7 block'>
+          <label className='mt-7 block' htmlFor={`grammar-answer-${question.questionNumber}`}>
             <span className='sr-only'>Jawaban soal {question.questionNumber}</span>
-            <textarea
-              className='min-h-28 w-full resize-y rounded-control border border-border bg-surface px-4 py-3 text-base leading-7 text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-surface-subtle'
+            <Textarea
+              className='min-h-28 px-4 text-base leading-7'
+              id={`grammar-answer-${question.questionNumber}`}
               disabled={session.status !== 'active' || session.mode === 'practice'}
               onChange={(event) => setAnswer(event.target.value)}
               placeholder='Tulis jawaban...'

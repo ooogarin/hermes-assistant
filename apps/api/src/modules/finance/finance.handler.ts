@@ -14,8 +14,8 @@ import type { AppEnv } from '../../core/http/app-env';
 import type { TransactionReferenceRequest } from './finance.types';
 
 export const createTransactions = async (context: Context<AppEnv>) => {
-  const data = getBody(context, createTransactionsSchema);
-  const result = await financeService.createTransactions(data);
+  const input = getBody(context, createTransactionsSchema);
+  const result = await financeService.createTransactions(input);
 
   return successResponse({ context, data: { items: result }, statusCode: 201 });
 };
@@ -36,8 +36,8 @@ export const listTransactions = async (context: Context<AppEnv>) => {
 
 export const updateTransaction = async (context: Context<AppEnv>) => {
   const request = getTransactionReference(context);
-  const data = getBody(context, updateTransactionSchema);
-  const result = await financeService.updateTransaction(request, data);
+  const input = getBody(context, updateTransactionSchema);
+  const result = await financeService.updateTransaction(request, input);
 
   return successResponse({ context, data: result });
 };

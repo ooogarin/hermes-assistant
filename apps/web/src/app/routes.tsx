@@ -34,13 +34,12 @@ const WritingListPage = lazy(() => import('../features/writing/list/page'));
 const WritingSettingsPage = lazy(() => import('../features/writing/settings/page'));
 
 type FeaturePlaceholderProps = {
-  description: string;
   title: string;
 };
 
-const FeaturePlaceholder = ({ description, title }: FeaturePlaceholderProps) => (
+const FeaturePlaceholder = ({ title }: FeaturePlaceholderProps) => (
   <div className='space-y-8'>
-    <PageHeader title={title} description={description} />
+    <PageHeader title={title} />
     <ContentState title='Implementasi berikutnya' description='Foundation aplikasi sudah siap untuk fitur ini.' />
   </div>
 );
@@ -61,15 +60,7 @@ const NotFoundPage = () => (
 export const AppRoutes = () => (
   <Routes>
     <Route element={<AppShell />}>
-      <Route
-        index
-        element={
-          <FeaturePlaceholder
-            title='Ringkasan'
-            description='Ringkasan akan tersedia setelah kebutuhan dan kontrak datanya ditetapkan.'
-          />
-        }
-      />
+      <Route index element={<FeaturePlaceholder title='Ringkasan' />} />
       <Route
         path='finance'
         element={
@@ -166,10 +157,7 @@ export const AppRoutes = () => (
           </Suspense>
         }
       />
-      <Route
-        path='english/general'
-        element={<FeaturePlaceholder title='General English' description='Tanya apa saja tentang bahasa Inggris.' />}
-      />
+      <Route path='english/general' element={<FeaturePlaceholder title='General English' />} />
       <Route
         path='english/grammar'
         element={

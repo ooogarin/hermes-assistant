@@ -43,7 +43,6 @@ const JunkEditPage = () => {
       </Link>
       <header className='mt-7 border-b border-border pb-7'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Edit Junk</h1>
-        <p className='mt-3 text-base text-ink-muted'>{code}</p>
       </header>
       {item.status === 'loading' ? (
         <div className='mt-7'>

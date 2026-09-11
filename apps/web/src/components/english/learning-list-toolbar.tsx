@@ -1,5 +1,6 @@
+import { ChoiceDropdown } from '../ui/choice-dropdown';
 import { FilterChip } from '../ui/filter-chip';
-import { FilterDropdown } from '../ui/filter-dropdown';
+import { Input } from '../ui/form-field';
 import { SearchForm } from '../ui/search-form';
 
 type FilterOption<Value extends string> = { label: string; value?: Value };
@@ -49,18 +50,19 @@ export const LearningListToolbar = <Status extends string>({
         ))}
       </fieldset>
       <span className='hidden h-8 w-px bg-border lg:block' aria-hidden='true' />
-      <FilterDropdown
+      <ChoiceDropdown
+        className='w-full lg:w-72 lg:shrink-0'
         label='Filter level'
-        multiple
+        mode='multiple'
         onChange={onLevelsChange}
         options={['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((option) => ({ label: option, value: option }))}
         placeholder='Semua level'
         searchPlaceholder='Cari level...'
         value={levels}
       />
-      <input
+      <Input
         aria-label='Filter genre'
-        className='h-11 min-w-48 rounded-control border border-border bg-surface px-3 text-sm text-ink outline-none placeholder:text-ink-muted focus:border-primary focus:ring-2 focus:ring-primary/15'
+        className='min-w-48 lg:w-auto'
         placeholder='Semua genre'
         value={genre}
         onChange={(event) => onGenreChange(event.target.value)}

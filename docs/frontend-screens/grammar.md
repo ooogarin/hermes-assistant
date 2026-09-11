@@ -1,6 +1,6 @@
 # Grammar Screen List
 
-> Status: Settings and known-code workflows implemented; session-list integration is blocked by a missing list API. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
+> Status: Settings, session list, and known-code workflows implemented. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
 
 ## Scope
 
@@ -12,7 +12,7 @@ The initial web scope is to update persistent defaults, open a known session, an
 
 ```text
 /english/grammar
-├── SCR-GRAM-001  Grammar session list (design ready; API blocked)
+├── SCR-GRAM-001  Grammar session list
 ├── /settings
 │   └── SCR-GRAM-002  Grammar settings
 └── /:code
@@ -25,7 +25,7 @@ The initial web scope is to update persistent defaults, open a known session, an
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-GRAM-001 | Grammar session list | `/english/grammar` | Honest unavailable state implemented | List endpoint missing |
+| SCR-GRAM-001 | Grammar session list | `/english/grammar` | Design ready; API integration next | Available |
 | SCR-GRAM-002 | Grammar settings | `/english/grammar/settings` | Implemented | Available |
 | SCR-GRAM-003 | Grammar session workspace | `/english/grammar/:code` | Implemented for a known code | Available |
 | SCR-GRAM-004 | Grammar explanation | `/english/grammar/:code/questions/:number/explanation` | Implemented on demand | Available |
@@ -40,14 +40,17 @@ Find a session and continue, review, or inspect its result.
 
 **UI composition**
 
-- Header: `Grammar`, purpose statement, and local `Pengaturan` action.
+- Header: `Grammar` and the local `Pengaturan` action, with no supporting subtitle.
 - Search, status chips, mode filter, and level filter.
 - One grouped table-like list with session code, mode, grammar focus, level, question count, source, date, status, and score where available.
 - Selecting a row opens SCR-GRAM-003 or SCR-GRAM-005 according to its session state.
 
-**Known API limitation**
+**Data contract**
 
-- The current API has no `GET /api/v1/grammar/sessions` collection endpoint, search/filter parameters, or pagination metadata. Do not implement this visual list with incomplete client-side data or browser-only mock records. Its controls remain design-only until the collection contract exists.
+- `GET /api/v1/grammar/sessions` supports `q`, `status`, `mode`, `level`, `page`, `limit`, and `sort` query parameters.
+- Search is case-insensitive across session code, grammar area, and grammar point. `status`, `mode`, and `level` use exact matches. Soft-deleted sessions are excluded.
+- Each item includes `grammar_area`, `grammar_point`, `question_count`, `answered_question_count`, `score`, `max_score`, `started_at`, and `completed_at`, plus the standard `meta` pagination object.
+- The service uses the first active question's grammar area and point as the compact list focus. The browser must not rebuild counts or status from session detail data.
 
 ## SCR-GRAM-002 — Grammar settings
 
@@ -62,7 +65,7 @@ Review and change the persistent defaults for daily Grammar practice.
 **UI composition**
 
 - Back link: `Kembali ke Grammar`.
-- Header: `Pengaturan Grammar` and `Atur preferensi default untuk latihan grammar berikutnya.`
+- Header: `Pengaturan Grammar` with no supporting subtitle.
 - Main form on the left; a quiet read-only `Ringkasan default` column on the right, using divider-led rows rather than stacked cards.
 - `Level default`: CEFR segmented selector with `A1`, `A2`, `B1`, `B2`, `C1`, and `C2`.
 - `Latihan harian`: one positive-integer field, `Jumlah soal per latihan`, with the `soal` unit and helper `Digunakan untuk latihan grammar dari daily practice.`
@@ -161,4 +164,4 @@ GET /api/v1/grammar/sessions/:code/report
 1. SCR-GRAM-002 Settings, because its API contract is complete and independent of the missing collection endpoint.
 2. SCR-GRAM-003 for a known session code, including distinct practice and exam states.
 3. SCR-GRAM-004 explanations and SCR-GRAM-005 reports after their session states are verified.
-4. SCR-GRAM-001 only after the API adds a paginated session collection contract.
+4. SCR-GRAM-001 after the collection endpoint is available; the remaining work is browser API wiring and visual-state QA.

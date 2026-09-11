@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import { classNames } from '../../lib/class-names';
+import { Button } from './button';
 import type { ButtonHTMLAttributes } from 'react';
 
 type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -8,19 +8,16 @@ type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ children, className, label, type = 'button', ...props }, ref) => (
-    <button
-      ref={ref}
-      type={type}
-      className={classNames(
-        'inline-flex size-11 items-center justify-center rounded-control border border-border bg-surface text-ink-muted',
-        'transition-colors hover:bg-surface-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-55',
-        className,
-      )}
+    <Button
       aria-label={label}
+      className={className}
+      icon={children}
+      ref={ref}
+      size='icon'
+      type={type}
+      variant='secondary'
       {...props}
-    >
-      {children}
-    </button>
+    />
   ),
 );
 

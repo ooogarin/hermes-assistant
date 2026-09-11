@@ -23,9 +23,6 @@ const CorrectedWritingPage = () => {
       </Link>
       <header className='mt-8 border-b border-border pb-8'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Versi perbaikan</h1>
-        <p className='mt-2 text-base text-ink-muted'>
-          {code} · Draft #{number}
-        </p>
       </header>
       <div className='mt-8'>
         {result.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}

@@ -27,17 +27,24 @@ export const CollectionPagination = ({
         Menampilkan {first}–{last} dari {total} materi
       </p>
       <div className='flex items-center gap-2'>
-        <Button variant='secondary' disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
-          <ChevronLeft aria-hidden='true' size={17} />
-          Sebelumnya
-        </Button>
+        <Button
+          disabled={page <= 1}
+          icon={<ChevronLeft aria-hidden='true' size={17} />}
+          label='Sebelumnya'
+          onClick={() => onPageChange(page - 1)}
+          variant='secondary'
+        />
         <span className='inline-flex size-11 items-center justify-center rounded-control border border-primary bg-primary-subtle font-semibold text-primary'>
           {page}
         </span>
-        <Button variant='secondary' disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
-          Berikutnya
-          <ChevronRight aria-hidden='true' size={17} />
-        </Button>
+        <Button
+          disabled={page >= totalPages}
+          icon={<ChevronRight aria-hidden='true' size={17} />}
+          iconPosition='end'
+          label='Berikutnya'
+          onClick={() => onPageChange(page + 1)}
+          variant='secondary'
+        />
       </div>
     </footer>
   );

@@ -12,8 +12,7 @@ export type NoteType = (typeof noteTypes)[number];
 export type NoteCodeParams = z.infer<typeof noteCodeSchema>;
 export type CreateNoteRequest = z.infer<typeof createNoteSchema>;
 export type UpdateNoteRequest = z.infer<typeof updateNoteSchema>;
-export type ListNotesQuery = z.infer<typeof searchNotesSchema>;
-export type ListNotesRequest = ListNotesQuery;
+export type ListNotesRequest = z.infer<typeof searchNotesSchema>;
 
 export type NoteReferenceRequest = {
   code: string;

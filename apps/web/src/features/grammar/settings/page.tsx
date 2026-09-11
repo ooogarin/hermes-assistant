@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ErrorState } from '../../../components/feedback/content-state';
 import { Skeleton } from '../../../components/feedback/skeleton';
 import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/form-field';
 import { classNames } from '../../../lib/class-names';
 import { formatDate } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
@@ -117,9 +118,6 @@ const SettingsForm = ({ initial }: { initial: GrammarSettings }) => {
       </button>
       <header className='mt-8 border-b border-border pb-8'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Pengaturan Grammar</h1>
-        <p className='mt-3 text-base leading-7 text-ink-muted'>
-          Atur preferensi default untuk latihan grammar berikutnya.
-        </p>
       </header>
 
       <div className='mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)]'>
@@ -152,11 +150,12 @@ const SettingsForm = ({ initial }: { initial: GrammarSettings }) => {
 
             <section className='mt-9 border-t border-border pt-8'>
               <h2 className='text-xl font-semibold text-ink'>Latihan harian</h2>
-              <label className='mt-5 grid gap-2 text-sm font-medium text-ink'>
+              <label className='mt-5 grid gap-2 text-sm font-medium text-ink' htmlFor='grammar-daily-question-count'>
                 Jumlah soal per latihan
                 <span className='flex min-h-12 items-center overflow-hidden rounded-control border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15'>
-                  <input
-                    className='min-w-0 flex-1 bg-transparent px-4 outline-none disabled:cursor-not-allowed'
+                  <Input
+                    className='min-h-0 min-w-0 flex-1 border-0 bg-transparent px-4 focus:ring-0'
+                    id='grammar-daily-question-count'
                     min={1}
                     max={100}
                     type='number'

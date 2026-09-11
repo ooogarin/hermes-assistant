@@ -1,5 +1,6 @@
 import { Button } from '../ui/button';
 import { TextField } from '../ui/form-field';
+import { SelectField } from '../ui/select-field';
 import type { FinanceCategory, FinanceTransactionInput } from '../../features/finance/finance-api';
 
 type TransactionFieldsProps = {
@@ -80,22 +81,19 @@ export const FinanceTransactionFields = ({
           type='number'
           value={Number.isNaN(value.amount) ? '' : value.amount}
         />
-        <label className='grid gap-2 text-sm font-medium text-ink'>
-          Kategori
-          <select
-            className='min-h-12 rounded-control border border-border bg-surface px-4 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-surface-subtle'
-            onChange={(event) => update('categoryCode', event.target.value)}
-            required
-            value={value.categoryCode}
-          >
-            <option value=''>Pilih kategori</option>
-            {categories.map((category) => (
-              <option key={category.code} value={category.code}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          label='Kategori'
+          onChange={(event) => update('categoryCode', event.target.value)}
+          required
+          value={value.categoryCode}
+        >
+          <option value=''>Pilih kategori</option>
+          {categories.map((category) => (
+            <option key={category.code} value={category.code}>
+              {category.name}
+            </option>
+          ))}
+        </SelectField>
       </div>
       <TextField
         label='Nama transaksi'

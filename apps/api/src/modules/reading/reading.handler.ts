@@ -18,15 +18,15 @@ export const getSettings = async (context: Context<AppEnv>) => {
 };
 
 export const updateSettings = async (context: Context<AppEnv>) => {
-  const data = getBody(context, updateSettingsSchema);
-  const result = await readingService.updateSettings(data);
+  const input = getBody(context, updateSettingsSchema);
+  const result = await readingService.updateSettings(input);
 
   return successResponse({ context, data: result });
 };
 
 export const createMaterial = async (context: Context<AppEnv>) => {
-  const data = getBody(context, createMaterialSchema);
-  const result = await readingService.createMaterial(data);
+  const input = getBody(context, createMaterialSchema);
+  const result = await readingService.createMaterial(input);
 
   return successResponse({ context, data: result, statusCode: 201 });
 };
@@ -47,8 +47,8 @@ export const getMaterial = async (context: Context<AppEnv>) => {
 
 export const saveSubmission = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
-  const data = getBody(context, saveSubmissionSchema);
-  const result = await readingService.saveSubmission(params.code, data);
+  const input = getBody(context, saveSubmissionSchema);
+  const result = await readingService.saveSubmission(params.code, input);
 
   return successResponse({ context, data: result });
 };

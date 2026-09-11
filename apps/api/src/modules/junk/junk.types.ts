@@ -8,8 +8,7 @@ import type { createJunkSchema, junkCodeSchema, searchJunkSchema, updateJunkSche
 export type JunkCodeParams = z.infer<typeof junkCodeSchema>;
 export type CreateJunkRequest = z.infer<typeof createJunkSchema>;
 export type UpdateJunkRequest = z.infer<typeof updateJunkSchema>;
-export type ListJunkQuery = z.infer<typeof searchJunkSchema>;
-export type ListJunkRequest = ListJunkQuery;
+export type ListJunkRequest = z.infer<typeof searchJunkSchema>;
 
 export type JunkReferenceRequest = {
   code: string;

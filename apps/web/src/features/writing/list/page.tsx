@@ -20,11 +20,7 @@ const WritingListPage = () => {
 
   return (
     <div className='space-y-7'>
-      <PageHeader
-        title='Writing'
-        description='Latihan menulis dengan feedback terarah.'
-        actions={<EnglishSettingsLink to='/english/writing/settings' />}
-      />
+      <PageHeader title='Writing' actions={<EnglishSettingsLink to='/english/writing/settings' />} />
       <LearningListToolbar
         genre={state.genre}
         levels={filters.levels}

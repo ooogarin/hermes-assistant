@@ -8,3 +8,4 @@ dist/
 *.tsbuildinfo
 .DS_Store
 .docs-vps
+docs/frontend-design/

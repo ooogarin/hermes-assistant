@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
+import { Textarea } from '../ui/form-field';
 import { ReadingMeta } from './reading-meta';
 import type { FormEvent } from 'react';
 import type { ReadingMaterial } from '../../features/reading/reading-api';
@@ -63,9 +64,9 @@ export const ReadingWorkspace = ({ material, onSubmit, submitting }: ReadingWork
                   >
                     {question.questionNumber}. {question.questionText}
                   </label>
-                  <textarea
+                  <Textarea
                     id={`answer-${question.questionNumber}`}
-                    className='mt-2 min-h-28 w-full resize-y rounded-control border border-border bg-surface px-3 py-2 text-sm leading-6 text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-surface-subtle'
+                    className='mt-2 min-h-28 py-2 leading-6'
                     disabled={completed || submitting}
                     value={answers[question.questionNumber] ?? ''}
                     aria-invalid={showValidation && empty}

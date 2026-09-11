@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
 import { Button } from '../ui/button';
-import { parseTags, TextAreaField, TextField } from '../ui/form-field';
+import { ChoiceDropdown } from '../ui/choice-dropdown';
+import { Field, TextAreaField, TextField } from '../ui/form-field';
+import { TagInput } from '../ui/tag-input';
 import type { FormEvent } from 'react';
 import type { NoteType } from '../../features/notes/notes-api';
 
@@ -32,23 +34,23 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
   const [type, setType] = useState(initial.type);
   const [category, setCategory] = useState(initial.category);
   const [source, setSource] = useState(initial.source ?? '');
-  const [tags, setTags] = useState(initial.tags.join(', '));
+  const [tags, setTags] = useState(initial.tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
-  const parsedTags = useMemo(() => parseTags(tags), [tags]);
   const valid =
     title.trim().length > 0 &&
     content.trim().length > 0 &&
     category.trim().length > 0 &&
-    parsedTags.length <= 50 &&
-    parsedTags.every((tag) => tag.length <= 64);
+    tags.length <= 50 &&
+    tags.every((tag) => tag.length <= 64);
   const dirty =
     title !== initial.title ||
     content !== initial.content ||
     type !== initial.type ||
     category !== initial.category ||
     source !== (initial.source ?? '') ||
-    tags !== initial.tags.join(', ');
+    tags.length !== initial.tags.length ||
+    tags.some((tag, index) => tag !== initial.tags[index]);
   const canLeave = useUnsavedChanges(dirty);
 
   const submit = async (event: FormEvent) => {
@@ -61,7 +63,7 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
         category: category.trim(),
         content: content.trim(),
         source: source.trim() || null,
-        tags: parsedTags,
+        tags,
         title: title.trim(),
         type,
       });
@@ -91,21 +93,20 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
           value={content}
         />
         <div className='grid gap-5 sm:grid-cols-2'>
-          <label className='grid gap-2 text-sm font-medium text-ink'>
-            Tipe
-            <select
-              className='min-h-12 rounded-control border border-border bg-surface px-4 outline-none focus:border-primary focus:ring-2 focus:ring-primary/15'
+          <Field label='Tipe'>
+            <ChoiceDropdown
+              className='w-full'
+              clearable={false}
               disabled={saving}
-              onChange={(event) => setType(event.target.value as NoteType)}
+              label='Tipe'
+              mode='single'
+              onChange={(value) => value !== null && setType(value)}
+              options={noteTypes.map((value) => ({ label: value[0].toUpperCase() + value.slice(1), value }))}
+              placeholder='Pilih tipe'
+              searchable={false}
               value={type}
-            >
-              {noteTypes.map((value) => (
-                <option key={value} value={value}>
-                  {value[0].toUpperCase() + value.slice(1)}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </Field>
           <TextField
             disabled={saving}
             label='Kategori'
@@ -122,13 +123,7 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
           onChange={(event) => setSource(event.target.value)}
           value={source}
         />
-        <TextField
-          disabled={saving}
-          helper='Pisahkan dengan koma'
-          label='Tags'
-          onChange={(event) => setTags(event.target.value)}
-          value={tags}
-        />
+        <TagInput disabled={saving} label='Tags' onChange={setTags} value={tags} />
       </div>
       {!valid && dirty ? (
         <p className='mt-4 text-sm text-danger'>Judul, isi, dan kategori wajib diisi; maksimal 50 tag.</p>

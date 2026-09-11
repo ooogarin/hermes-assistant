@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/form-field';
 import { WritingMeta } from './writing-meta';
 import type { WritingMaterial } from '../../features/writing/writing-api';
 
@@ -27,9 +29,9 @@ export const WritingWorkspace = ({ material }: { material: WritingMaterial }) =>
           <label className='sr-only' htmlFor='writing-draft'>
             Draft tulisan
           </label>
-          <textarea
+          <Textarea
             id='writing-draft'
-            className='mt-5 min-h-96 w-full resize-y rounded-control border border-border bg-surface px-5 py-4 text-base leading-8 text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15'
+            className='mt-5 min-h-96 px-5 py-4 text-base leading-8'
             placeholder='Tulis jawabanmu di sini...'
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -37,14 +39,12 @@ export const WritingWorkspace = ({ material }: { material: WritingMaterial }) =>
           <p className='mt-3 text-sm text-ink-muted'>
             <strong className='text-primary'>{wordCount}</strong> / {material.targetWordCount} kata
           </p>
-          <button
-            className='mt-6 min-h-12 w-full rounded-control border border-primary bg-primary px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55'
+          <Button
+            className='mt-6 w-full'
             disabled
+            label='Kirim untuk dianalisis'
             title='API submission Writing masih mewajibkan hasil analisis lengkap dari Hermes.'
-            type='button'
-          >
-            Kirim untuk dianalisis
-          </button>
+          />
           <p className='mt-3 text-xs leading-5 text-ink-muted'>
             Pengiriman draft dari web menunggu endpoint yang menerima tulisan tanpa meminta hasil analisis dari browser.
           </p>

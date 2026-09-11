@@ -66,9 +66,9 @@ export const WritingFeedback = ({ code, submission }: { code: string; submission
                   <tbody>
                     {analysis.grammar.items.map((item) => (
                       <tr key={`${item.original}-${item.corrected}`} className='border-b border-border last:border-b-0'>
-                        <td className='py-3 pr-4'>{item.original}</td>
-                        <td className='py-3 pr-4 font-medium text-primary'>{item.corrected}</td>
-                        <td className='py-3'>{item.explanation}</td>
+                        <td className='align-top py-3 pr-4'>{item.original}</td>
+                        <td className='align-top py-3 pr-4 font-medium text-primary'>{item.corrected}</td>
+                        <td className='align-top py-3'>{item.explanation}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -26,7 +26,7 @@ describe('AppRoutes', () => {
     await user.click(screen.getByRole('button', { name: 'English' }));
     await user.click(screen.getByRole('link', { name: 'Reading' }));
 
-    expect(screen.getByRole('heading', { name: 'Reading' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Reading' })).toBeInTheDocument();
   });
 
   test('renders a safe not-found state for an unknown route', () => {

@@ -1,10 +1,10 @@
 # Finance Screen List
 
-> Status: Finance daily, range, create, edit, and delete flows are implemented. Read [Frontend Screen Guide](../frontend-screens.md) with this document before changing Finance screens.
+> Status: Finance daily, range, create, and edit flows are implemented. Read [Frontend Screen Guide](../frontend-screens.md) with this document before changing Finance screens.
 
 ## Scope
 
-Finance supports reviewing summaries and transactions, manually adding one or more transactions in a batch, correcting mutable transaction fields, and confirmed deletion. Hermes/Telegram remains the primary capture flow. The browser formats API data and may derive presentational proportions from returned totals; transaction totals and category aggregation remain API-owned.
+Finance supports reviewing summaries and transactions, manually adding one or more transactions in a batch, and correcting mutable transaction fields. Hermes/Telegram remains the primary capture flow. The browser formats API data and may derive presentational proportions from returned totals; transaction totals and category aggregation remain API-owned.
 
 ## Screen map
 
@@ -31,7 +31,7 @@ Finance supports reviewing summaries and transactions, manually adding one or mo
 | SCR-FIN-002 | Range view | `/finance/report?from=YYYY-MM-DD&to=YYYY-MM-DD` | Implemented with capability state | Partially available; see API gap |
 | SCR-FIN-003 | Create transaction | `/finance/new?date=YYYY-MM-DD` | Implemented | Available |
 | SCR-FIN-004 | Edit transaction | `/finance/transactions/:date/:dailyNumber/edit` | Implemented | Available |
-| SCR-FIN-005 | Delete transaction dialog | Daily view overlay | Implemented | Available |
+| SCR-FIN-005 | Delete transaction dialog | Daily view overlay | Deferred pending an explicit action placement | Available |
 
 ## SCR-FIN-001 — Daily view
 
@@ -47,25 +47,25 @@ Review every recorded transaction and the income/expense distribution for one se
 **Date behavior**
 
 - The selected date defaults to today in the user's local date context.
-- The header provides previous-day, next-day, and date-picker controls.
+- The header provides previous-day, next-day, and a shared calendar-popover date picker; selecting a day updates the URL-backed report immediately.
 - Do not allow a date after today.
 - `Lihat laporan periode` opens Range view while retaining the selected date as useful context for its range picker.
 
 **UI composition**
 
-- Header: `Finance`, selected date, date navigation, and `Lihat laporan periode`.
-- The top content row pairs stacked daily totals (`Pengeluaran`, `Pemasukan`, and `Saldo bersih`) with `Ringkasan kategori` in two balanced columns when space permits.
-- Primary section: a transaction list for the selected date. Each row shows flow (`Pemasukan` or `Pengeluaran`), transaction name, category, optional note and location, time, Rupiah amount, and row actions. Missing optional text uses a quiet dash rather than a raw null value. Use the stable daily reference when a visible reference is needed.
+- Header: `Finance` with no supporting subtitle.
+- A control row below the header places previous/date/next navigation on the left and `Laporan periode` plus the primary `Tambah transaksi` action on the right.
+- A full-width horizontal summary presents `Pengeluaran`, `Pemasukan`, and `Selisih`; the third value also explains that it is pemasukan minus pengeluaran.
+- Primary section: a read-only transaction list for the selected date. Each row shows the transaction name, optional note and location, category, flow (`Pemasukan` or `Pengeluaran`), and right-aligned Rupiah amount. Missing optional text uses a quiet dash rather than a raw null value.
 - Supporting section: `Ringkasan kategori`, visibly split into `Pengeluaran` and `Pemasukan`. Each group shows category, total, and its percentage of that flow's total.
-- The transaction list is the dominant full-width section below both summaries. On narrow screens, the daily totals, category summary, and transaction list stack in that order.
+- The transaction list is the dominant left column and category summary is the narrower right column. On narrow screens, the summary, transaction list, and category summary stack in that order.
 - No pagination in this version.
 
 **Interactions**
 
 - Changing the date replaces both the transaction list and the daily summary, and cancels previous in-flight requests.
 - `Tambah transaksi` opens the manual create route while retaining the selected date.
-- Each transaction row exposes edit and delete actions with accessible names.
-- Edit opens the dedicated correction route. Delete first opens a confirmation dialog and refreshes the selected date after success.
+- Transaction rows remain visually stable on hover; the report table does not replace nominal values with hidden actions.
 
 **Data contract**
 
@@ -94,6 +94,7 @@ GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
 - Keep date navigation and the date picker keyboard operable with clear accessible labels.
 - On narrow screens, stack totals, then transactions, then category summary; do not hide flow labels behind color alone.
 - Long transaction names, locations, and Rupiah values must wrap without horizontal page scrolling.
+- Desktop table columns use fluid widths within the dominant panel so the nominal header and values remain visible when the sidebar is expanded.
 - Each proportional bar has a visible category label, numeric total, and percentage.
 
 **Out of scope**
@@ -119,7 +120,8 @@ Compare total income, expense, and net balance for every date in a selected rang
 
 **UI composition**
 
-- Header: `Laporan periode`, a date-range picker, and a return action to Daily view.
+- Header: `Laporan Finance` with no supporting subtitle.
+- A control row below the header places the inclusive date range on the left and a return action to Daily view on the right.
 - Compact period totals: `Pengeluaran`, `Pemasukan`, and `Saldo bersih` for the complete selected range.
 - Primary section: one daily aggregate row per date, with date, total expense, total income, and net balance. This is deliberately not an individual transaction list.
 - Supporting section: `Ringkasan kategori` for the complete range, visibly split into `Pengeluaran` and `Pemasukan`; each row shows category, total, and percentage of that flow's total.
@@ -159,7 +161,7 @@ GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 
 **Responsive and accessibility notes**
 
-- The date range picker has explicit start-date and end-date labels, validation text, and keyboard access.
+- The shared calendar picker gives the start and end dates explicit accessible labels, enforces their min/max relationship, and supports keyboard dismissal.
 - Preserve date, expense, income, and net labels when the aggregate list becomes a stacked narrow-screen layout.
 - A row opening Daily view is a semantic link or button with the selected date in its accessible name.
 - Net balance uses text and currency value; color is supplementary only.
@@ -215,14 +217,14 @@ PATCH /api/v1/finance/transactions/:date/:dailyNumber
 
 ## SCR-FIN-005 — Delete transaction dialog
 
-**Purpose**
-Prevent accidental deletion while keeping the user in the Daily context.
+**Status**
+Deferred until an explicit, non-hover action placement is selected for the transaction table or detail flow.
 
-**Behavior**
+**Preserved contract**
 
-- The dialog names the selected transaction, explains its report impact, traps focus, and supports cancel.
-- Confirm performs the delete once, prevents duplicate submission while pending, closes on success, and refreshes the selected date.
-- Failure closes the dialog and shows a safe retry message without exposing backend details.
+- The backend delete operation remains available.
+- Do not reintroduce actions that replace nominal values or appear unexpectedly when a row is hovered.
+- When this flow is resumed, the confirmation dialog must name the transaction, prevent duplicate submission, and return safely to its report context.
 
 ```text
 DELETE /api/v1/finance/transactions/:date/:dailyNumber
@@ -233,4 +235,4 @@ DELETE /api/v1/finance/transactions/:date/:dailyNumber
 1. Daily and Range views.
 2. Shared transaction fields, batch-create form, and category loading.
 3. Create and edit routes.
-4. Confirmed delete action from Daily view.
+4. Select an explicit action placement before reconnecting confirmed deletion to Daily view.

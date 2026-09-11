@@ -3,12 +3,15 @@ import type { DatabaseExecutor, DatabaseReservedConnection } from '../../core/da
 import type {
   CreateGrammarSessionPayload,
   EvaluateGrammarSessionPayload,
+  GrammarCountRow,
   GrammarExplanationRow,
   GrammarQuestionRow,
   GrammarReportRow,
+  GrammarSessionListRow,
   GrammarSessionRow,
   GrammarSettingsRow,
   IdRow,
+  ListGrammarSessionsQuery,
   SaveGrammarAnswerPayload,
   SequenceRow,
   UpdateGrammarSettingsPayload,
@@ -183,6 +186,121 @@ export const findSessionRow = async (code: string): Promise<GrammarSessionRow | 
   `;
 
   return row ?? null;
+};
+
+export const listSessions = async (input: ListGrammarSessionsQuery): Promise<GrammarSessionListRow[]> => {
+  const database = getDatabaseClient();
+  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+  const offset = (input.page - 1) * input.limit;
+
+  return database<GrammarSessionListRow[]>`
+    WITH session_summary AS (
+      SELECT
+        grammar_sessions.id,
+        grammar_sessions.code,
+        grammar_sessions.mode,
+        grammar_sessions.source,
+        grammar_sessions.status,
+        grammar_sessions.level,
+        grammar_sessions.question_count,
+        grammar_sessions.score,
+        grammar_sessions.max_score,
+        grammar_sessions.started_at,
+        grammar_sessions.completed_at,
+        focus.grammar_area,
+        focus.grammar_point,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM grammar_answers
+          JOIN grammar_questions ON grammar_questions.id = grammar_answers.question_id
+          WHERE grammar_questions.session_id = grammar_sessions.id
+            AND grammar_questions.deleted_at IS NULL
+            AND grammar_answers.deleted_at IS NULL
+        ) AS answered_question_count
+      FROM grammar_sessions
+      LEFT JOIN LATERAL (
+        SELECT
+          grammar_questions.grammar_area,
+          grammar_questions.grammar_point
+        FROM grammar_questions
+        WHERE grammar_questions.session_id = grammar_sessions.id
+          AND grammar_questions.deleted_at IS NULL
+        ORDER BY grammar_questions.question_number ASC
+        LIMIT 1
+      ) AS focus ON TRUE
+      WHERE grammar_sessions.deleted_at IS NULL
+    )
+    SELECT
+      code,
+      mode,
+      source,
+      status,
+      level,
+      grammar_area,
+      grammar_point,
+      question_count,
+      answered_question_count,
+      score,
+      max_score,
+      started_at,
+      completed_at
+    FROM session_summary
+    WHERE (${searchPattern}::TEXT IS NULL
+      OR code ILIKE ${searchPattern}
+      OR EXISTS (
+        SELECT 1
+        FROM grammar_questions
+        WHERE grammar_questions.session_id = session_summary.id
+          AND grammar_questions.deleted_at IS NULL
+          AND (
+            grammar_questions.grammar_area ILIKE ${searchPattern}
+            OR grammar_questions.grammar_point ILIKE ${searchPattern}
+          )
+      )
+    )
+      AND (${input.status}::TEXT IS NULL OR status::TEXT = ${input.status})
+      AND (${input.mode}::TEXT IS NULL OR mode::TEXT = ${input.mode})
+      AND (${input.level}::TEXT IS NULL OR level = ${input.level})
+    ORDER BY
+      CASE WHEN ${input.sort} = 'oldest' THEN started_at END ASC,
+      CASE WHEN ${input.sort} = 'newest' THEN started_at END DESC,
+      CASE WHEN ${input.sort} = 'oldest' THEN id END ASC,
+      CASE WHEN ${input.sort} = 'newest' THEN id END DESC
+    LIMIT ${input.limit}
+    OFFSET ${offset}
+  `;
+};
+
+export const countSessions = async (input: ListGrammarSessionsQuery): Promise<GrammarCountRow> => {
+  const database = getDatabaseClient();
+  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+  const [row] = await database<GrammarCountRow[]>`
+    SELECT COUNT(*)::INTEGER AS total
+    FROM grammar_sessions
+    WHERE grammar_sessions.deleted_at IS NULL
+      AND (${searchPattern}::TEXT IS NULL
+        OR grammar_sessions.code ILIKE ${searchPattern}
+        OR EXISTS (
+          SELECT 1
+          FROM grammar_questions
+          WHERE grammar_questions.session_id = grammar_sessions.id
+            AND grammar_questions.deleted_at IS NULL
+            AND (
+              grammar_questions.grammar_area ILIKE ${searchPattern}
+              OR grammar_questions.grammar_point ILIKE ${searchPattern}
+            )
+        )
+      )
+      AND (${input.status}::TEXT IS NULL OR grammar_sessions.status::TEXT = ${input.status})
+      AND (${input.mode}::TEXT IS NULL OR grammar_sessions.mode::TEXT = ${input.mode})
+      AND (${input.level}::TEXT IS NULL OR grammar_sessions.level = ${input.level})
+  `;
+
+  if (row === undefined) {
+    throw new Error('Grammar session count query did not return a row.');
+  }
+
+  return row;
 };
 
 const getQuestionsWithExecutor = async (

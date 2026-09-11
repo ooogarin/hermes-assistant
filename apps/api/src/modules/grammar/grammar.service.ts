@@ -17,8 +17,13 @@ import type {
   GrammarReport,
   GrammarReportRow,
   GrammarSession,
+  GrammarSessionList,
+  GrammarSessionListItem,
+  GrammarSessionListRow,
   GrammarSessionRow,
   GrammarSettings,
+  ListGrammarSessionsQuery,
+  ListGrammarSessionsRequest,
   SaveGrammarAnswerPayload,
   SaveGrammarAnswerRequest,
   UpdateGrammarSettingsPayload,
@@ -74,6 +79,24 @@ export const createSession = async (input: CreateGrammarSessionRequest): Promise
 
     throw error;
   }
+};
+
+export const listSessions = async (input: ListGrammarSessionsRequest): Promise<GrammarSessionList> => {
+  const query: ListGrammarSessionsQuery = {
+    q: input.q,
+    status: input.status,
+    mode: input.mode,
+    level: input.level,
+    page: input.page,
+    limit: input.limit,
+    sort: input.sort,
+  };
+  const [rows, count] = await Promise.all([
+    grammarRepository.listSessions(query),
+    grammarRepository.countSessions(query),
+  ]);
+
+  return toGrammarSessionList(rows, count.total, input.page, input.limit);
 };
 
 export const getSession = async (code: string): Promise<GrammarSession> => {
@@ -331,6 +354,41 @@ const toGrammarSession = (row: GrammarSessionRow, questionRows: GrammarQuestionR
   completed_at: row.completed_at === null ? null : toIsoTimestamp(row.completed_at),
   questions: questionRows.map(toGrammarQuestion),
 });
+
+const toGrammarSessionListItem = (row: GrammarSessionListRow): GrammarSessionListItem => ({
+  code: row.code,
+  mode: row.mode,
+  source: row.source,
+  status: row.status,
+  level: row.level,
+  grammar_area: row.grammar_area,
+  grammar_point: row.grammar_point,
+  question_count: Number(row.question_count),
+  answered_question_count: Number(row.answered_question_count),
+  score: row.score === null ? null : Number(row.score),
+  max_score: row.max_score === null ? null : Number(row.max_score),
+  started_at: toIsoTimestamp(row.started_at),
+  completed_at: row.completed_at === null ? null : toIsoTimestamp(row.completed_at),
+});
+
+const toGrammarSessionList = (
+  rows: GrammarSessionListRow[],
+  totalValue: number | string,
+  page: number,
+  limit: number,
+): GrammarSessionList => {
+  const total = Number(totalValue);
+
+  return {
+    items: rows.map(toGrammarSessionListItem),
+    meta: {
+      page,
+      limit,
+      total,
+      total_pages: Math.ceil(total / limit),
+    },
+  };
+};
 
 const toGrammarExplanation = (row: GrammarExplanationRow): GrammarExplanation => ({
   question_number: row.question_number,

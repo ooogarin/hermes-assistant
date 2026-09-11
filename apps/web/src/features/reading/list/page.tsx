@@ -20,11 +20,7 @@ const ReadingListPage = () => {
 
   return (
     <div className='space-y-7'>
-      <PageHeader
-        title='Reading'
-        description='Latihan pemahaman bacaan.'
-        actions={<EnglishSettingsLink to='/english/reading/settings' />}
-      />
+      <PageHeader title='Reading' actions={<EnglishSettingsLink to='/english/reading/settings' />} />
       <LearningListToolbar
         genre={state.genre}
         levels={filters.levels}
