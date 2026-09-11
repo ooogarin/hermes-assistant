@@ -45,6 +45,7 @@ Finance Daily defaults to the current date and Range defaults to the current cal
 
 ```text
 GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
+GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 GET /api/v1/finance/categories?type=expense|income
 POST /api/v1/finance/transactions
 GET /api/v1/finance/transactions/:date/:dailyNumber

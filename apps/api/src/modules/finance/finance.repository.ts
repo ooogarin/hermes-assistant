@@ -3,6 +3,8 @@ import type { DatabaseReservedConnection } from '../../core/database/database.ty
 import type {
   CategoryRow,
   DailyNumberRow,
+  FinanceDailySummaryQuery,
+  FinanceDailySummaryRow,
   FinanceSummaryCategoryRow,
   FinanceSummaryTotalsRow,
   FinanceTransactionInsertPayload,
@@ -124,12 +126,18 @@ export const insertBatch = async (
         created_at,
         updated_at
     ), numbered AS (
+      -- The data-modifying CTE shares a snapshot, so add the inserted batch order to prior active rows.
       SELECT
         id,
-        ROW_NUMBER() OVER (ORDER BY id)::INTEGER AS display_number
-      FROM transactions
-      WHERE date = ${date}::DATE
-        AND deleted_at IS NULL
+        (
+          (
+            SELECT COUNT(*)
+            FROM transactions
+            WHERE date = ${date}::DATE
+              AND deleted_at IS NULL
+          ) + ROW_NUMBER() OVER (ORDER BY id)
+        )::INTEGER AS display_number
+      FROM inserted
     )
     SELECT
       inserted.id,
@@ -342,5 +350,21 @@ export const getSummaryByCategory = async (
       AND (${mode} = 'net' OR transactions.type::TEXT = ${mode})
     GROUP BY categories.id
     ORDER BY total DESC, categories.name ASC
+  `;
+};
+
+export const getDailySummary = async (input: FinanceDailySummaryQuery): Promise<FinanceDailySummaryRow[]> => {
+  return getDatabaseClient()<FinanceDailySummaryRow[]>`
+    SELECT
+      date,
+      COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS expense_total,
+      COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) AS income_total,
+      COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0)
+        - COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS net_total
+    FROM transactions
+    WHERE date BETWEEN ${input.from}::DATE AND ${input.to}::DATE
+      AND deleted_at IS NULL
+    GROUP BY date
+    ORDER BY date ASC
   `;
 };

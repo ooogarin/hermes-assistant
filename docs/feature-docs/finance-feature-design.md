@@ -338,6 +338,7 @@ Request bodies and every response field use `snake_case` recursively.
 | `DELETE` | `/api/v1/finance/transactions/:date/:daily_number` | Soft delete one transaction. |
 | `GET` | `/api/v1/finance/categories?type=expense` | List active categories; `type` is optional. |
 | `GET` | `/api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=expense` | Return SQL-calculated expense, income, or net totals and category breakdown. |
+| `GET` | `/api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD` | Return SQL-calculated totals grouped by active transaction date. |
 
 The batch-create payload contains values already cleaned by Hermes. `amount` is an integer amount in Rupiah, not the Telegram shorthand: `12` has already become `12000` before the API is called. Each item uses `category_code`; database category IDs remain internal.
 
@@ -359,3 +360,20 @@ The batch-create payload contains values already cleaned by Hermes. `amount` is 
 ```
 
 Response field `daily_number` is an integer shown without zero-padding, for example `3`; the stable route reference is `/api/v1/finance/transactions/2026-07-14/3`. Response field `display_number` is a temporary sequential integer in a date list and can change after insertions or deletions.
+
+The daily summary response uses the following shape:
+
+```json
+{
+  "items": [
+    {
+      "date": "2026-07-14",
+      "expense_total": 89000,
+      "income_total": 0,
+      "net_total": -89000
+    }
+  ]
+}
+```
+
+Only dates with at least one non-deleted transaction are returned. Dates without activity are omitted; the API does not ask the browser to infer zero-value rows. `net_total` is calculated as `income_total - expense_total` in PostgreSQL.
