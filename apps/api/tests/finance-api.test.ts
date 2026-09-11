@@ -4,6 +4,8 @@ import { toSnakeCaseJson } from '../src/shared/response/api-response';
 import type {
   Category,
   CreateTransactionsRequest,
+  DailySummaryRequest,
+  FinanceDailySummary,
   FinanceService,
   FinanceSummary,
   FinanceTransaction,
@@ -46,6 +48,15 @@ const summary: FinanceSummary = {
   by_category: [{ category, total: 23_000 }],
 };
 
+const dailySummary: FinanceDailySummary[] = [
+  {
+    date: '2026-07-14',
+    expense_total: 23_000,
+    income_total: 0,
+    net_total: -23_000,
+  },
+];
+
 const createFinanceServiceStub = (overrides: Partial<FinanceService> = {}): FinanceService => ({
   createTransactions: async () => [trx],
   getTransaction: async () => trx,
@@ -57,6 +68,7 @@ const createFinanceServiceStub = (overrides: Partial<FinanceService> = {}): Fina
   removeTransaction: async () => {},
   listCategories: async () => [category],
   getSummary: async () => summary,
+  getDailySummary: async () => dailySummary,
   ...overrides,
 });
 
@@ -71,6 +83,7 @@ mock.module('../src/modules/finance/finance.service', () => ({
   removeTransaction: (input: TransactionReferenceRequest) => activeFinanceService.removeTransaction(input),
   listCategories: (input: ListCategoriesRequest) => activeFinanceService.listCategories(input),
   getSummary: (input: SummaryRequest) => activeFinanceService.getSummary(input),
+  getDailySummary: (input: DailySummaryRequest) => activeFinanceService.getDailySummary(input),
 }));
 
 const { createApp } = await import('../src/app');
@@ -248,6 +261,37 @@ test('rejects a reversed finance summary date range', async () => {
 
   expect(response.status).toBe(400);
   expect(summaryCalled).toBe(false);
+});
+
+test('returns daily finance totals for a validated date range', async () => {
+  let dailySummaryRequest: DailySummaryRequest | undefined;
+  const response = await createFinanceApp({
+    getDailySummary: async (input) => {
+      dailySummaryRequest = input;
+      return dailySummary;
+    },
+  }).request('http://localhost/api/v1/finance/summary/daily?from=2026-07-01&to=2026-07-14', {
+    headers: { Authorization: 'Bearer test-api-key' },
+  });
+
+  expect(response.status).toBe(200);
+  expect(dailySummaryRequest).toEqual({ from: '2026-07-01', to: '2026-07-14' });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: dailySummary }) });
+});
+
+test('rejects a reversed daily finance summary date range', async () => {
+  let dailySummaryCalled = false;
+  const response = await createFinanceApp({
+    getDailySummary: async () => {
+      dailySummaryCalled = true;
+      return dailySummary;
+    },
+  }).request('http://localhost/api/v1/finance/summary/daily?from=2026-07-15&to=2026-07-14', {
+    headers: { Authorization: 'Bearer test-api-key' },
+  });
+
+  expect(response.status).toBe(400);
+  expect(dailySummaryCalled).toBe(false);
 });
 
 test('returns the standard not-found response for an unknown transaction', async () => {

@@ -61,3 +61,11 @@ export const summaryQuerySchema = z
   })
   .strict()
   .refine((value) => value.from <= value.to, 'The from date must be on or before the to date.');
+
+export const dailySummaryQuerySchema = z
+  .object({
+    from: dateSchema,
+    to: dateSchema,
+  })
+  .strict()
+  .refine((value) => value.from <= value.to, 'The from date must be on or before the to date.');

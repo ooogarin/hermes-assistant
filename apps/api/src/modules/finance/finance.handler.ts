@@ -3,6 +3,7 @@ import { successResponse } from '../../core/http/response';
 import * as financeService from './finance.service';
 import {
   createTransactionsSchema,
+  dailySummaryQuerySchema,
   listCategoriesSchema,
   listTransactionsSchema,
   summaryQuerySchema,
@@ -62,6 +63,13 @@ export const getSummary = async (context: Context<AppEnv>) => {
   const result = await financeService.getSummary(query);
 
   return successResponse({ context, data: result });
+};
+
+export const getDailySummary = async (context: Context<AppEnv>) => {
+  const query = getQuery(context, dailySummaryQuerySchema);
+  const result = await financeService.getDailySummary(query);
+
+  return successResponse({ context, data: { items: result } });
 };
 
 const getTransactionReference = (context: Context<AppEnv>): TransactionReferenceRequest => {

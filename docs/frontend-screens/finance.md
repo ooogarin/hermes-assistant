@@ -28,7 +28,7 @@ Finance supports reviewing summaries and transactions, manually adding one or mo
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
 | SCR-FIN-001 | Daily view | `/finance?date=YYYY-MM-DD` | Implemented | Available |
-| SCR-FIN-002 | Range view | `/finance/report?from=YYYY-MM-DD&to=YYYY-MM-DD` | Implemented with capability state | Partially available; see API gap |
+| SCR-FIN-002 | Range view | `/finance/report?from=YYYY-MM-DD&to=YYYY-MM-DD` | Implemented | Available |
 | SCR-FIN-003 | Create transaction | `/finance/new?date=YYYY-MM-DD` | Implemented | Available |
 | SCR-FIN-004 | Edit transaction | `/finance/transactions/:date/:dailyNumber/edit` | Implemented | Available |
 | SCR-FIN-005 | Delete transaction dialog | Daily view overlay | Deferred pending an explicit action placement | Available |
@@ -130,7 +130,7 @@ Compare total income, expense, and net balance for every date in a selected rang
 
 **Data contract**
 
-Currently available:
+Period summary:
 
 ```text
 GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
@@ -138,15 +138,14 @@ GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
 
 - This existing endpoint supplies the period totals and complete-range `byCategory` data.
 
-Required to populate the daily aggregate list:
+Daily aggregate list:
 
 ```text
 GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 ```
 
-- This is a proposed API requirement, not an existing endpoint.
-- Its response must provide one row per date with at least `date`, `expenseTotal`, `incomeTotal`, and `netTotal`.
-- Confirm whether dates with no transactions are returned as zero-value rows or omitted before implementation. The screen does not infer missing dates in the browser.
+- Its response provides one row per active transaction date with `date`, `expense_total`, `income_total`, and `net_total`.
+- Dates with no active transactions are omitted. The screen does not infer missing dates in the browser.
 - Once this endpoint exists, all authoritative daily and period totals still come from the API. The browser only formats values and derives display-only category percentages from returned totals.
 
 **States**
@@ -157,7 +156,6 @@ GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 | Ready | Show one aggregate row for each API-returned date and the complete-range category summary. |
 | No activity | Show zero period totals, a quiet no-activity state, and empty category groups while retaining the selected range. |
 | Recoverable error | Keep the selected range visible and provide `Coba lagi`. |
-| API capability unavailable | Do not render invented daily values. Explain that the per-day report is not yet available while keeping the range context visible. |
 
 **Responsive and accessibility notes**
 

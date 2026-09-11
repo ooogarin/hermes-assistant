@@ -1,6 +1,7 @@
 import { beforeEach, expect, mock, test } from 'bun:test';
 import { writingAnalysis } from './fixtures/writing';
 import type { DatabaseReservedConnection } from '../src/core/database/database.types';
+import type { FinanceDailySummaryQuery, FinanceDailySummaryRow } from '../src/modules/finance/finance.types';
 import type {
   GrammarCountRow,
   GrammarQuestion,
@@ -166,6 +167,7 @@ const writingSubmissionRow: WritingSubmissionRow = {
 };
 
 let financeCategories: Array<{ id: number; code: string; name: string; description: string; type: 'expense' }> = [];
+let financeDailySummaryResult: FinanceDailySummaryRow[] = [];
 let grammarLockedSessionResult: GrammarSession = grammarSession;
 let grammarListResult: GrammarSessionListRow[] = [];
 let grammarCountResult: GrammarCountRow = { total: 0 };
@@ -239,6 +241,7 @@ mock.module('../src/modules/finance/finance.repository', () => ({
       total: '12500',
     },
   ],
+  getDailySummary: async (_input: FinanceDailySummaryQuery) => financeDailySummaryResult,
 }));
 
 mock.module('../src/modules/notes/notes.repository', () => ({
@@ -316,6 +319,7 @@ const writingService = await import('../src/modules/writing/writing.service');
 
 beforeEach(() => {
   financeCategories = [];
+  financeDailySummaryResult = [];
   grammarLockedSessionResult = grammarSession;
   grammarListResult = [];
   grammarCountResult = { total: 0 };
@@ -358,6 +362,28 @@ test('finance calculates numeric totals from repository aggregate rows', async (
 
   expect(result).toMatchObject({ expense_total: 12_500, income_total: 50_000, net_total: 37_500 });
   expect(result.by_category[0]?.total).toBe(12_500);
+});
+
+test('finance composes daily summary totals from repository rows', async () => {
+  financeDailySummaryResult = [
+    {
+      date: '2026-09-01T00:00:00.000Z',
+      expense_total: '12500',
+      income_total: '50000',
+      net_total: '37500',
+    },
+  ];
+
+  const result = await financeService.getDailySummary({ from: '2026-09-01', to: '2026-09-05' });
+
+  expect(result).toEqual([
+    {
+      date: '2026-09-01',
+      expense_total: 12_500,
+      income_total: 50_000,
+      net_total: 37_500,
+    },
+  ]);
 });
 
 test('create flows return the transaction-local result without a post-commit read', async () => {

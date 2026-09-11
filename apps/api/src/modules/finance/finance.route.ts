@@ -3,6 +3,7 @@ import { appValidator } from '../../core/http/validator';
 import * as financeHandler from './finance.handler';
 import {
   createTransactionsSchema,
+  dailySummaryQuerySchema,
   listCategoriesSchema,
   listTransactionsSchema,
   summaryQuerySchema,
@@ -15,6 +16,7 @@ export const createFinanceRoutes = () => {
   const route = new Hono<AppEnv>();
 
   route.get('/categories', appValidator('query', listCategoriesSchema), financeHandler.listCategories);
+  route.get('/summary/daily', appValidator('query', dailySummaryQuerySchema), financeHandler.getDailySummary);
   route.get('/summary', appValidator('query', summaryQuerySchema), financeHandler.getSummary);
   route.post('/transactions', appValidator('json', createTransactionsSchema), financeHandler.createTransactions);
   route.get('/transactions', appValidator('query', listTransactionsSchema), financeHandler.listTransactions);

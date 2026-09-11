@@ -91,6 +91,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     const summary = await financeService.getSummary({ from: '2026-09-05', to: '2026-09-05', mode: 'net' });
     expect(summary).toMatchObject({ expense_total: 35_000, income_total: 50_000, net_total: 15_000 });
 
+    const dailySummary = await financeService.getDailySummary({ from: '2026-09-05', to: '2026-09-06' });
+    expect(dailySummary).toEqual([
+      {
+        date: '2026-09-05',
+        expense_total: 35_000,
+        income_total: 50_000,
+        net_total: 15_000,
+      },
+    ]);
+
     const updated = await financeService.updateTransaction(
       { date: '2026-09-05', daily_number: 2 },
       { amount: 25_000, note: 'Airport trip' },
@@ -103,6 +113,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       { daily_number: 2, display_number: 1 },
       { daily_number: 3, display_number: 2 },
     ]);
+
+    await expect(financeService.getDailySummary({ from: '2026-09-05', to: '2026-09-05' })).resolves.toEqual([
+      {
+        date: '2026-09-05',
+        expense_total: 25_000,
+        income_total: 50_000,
+        net_total: 25_000,
+      },
+    ]);
+    await expect(financeService.getDailySummary({ from: '2026-09-06', to: '2026-09-06' })).resolves.toEqual([]);
   });
 
   test('persists, searches, updates, and soft deletes junk items', async () => {

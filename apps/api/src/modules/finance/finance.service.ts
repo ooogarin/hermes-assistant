@@ -8,6 +8,9 @@ import type { DatabaseReservedConnection } from '../../core/database/database.ty
 import type {
   Category,
   CreateTransactionsRequest,
+  DailySummaryRequest,
+  FinanceDailySummary,
+  FinanceDailySummaryQuery,
   FinanceSummary,
   FinanceSummaryCategory,
   FinanceTransaction,
@@ -152,6 +155,21 @@ export const getSummary = async (input: SummaryRequest): Promise<FinanceSummary>
     net_total: income_total - expense_total,
     by_category,
   };
+};
+
+export const getDailySummary = async (input: DailySummaryRequest): Promise<FinanceDailySummary[]> => {
+  const query: FinanceDailySummaryQuery = {
+    from: input.from,
+    to: input.to,
+  };
+  const rows = await financeRepository.getDailySummary(query);
+
+  return rows.map((row) => ({
+    date: toIsoDate(row.date),
+    expense_total: Number(row.expense_total),
+    income_total: Number(row.income_total),
+    net_total: Number(row.net_total),
+  }));
 };
 
 // ====================================================================================================

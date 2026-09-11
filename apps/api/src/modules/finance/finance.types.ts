@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import type {
   createTransactionsSchema,
+  dailySummaryQuerySchema,
   listCategoriesSchema,
   listTransactionsSchema,
   summaryQuerySchema,
@@ -21,6 +22,7 @@ export type TransactionReferenceParams = z.infer<typeof transactionReferenceSche
 export type ListTransactionsRequest = z.infer<typeof listTransactionsSchema>;
 export type ListCategoriesRequest = z.infer<typeof listCategoriesSchema>;
 export type SummaryRequest = z.infer<typeof summaryQuerySchema>;
+export type DailySummaryRequest = z.infer<typeof dailySummaryQuerySchema>;
 
 export type TransactionReferenceRequest = {
   date: string;
@@ -68,6 +70,13 @@ export type FinanceSummary = {
   by_category: FinanceSummaryCategory[];
 };
 
+export type FinanceDailySummary = {
+  date: string;
+  expense_total: number;
+  income_total: number;
+  net_total: number;
+};
+
 export type FinanceService = {
   createTransactions: (input: CreateTransactionsRequest) => Promise<FinanceTransaction[]>;
   getTransaction: (input: TransactionReferenceRequest) => Promise<FinanceTransaction>;
@@ -79,6 +88,7 @@ export type FinanceService = {
   removeTransaction: (input: TransactionReferenceRequest) => Promise<void>;
   listCategories: (input: ListCategoriesRequest) => Promise<Category[]>;
   getSummary: (input: SummaryRequest) => Promise<FinanceSummary>;
+  getDailySummary: (input: DailySummaryRequest) => Promise<FinanceDailySummary[]>;
 };
 
 // ====================================================================================================
@@ -104,6 +114,11 @@ export type FinanceTransactionUpdatePayload = {
   name?: string;
   location?: string | null;
   note?: string | null;
+};
+
+export type FinanceDailySummaryQuery = {
+  from: string;
+  to: string;
 };
 
 // ====================================================================================================
@@ -148,4 +163,11 @@ export type FinanceSummaryCategoryRow = {
   category_description: string;
   category_type: TransactionType;
   total: number | string;
+};
+
+export type FinanceDailySummaryRow = {
+  date: Date | string;
+  expense_total: number | string;
+  income_total: number | string;
+  net_total: number | string;
 };
