@@ -1,11 +1,32 @@
+# Dependencies
 node_modules/
+
+# Local environment and secrets
 .env
 .env.*
 !.env.example
 !.env.test.example
-coverage/
+
+# Build and test output
 dist/
+coverage/
 *.tsbuildinfo
+
+# Logs and local databases
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# OS and local editor files
 .DS_Store
+.vscode/*.local
+
+# Local deployment notes
 .docs-vps
+info-vps.txt
+
+# Design references and generated QA screenshots
 docs/frontend-design/
+tmp/
+.tmp/
