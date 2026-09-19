@@ -36,8 +36,9 @@ Create material body:
 1. Resolve `topic`, `level`, `genre`, and target length from the request. For a request
    without overrides, fetch Reading settings and use `default_level` and
    `default_word_count`; keep the stored min/max bounds in mind.
-2. Treat user-provided level, length, topic, or genre as a one-off override. Do not
-   modify Reading settings unless the user explicitly asks to change defaults.
+2. Treat user-provided level, length, topic, or genre as a one-off override. A Reading
+   default-setting change requires an explicit request and confirmation of the exact
+   current and proposed values.
 3. Write a passage at the selected level and target length. Use a coherent topic and
    genre, and avoid repeating a recent topic when the available context makes that
    possible.
@@ -74,5 +75,8 @@ Resolve the material from an explicit `RD-...` code or an unambiguous current se
   see the answer key.
 
 If the user says `preview` or `jangan call API`, do not fetch settings, materials, or
-answer keys. Show the proposed passage/questions or submission payload and mark it as
-not saved.
+answer keys. Use the parent skill's preview levels: default shows the proposed
+passage/questions in normal Telegram chat format, `preview payload only` shows only the
+complete request body (including expected answers), and `full preview` shows both plus
+request details. Default/full previews are marked not saved; payload-only renders the
+exact JSON body only. Never reveal expected answers in the default chat-format preview.

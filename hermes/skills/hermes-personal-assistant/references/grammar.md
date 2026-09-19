@@ -55,8 +55,8 @@ Create session body:
    `GR-...` code, mode, level, count, and questions.
 
 Do not change persistent settings when the user gives a one-off request such as
-`grammar B2 10 soal`. Update settings only when the user explicitly says to change the
-default.
+`grammar B2 10 soal`. A default-setting change requires the user to request it, then
+to confirm the exact current and proposed values after Hermes presents them.
 
 For scheduled practice, fetch settings first, read `default_level` and exactly `daily_question_count` from the response, then create a request with `mode: "practice"` and `source: "cron"`. For on-request work use `source: "request"`. Avoid recent repetition when conversation or API-visible context makes that possible.
 
@@ -77,15 +77,19 @@ the API.
 ## Settings and Session Commands
 
 - `"setting grammar saya"` → `GET /api/v1/grammar/settings`.
-- `"ubah default grammar ke B2"` → update only `default_level` through `PATCH`.
+- `"ubah default grammar ke B2"` → show the current and proposed `default_level`,
+  then PATCH only after explicit confirmation.
 - `"jadikan latihan harian 10 soal"` → update only `daily_question_count` through
   `PATCH` after confirming that the user means the persistent default.
 - `"tampilkan sesi grammar aktif"` → list sessions with `status=active`.
-- `"hapus sesi GR-..."` → fetch/resolve the explicit code, then soft-delete it with
-  `DELETE`; do not delete based on a vague title.
+- `"hapus sesi GR-..."` → fetch/resolve the explicit code, show the target, then
+  soft-delete it with `DELETE` only after explicit confirmation; do not delete based
+  on a vague title.
 
 When the user says `preview` or `jangan call API`, do not read settings or session
-state. Show the proposed mode, level, question count, and a sample/request payload, and
-mark the session as not created.
+state. Use the parent skill's preview levels: default shows the proposed exercise in
+normal Telegram chat format, `preview payload only` shows only the request body, and
+`full preview` shows both plus request details. Default/full previews mark the session
+as not created; payload-only renders the exact JSON body only.
 
 Use an explicit `GR-...` code and question number when provided. If a delayed answer could belong to multiple sessions or questions, ask before saving or grading. Ordinary session responses deliberately omit correct answers and explanations; never claim they came from that response.

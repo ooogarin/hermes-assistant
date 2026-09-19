@@ -2,6 +2,8 @@
 memory:
   write_approval: true
 
+# Defense in depth only. Keep the Telegram skill-management tool disabled: Hermes must
+# never edit a skill, even after a proposed change is approved.
 skills:
   write_approval: true
 

@@ -19,3 +19,8 @@ start.
 Do not use these files for Finance, Notes, Junk, learning submissions, full transcripts,
 logs, passwords, tokens, private keys, or server credentials. Those either belong in the
 API database, in normal session history, or in a password manager.
+
+The Telegram assistant must not write project/runtime files, code, skills, or
+configuration. The narrow exception is a user-requested stable preference proposed
+through the memory approval workflow and saved only to `USER.md` or `MEMORY.md`; never
+write memory through the terminal or use it to override runtime safety rules.

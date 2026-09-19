@@ -50,5 +50,7 @@ Only when the user explicitly says `simpan`, `catat`, or equivalent:
 4. Return the API-generated `NT-...` code. Do not say “saved” before a successful
    response.
 
-If the user says `preview` or `jangan call API`, show the proposed Note payload only.
-Do not call `GET` or `POST` to search categories or save it.
+If the user says `preview` or `jangan call API`, use the parent skill's preview levels:
+the default is the proposed Note in normal Telegram chat format, `preview payload only`
+shows only the JSON body, and `full preview` shows both plus request details. Do not
+call `GET` or `POST` to search categories or save it.

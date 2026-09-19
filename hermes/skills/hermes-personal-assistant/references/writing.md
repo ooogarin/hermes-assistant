@@ -20,8 +20,9 @@ Material body fields are `topic`, `prompt_text`, `level`, `genre`, `tags`, `targ
 1. Read Writing settings for a default-based request. Use `default_level` and
    `default_word_count`, while respecting the configured min/max unless the user
    explicitly requests a one-off length outside those bounds.
-2. Treat requested topic, level, genre, and length as one-off values. Do not change
-   persistent settings unless the user explicitly asks to update defaults.
+2. Treat requested topic, level, genre, and length as one-off values. A persistent
+   setting change requires an explicit request and confirmation of the exact current
+   and proposed values.
 3. Generate a prompt with a clear task, audience/purpose when relevant, genre/register,
    level, and target word count. Rotate topic and genre when recent context allows it.
 4. Create the material through `POST /api/v1/writing/materials` with `source=request`
@@ -58,12 +59,16 @@ submission number must be explicit or returned by the API; never invent one.
 ## Settings and Preview
 
 - `"setting writing saya"` → `GET /api/v1/writing/settings`.
-- Explicit default changes use `PATCH /api/v1/writing/settings`; one-off requests do
-  not change defaults.
+- Explicit default changes first show the current and proposed values, then use
+  `PATCH /api/v1/writing/settings` only after confirmation; one-off requests do not
+  change defaults.
 - `status=unsubmitted` is useful for finding a prompt awaiting a draft; `status=reviewed`
   means the material has at least one active submission.
-- In preview mode, do not read settings or material state. Show the proposed prompt
-  payload or submission analysis shape and state that nothing was created or saved.
+- In preview mode, do not read settings or material state. Follow the parent skill's
+  preview levels: default shows the proposed prompt in normal Telegram chat format,
+  `preview payload only` shows only the request body, and `full preview` shows both
+  plus request details. Default/full previews state that nothing was created or saved;
+  payload-only renders the exact JSON body only.
 
 Submission body fields:
 

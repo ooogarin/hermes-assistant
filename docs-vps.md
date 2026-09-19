@@ -1089,9 +1089,9 @@ secara buta:
 
 ```bash
 mkdir -p ~/.hermes/memories
-cp -n /opt/hermes/app/hermes/profile-template/SOUL.md ~/.hermes/SOUL.md
-cp -n /opt/hermes/app/hermes/profile-template/USER.md ~/.hermes/memories/USER.md
-cp -n /opt/hermes/app/hermes/profile-template/MEMORY.md ~/.hermes/memories/MEMORY.md
+cp --update=none /opt/hermes/app/hermes/profile-template/SOUL.md ~/.hermes/SOUL.md
+cp --update=none /opt/hermes/app/hermes/profile-template/USER.md ~/.hermes/memories/USER.md
+cp --update=none /opt/hermes/app/hermes/profile-template/MEMORY.md ~/.hermes/memories/MEMORY.md
 chmod 600 ~/.hermes/SOUL.md ~/.hermes/memories/USER.md ~/.hermes/memories/MEMORY.md
 ```
 
@@ -1118,11 +1118,12 @@ display:
   memory_notifications: verbose
 ```
 
-Dengan policy ini, perubahan memory dan skill yang diusulkan Hermes harus kamu review
-terlebih dahulu. Di Telegram, gunakan `/memory pending`, `/memory approve <id>`,
-`/memory reject <id>`, `/skills pending`, dan `/skills diff <id>`. Setelah menyetujui
-atau mengubah persona/memory, kirim `/new` pada topic terkait supaya sesi berikutnya
-memuat snapshot terbaru.
+Dengan policy ini, perubahan memory yang diusulkan Hermes harus kamu review terlebih
+dahulu melalui `/memory pending`, `/memory approve <id>`, atau `/memory reject <id>`.
+Jangan menyetujui perubahan skill dari Telegram. `skills.write_approval` tetap
+dibiarkan aktif sebagai lapisan pertahanan; jika `/skills pending` muncul, periksa
+diff lalu tolak dengan `/skills reject <id>`. Setelah menyetujui memory, kirim `/new`
+pada topic terkait supaya sesi berikutnya memuat snapshot terbaru.
 
 Tambahkan dua nilai berikut ke `~/.hermes/.env`. Salin API key dari password
 manager—jangan membaca file `.env` API sebagai user Agent:
@@ -1143,10 +1144,12 @@ chmod 600 ~/.hermes/.env
 hermes tools
 ```
 
-Pada UI `hermes tools`, aktifkan toolset **terminal** untuk Telegram dan cron.
-`hermes-personal-assistant` memang mendeklarasikan kebutuhan terminal karena semua
-request API melewati wrapper `scripts/api.sh`. Tiga skill Q&A tidak memakai terminal,
-API, atau database. Jangan aktifkan toolset lain yang belum dibutuhkan.
+Pada UI `hermes tools`, gunakan allowlist Telegram minimal: **clarify**, **terminal**,
+dan **memory**. `hermes-personal-assistant` memang memerlukan terminal karena semua
+request API melewati wrapper `scripts/api.sh`; memory diperlukan hanya untuk proposal
+preferensi yang melalui approval. Jangan aktifkan **browser**, **code_execution**,
+**file**, **skills**, **delegation**, **web**, atau toolset lain yang tidak diperlukan.
+Tiga skill Q&A tidak memakai terminal, API, atau database.
 
 Uji koneksi terautentikasi tanpa mencetak nilai key:
 
@@ -1393,14 +1396,23 @@ Lakukan semua pengujian berikut:
 3. Pastikan `/health` dan `/health/ready` berhasil melalui `127.0.0.1`.
 4. Kirim satu request baca dari setiap API-backed topic; uji General/Speaking/Listening
    dengan Q&A biasa dan pastikan tidak ada record aplikasi; pastikan Service Info diam.
-5. Buat satu data percobaan melalui topic Finance, Notes, atau Junk; pastikan balasan
-   menyertakan referensi stabil dan data benar-benar dapat dibaca kembali.
-6. Uji Grammar, Reading, dan Writing secara manual sebelum mengaktifkan cron.
-7. Dari `hermes`, jalankan `sudo -iu hermes-agent`, kemudian `hermes doctor`,
+5. Uji default preview, payload-only preview, dan full preview dari satu topic
+   API-backed. Pastikan tidak ada `GET`/mutasi API; payload-only harus menampilkan
+   tepat JSON yang akan dikirim tanpa wrapper atau status tambahan.
+6. Kirim permintaan yang ambigu setelah preview; pastikan Hermes meminta satu
+   konfirmasi, tetap berada di topic/session sama, dan tidak memanggil API.
+7. Buat satu data percobaan melalui topic Finance, Notes, atau Junk; pastikan balasan
+   menyertakan referensi stabil dan data benar-benar dapat dibaca kembali. Uji PATCH
+   dan DELETE terpisah: Hermes harus menampilkan stable reference serta dampaknya dan
+   menunggu konfirmasi eksplisit sebelum mutasi.
+8. Minta Hermes mengubah code atau membuat file sementara; pastikan ia menolak dan
+   tidak menawarkan `execute_code`, Python, atau perubahan skill.
+9. Uji Grammar, Reading, dan Writing secara manual sebelum mengaktifkan cron.
+10. Dari `hermes`, jalankan `sudo -iu hermes-agent`, kemudian `hermes doctor`,
    `hermes status --all`, dan `hermes cron doctor`; setelah itu jalankan `exit`.
-8. Pastikan user `hermes-agent` tidak dapat membaca `/opt/hermes/app/.env`, private
+11. Pastikan user `hermes-agent` tidak dapat membaca `/opt/hermes/app/.env`, private
    deploy key, atau menjalankan `sudo`.
-9. Uji backup dan restore sesuai Bagian 20.
+12. Uji backup dan restore sesuai Bagian 20.
 
 Deployment dinyatakan siap pakai hanya jika semua langkah di atas berhasil.
 

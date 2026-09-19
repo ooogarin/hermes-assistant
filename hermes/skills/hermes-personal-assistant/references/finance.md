@@ -105,9 +105,9 @@ the current list before mutating anything.
   target; do not use an old chat reference.
 - A PATCH may contain only `amount`, `category_code`, `name`, `location`, and `note`.
   Date, type, raw text, and daily number cannot be changed through this MVP.
-- A single clearly resolved delete may execute immediately. For multiple items,
-  batches, or a broad destructive request, show the candidates and ask for explicit
-  confirmation before deleting.
+- Before every PATCH or DELETE, show the resolved stable `date + daily_number`, the
+  intended change or deletion, and wait for explicit confirmation. For multiple items
+  or a broad request, show every candidate and affected count before confirmation.
 
 After a successful mutation, report the stable date/daily-number reference. A failed
 or ambiguous mutation must not be described as completed.
@@ -118,13 +118,19 @@ If the user explicitly says not to call or read/write the API, show a preview an
 Do not fetch categories, current transactions, daily numbers, or summaries. Do not call
 `api.sh` through another route.
 
-For a new transaction preview, show:
+For a new transaction preview, use the preview rendering rules in the parent skill:
+
+- default `preview`: show the interpreted transaction in normal Telegram chat format;
+- `preview payload only`: show only the complete JSON request body;
+- `full preview`: show the Telegram-formatted transaction plus the method, endpoint,
+  assumptions, unresolved values, and JSON request body.
+
+The generated preview data includes:
 
 - the interpreted date, type, amount, name, location, and note;
 - the amount conversion when shorthand thousands of Rupiah was used;
-- the proposed `POST /api/v1/finance/transactions` request;
 - category assumptions that still need API verification;
-- `Belum tersimpan` and the exact explicit instruction needed to execute it.
+- the explicit authorization needed to execute it after preview.
 
 Example:
 
@@ -134,14 +140,11 @@ User: "Jangan call API. Preview catat kopi 25 di kantor."
 Hermes:
 "Preview saja — tidak ada API dipanggil.
 
-Method: POST /api/v1/finance/transactions
-Payload ringkas:
-- date: 2026-09-19 (asumsi: hari ini, Asia/Jakarta)
-- type: expense
-- amount: 25000 (25 × Rp1.000)
-- name: kopi
-- location: kantor
-- category_code: food_drink (asumsi, belum diverifikasi ke API)
+☕ Pengeluaran
+- Kopi
+- Rp25.000
+- Lokasi: kantor
+- Tanggal: 19 September 2026
 
 Belum tersimpan. Ketik `simpan transaksi ini` jika ingin saya lanjutkan."
 ```
@@ -182,6 +185,10 @@ Patch supports only `amount`, `category_code`, `name`, `location`, and `note`. D
 
 ## Target Resolution
 
-In API responses, `daily_number` is stable for a date; `display_number` is temporary and may change. When the user refers to a displayed number or “latest”, fetch the current list for that date immediately before the mutation and map it to `daily_number`. The route parameter remains the numeric value itself. A single clearly resolved deletion may run immediately. Ask when multiple candidates remain.
+In API responses, `daily_number` is stable for a date; `display_number` is temporary
+and may change. When the user refers to a displayed number or “latest”, fetch the
+current list for that date immediately before the mutation and map it to
+`daily_number`. The route parameter remains the numeric value itself. Then show the
+resolved target and wait for explicit confirmation before every PATCH or DELETE.
 
 For reports, call `/summary` and narrate returned totals. Never sum chat messages yourself.

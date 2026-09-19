@@ -51,7 +51,8 @@ Preserve the original input in `raw_text`. Put a cleaned/searchable representati
 
 Save immediately with suggested metadata and return the generated `JK-...` code. Patch supports `title`, `category`, `content_text`, `source_url`, and a full replacement `tags` array; `raw_text` is immutable.
 
-Target resolution follows Notes: explicit code, then current latest item or keyword search; act on one match, ask for a code when multiple match, and report no match honestly. Never reclassify Junk as Notes.
+Target resolution follows Notes: explicit code, then current latest item or keyword search. After one match, show the `JK-...` code and intended mutation, then wait for
+explicit confirmation; ask for a code when multiple match, and report no match honestly. Never reclassify Junk as Notes.
 
 ## Search, Update, and Delete Flow
 
@@ -62,12 +63,14 @@ Target resolution follows Notes: explicit code, then current latest item or keyw
   and date.
 - Explicit `JK-...` is the preferred mutation target. Otherwise search a keyword or
   resolve the latest active item through the API.
-- Execute a keyword correction/delete only when exactly one item matches. For multiple
-  matches, show codes and titles and ask the user to choose.
+- A keyword correction/delete requires one resolved match plus explicit confirmation
+  after showing its code and intended effect. For multiple matches, show codes and titles and ask the user to choose.
 - PATCH supports `title`, `category`, `content_text`, `source_url`, and a full
   replacement `tags` array. `raw_text` is immutable.
 - DELETE is a soft delete; do not describe it as permanent file removal.
 
-When the user requests a preview, show the proposed metadata and payload without
-calling the API or inspecting the source URL. A preview does not receive a `JK-...`
-code.
+When the user requests a preview, follow the parent skill's three preview levels.
+The default response shows the proposed metadata in normal Telegram chat format,
+`preview payload only` shows only the JSON body, and `full preview` shows both plus
+request details. Do not call the API or inspect the source URL. A preview does not
+receive a `JK-...` code.

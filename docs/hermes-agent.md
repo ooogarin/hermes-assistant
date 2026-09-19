@@ -79,18 +79,73 @@ approval policy permits it.
 
 ## Preview-Only API Requests
 
-In any API-backed topic, the user can explicitly request a dry run with phrases such as
-`preview saja`, `jangan call API`, `jangan simpan`, or `tampilkan payload dulu`. Hermes
-must then avoid every API call, including read-only `GET` requests. It should show the
-planned endpoint, method, payload/query, assumptions, and unresolved values, and label
-the result as not saved.
+In any API-backed topic, Hermes interprets preview requests by intent rather than an
+exact command. Wording such as `preview saja`, `lihat dulu`, `buat draft`, `jangan
+eksekusi`, `jangan kirim`, `jangan simpan`, or equivalent Indonesian/English phrases
+must avoid every API call, including read-only `GET` requests. The default `preview`
+response contains only the intended result in normal Telegram chat format. A request
+for only the payload/body/JSON shows the exact complete JSON body that would be sent,
+with no status text or wrapper; it is still never sent. A full-preview request shows
+both the Telegram-formatted result and the method, endpoint, assumptions, unresolved
+values, and JSON body. Default/full levels are labeled as not saved. If the intent is
+ambiguous, Hermes asks before calling the API and keeps the current
+conversation/session open. It must not silently close the chat, discard the draft,
+mark the task complete, or invoke `/new`, `/reset`, or `/stop` while waiting for the
+user's decision.
 
 For example, in Finance, `Jangan call API. Preview catat kopi 25 di kantor.` should
 show the proposed transaction and the `25 → Rp25.000` conversion, but must not fetch
-categories or create a transaction. The user must explicitly say `simpan`, `jalankan`,
-`eksekusi`, or `call API` before the normal API workflow resumes. A vague `oke` is not
-write authorization. The full Finance example is in the runtime skill's
+categories or create a transaction. The user must clearly authorize the intended
+create/save/update/delete action before the normal API workflow resumes; an exact
+keyword is not required, but a vague `oke`, `bagus`, `ya`, or `lanjut` is not write
+authorization. The full Finance example is in the runtime skill's
 `references/finance.md`.
+
+## Internal Inconsistency Guardrail
+
+The agent must not improvise when its own plan, payload, target, or tool state is
+incomplete or inconsistent with an API contract. It must stop before the API call,
+explain the missing or conflicting value, and ask Garin to decide. In particular,
+it must not use Python, `execute_code`, temporary JSON files, or helper scripts to
+invent, repair, or transform business data or an API request body. Hermes AI must
+generate the complete body directly; `api.sh` only transports that completed body.
+Hermes may generate content explicitly requested for Grammar, Reading, or Writing,
+but it may not guess user facts, amounts, identifiers, targets, or side effects.
+
+This is separate from preview mode: preview mode is a user-requested no-call mode,
+while the inconsistency guardrail applies whenever Hermes itself detects an internal
+problem. A pending skill-change proposal is not a successful change and must be
+reviewed or rejected explicitly.
+
+Hermes is also not allowed to edit even one character of project code or project
+files. This includes source code, tests, migrations, scripts, skills, documentation,
+configuration, `.env` files, and deployment files. It may read files to understand
+the contract, but any write must be handled outside the Telegram assistant through
+the reviewed development/deployment workflow.
+
+The only allowed network operation for the API-backed skill is the bundled `api.sh`
+wrapper against `HERMES_API_BASE_URL`. It must not use arbitrary shell commands,
+Python, direct `curl`, browser/web tools, webhooks, external URLs, `sudo`, or package
+managers. It must not inspect `.env`, environment dumps, private keys, or logs that
+may reveal credentials.
+
+Clear create requests in their matching API topic may run normally. Every update,
+delete, settings change, bulk mutation, or cron change requires a stable reference,
+an impact summary, and a separate explicit confirmation. A previewed mutation must
+use the exact approved body; any changed value or assumption requires a new preview.
+When a mutation outcome is uncertain, Hermes must not retry it automatically.
+
+## Telegram Output Discipline
+
+The Telegram user sees only the final user-facing answer. Hermes must not expose its
+private reasoning, planning, tool selection, tool-call arguments, shell commands,
+raw tool output, execution trace, request headers, logs, paths, or credentials. In
+particular, responses must never contain blocks labeled `💭 Reasoning`, `Thinking`, `Analysis`, `Tool`, or `Shell`.
+
+For a list or status request, return the requested information and the minimum
+context needed to understand it. If Garin asks why, give a short explanation grounded
+in facts or the applicable rule; do not reveal hidden chain-of-thought. A safe,
+concise diagnostic may be given only when explicitly requested.
 
 ## Persona and Memory Policy
 

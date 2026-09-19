@@ -86,13 +86,15 @@ Never move a message between Notes and Junk by inference; topic choice is author
   delete when current context matters.
 - `latest note` means the newest active result from the API, not the newest message in
   chat history.
-- A keyword update/delete may execute only when exactly one item matches. With multiple
-  matches, show concise codes/titles and ask the user to choose. With no match, report
-  that honestly.
+- After a keyword or latest-note lookup resolves exactly one item, show its `NT-...`
+  code and the intended PATCH or DELETE, then wait for explicit confirmation. With
+  multiple matches, show concise codes/titles and ask the user to choose. With no match, report that honestly.
 - PATCH only the fields the user asked to change. A tags patch replaces the complete
   tag list, so first preserve existing tags when the user asks to add/remove one tag.
 - DELETE is a soft delete. Never claim permanent physical removal.
 
-When the user requests a preview, show the proposed cleaned payload and endpoint but do
-not search for an existing note or call the API. A preview does not receive an `NT-...`
-code.
+When the user requests a preview, follow the parent skill's three preview levels. The
+default response shows the proposed note in normal Telegram chat format; `preview
+payload only` shows only the cleaned JSON payload; `full preview` adds the method,
+endpoint, assumptions, and unresolved values. Do not search for an existing note or
+call the API. A preview does not receive an `NT-...` code.
