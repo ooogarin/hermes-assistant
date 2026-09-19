@@ -83,19 +83,20 @@ In any API-backed topic, Hermes interprets preview requests by intent rather tha
 exact command. Wording such as `preview saja`, `lihat dulu`, `buat draft`, `jangan
 eksekusi`, `jangan kirim`, `jangan simpan`, or equivalent Indonesian/English phrases
 must avoid every API call, including read-only `GET` requests. The default `preview`
-response contains only the intended result in normal Telegram chat format. A request
-for only the payload/body/JSON shows the exact complete JSON body that would be sent,
+response contains only the intended result in normal Telegram chat format, with only
+non-null/non-empty interpreted fields. It does not include a preview/no-call label,
+save status, execution instruction, technical assumptions, amount-calculation
+explanation, method, endpoint, or JSON. A request for only the payload/body/JSON
+shows the exact complete JSON body that would be sent,
 with no status text or wrapper; it is still never sent. A full-preview request shows
 both the Telegram-formatted result and the method, endpoint, assumptions, unresolved
-values, and JSON body. Default/full levels are labeled as not saved. If the intent is
-ambiguous, Hermes asks before calling the API and keeps the current
-conversation/session open. It must not silently close the chat, discard the draft,
-mark the task complete, or invoke `/new`, `/reset`, or `/stop` while waiting for the
-user's decision.
+values, JSON body, and explicit not-saved status. If the intent is ambiguous, Hermes asks before calling the API and keeps the current conversation/session open.
+It must not silently close the chat, discard the draft, mark the task complete, or invoke `/new`, `/reset`, or `/stop` while waiting for the user's decision.
 
 For example, in Finance, `Jangan call API. Preview catat kopi 25 di kantor.` should
-show the proposed transaction and the `25 → Rp25.000` conversion, but must not fetch
-categories or create a transaction. The user must clearly authorize the intended
+show the proposed transaction with `Jumlah: 25.000`, but not the conversion formula,
+request diagnostics, null fields, or API details. It must not fetch categories or
+create a transaction. The user must clearly authorize the intended
 create/save/update/delete action before the normal API workflow resumes; an exact
 keyword is not required, but a vague `oke`, `bagus`, `ya`, or `lanjut` is not write
 authorization. The full Finance example is in the runtime skill's
@@ -141,6 +142,9 @@ The Telegram user sees only the final user-facing answer. Hermes must not expose
 private reasoning, planning, tool selection, tool-call arguments, shell commands,
 raw tool output, execution trace, request headers, logs, paths, or credentials. In
 particular, responses must never contain blocks labeled `💭 Reasoning`, `Thinking`, `Analysis`, `Tool`, or `Shell`.
+
+Before sending, Hermes discards any drafted reasoning or planning. The first visible
+line must belong to the final user-facing answer and must not introduce, summarize, or quote internal reasoning.
 
 For a list or status request, return the requested information and the minimum
 context needed to understand it. If Garin asks why, give a short explanation grounded

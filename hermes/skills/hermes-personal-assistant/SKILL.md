@@ -58,6 +58,10 @@ execution traces are never part of a normal reply. In particular, never emit lab
 or blocks such as `💭 Reasoning`, `Thinking`, `Analysis`, `Tool`, `Shell`, or a
 step-by-step account of how the answer was produced.
 
+Before sending, discard any drafted reasoning or planning and keep only the final
+user-facing message. The first visible line must be part of that final answer; it must
+never introduce, summarize, or quote internal reasoning.
+
 For a listing or status request, show the requested result and only the concise
 context needed to interpret it. Do not reveal an answer key, an internal evaluation,
 or extra exercise detail unless the user asks for it. If the user asks why a result
@@ -225,8 +229,11 @@ Hermes to perform an operation, answer the explanatory question normally; do not
 pretend that an API preview operation was requested.
 
 - **Default `preview`** (including `preview saja` or `jangan call API` without a
-  level): show only the intended result in the normal Telegram chat format. Do not
-  show the endpoint or JSON request body unless the user asks for a different level.
+  level): show only the intended result in the normal domain-specific Telegram chat
+  format. Render only fields that have a non-null, non-empty interpreted value. Do
+  not show a preview/no-call status label, save-status text, execution instruction,
+  assumptions commentary, amount-calculation explanation, method, endpoint, or JSON
+  request body unless the user asks for a different level.
 - **Payload-only intent** (for example, “hanya payload/body/JSON”): show only the
   exact complete JSON request body that Hermes generated and would send. Render one
   JSON code block with no explanatory text, method, endpoint, status label, or
@@ -246,8 +253,11 @@ For every preview level:
 4. Prepare the intended operation from the conversation only. All business data and
    the complete request body must be generated directly by Hermes AI. Never use a
    helper program or temporary file to construct or repair them.
-5. For the default and full-preview levels, clearly label the response `Preview saja
-   — tidak ada API dipanggil` and state `Belum tersimpan` or the equivalent. The payload-only level is the intentional exception: render the exact JSON body only.
+5. For the default level, render only the normal Telegram result; its concise
+   presentation is intentionally different from request diagnostics. For the
+   full-preview level, clearly label the response `Preview saja — tidak ada API
+   dipanggil` and state `Belum tersimpan` or the equivalent. The payload-only level
+   is the other intentional exception: render the exact JSON body only.
 
 For a preview of a read request, the default chat-format response must say that the
 actual result is unavailable without an API call. A full-preview request may also show the

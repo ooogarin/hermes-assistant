@@ -120,14 +120,15 @@ Do not fetch categories, current transactions, daily numbers, or summaries. Do n
 
 For a new transaction preview, use the preview rendering rules in the parent skill:
 
-- default `preview`: show the interpreted transaction in normal Telegram chat format;
+- default `preview`: show `Interpretasi:` followed only by interpreted transaction
+  fields whose values are present; omit null/empty fields and all request diagnostics;
 - `preview payload only`: show only the complete JSON request body;
 - `full preview`: show the Telegram-formatted transaction plus the method, endpoint,
   assumptions, unresolved values, and JSON request body.
 
-The generated preview data includes:
+The exact payload-only body contains the complete request fields required by the API.
+Full preview may additionally explain:
 
-- the interpreted date, type, amount, name, location, and note;
 - the amount conversion when shorthand thousands of Rupiah was used;
 - category assumptions that still need API verification;
 - the explicit authorization needed to execute it after preview.
@@ -135,19 +136,22 @@ The generated preview data includes:
 Example:
 
 ```text
-User: "Jangan call API. Preview catat kopi 25 di kantor."
+User:
+"preview 23, kopi nescafe"
 
 Hermes:
-"Preview saja — tidak ada API dipanggil.
-
-☕ Pengeluaran
-- Kopi
-- Rp25.000
-- Lokasi: kantor
-- Tanggal: 19 September 2026
-
-Belum tersimpan. Ketik `simpan transaksi ini` jika ingin saya lanjutkan."
+"Interpretasi:
+- Tanggal: 2026-09-19
+- Jenis: expense
+- Jumlah: 23.000
+- Nama: kopi nescafe
+- Kode Kategori: food_drink"
 ```
+
+Do not append `Preview saja`, `tidak ada API dipanggil`, `Belum tersimpan`, an
+execution instruction, the `23 × Rp1.000` calculation, null `location`/`note` fields,
+or category-verification commentary to this default rendering. Those request details
+belong only to full preview, while the exact body belongs to payload-only or full preview.
 
 When the user later explicitly authorizes execution, fetch and verify the category and
 then follow the normal create flow. A preview is not an API success response and must
