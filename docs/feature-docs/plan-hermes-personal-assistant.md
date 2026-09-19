@@ -41,10 +41,14 @@ The MVP includes seven features:
 | Notes           | Meaningful notes, insights, references, passive reminders    | `notes-feature-design.md`           |
 | Junk            | Lightweight archive for URL/text-based external finds        | `junk-feature-design.md`            |
 
-Paused, not in MVP:
+Paused, not in MVP as structured persistent features:
 
 - Speaking
 - Listening
+
+The Telegram runtime may provide lightweight non-persistent Q&A skills for Speaking
+and Listening. They do not create scores, transcripts, vocabulary records, progress,
+or API/database data; they do not change this MVP scope.
 
 Parked for Phase 2:
 

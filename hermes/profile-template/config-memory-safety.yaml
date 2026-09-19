@@ -1,0 +1,9 @@
+# Merge these keys into ~/.hermes/config.yaml. Do not create duplicate YAML keys.
+memory:
+  write_approval: true
+
+skills:
+  write_approval: true
+
+display:
+  memory_notifications: verbose
