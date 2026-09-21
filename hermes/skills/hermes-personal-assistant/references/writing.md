@@ -32,6 +32,30 @@ Do not create a submission while generating a prompt. A material can have multip
 submissions, so a revised draft should use the same material code and receive the next
 submission number from the API.
 
+## Telegram Output Format
+
+For a created writing prompt:
+
+```text
+✅ *WR-20260921-001*
+*Judul:* A Weekend Without Screens
+*Genre:* Personal essay
+*Level:* B1
+*Target:* 150 kata
+
+✍️ *Writing prompt*
+Describe a weekend without phones or social media. Explain what you did, how you
+felt, and whether you would do it again.
+
+_Kirim tulisanmu dengan kode `WR-20260921-001`._
+```
+
+For saved feedback, show the material code and submission number first, then a short
+summary, strengths, priority improvements, and next steps. Use separate headings such
+as `📝 *Ringkasan*`, `💪 *Kekuatan*`, `🎯 *Prioritas Perbaikan*`, and
+`➡️ *Langkah Berikutnya*`. Do not include the full corrected text unless the user
+requests it. Omit empty sections instead of showing placeholders.
+
 Settings and material responses use fields such as `default_level`, `default_word_count`, `prompt_text`, `target_word_count`, and `is_override`. Submission responses recursively use snake_case, including `submission_number`, `word_count`, `estimated_level`, `corrected_text`, `overall_feedback`, and `next_steps`.
 
 Resolve the target from an explicit `WR-...` code or unambiguous active material before analyzing a draft. Ask if uncertain.

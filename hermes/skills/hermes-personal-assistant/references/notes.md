@@ -12,6 +12,26 @@ The Telegram topic is authoritative. If the user sends content in Notes, keep it
 Notes even when it resembles Junk. If the user sends content in Junk, do not move it to
 Notes by semantic judgment.
 
+## Telegram Output Format
+
+Use a compact card for a saved note:
+
+```text
+✅ *NT-20260921-001*
+*Judul:* PostgreSQL indexing note
+*Tipe:* Fact
+*Kategori:* Database
+*Tag:* postgresql, index
+
+📝 Use a partial index when queries consistently filter the same predicate.
+```
+
+For search results, use `🔎 *Hasil Pencarian Catatan*` and show one concise item per
+result with its code, title, category, tags, and date. If exactly one result is
+resolved for a later mutation, show its code and the proposed change before waiting
+for confirmation. Do not include payloads, endpoint names, internal status, or full
+raw text unless the user asks for them.
+
 ## Create Flow
 
 1. Preserve the user's meaning while cleaning obvious formatting noise.

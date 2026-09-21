@@ -11,6 +11,26 @@ searching later but are not meaningful personal notes or structured learning rec
 The user chooses Notes versus Junk by the Telegram topic. Never reclassify an item based
 on its content. Do not turn a URL into a Note just because it looks educational.
 
+## Telegram Output Format
+
+Use a compact card for a saved item:
+
+```text
+✅ *JK-20260921-001*
+*Judul:* PostgreSQL indexing guide
+*Kategori:* Article
+*Tag:* reference, database
+*URL:* https://example.com/article
+
+📝 Clean searchable description of the item.
+```
+
+If there is no title, write `*Judul:* Tanpa judul`. For search results, use
+`🔎 *Hasil Pencarian Junk*` and show one concise item per result with code, title,
+category, tags, URL, and date. For a resolved PATCH or DELETE target, show the code
+and intended effect before waiting for confirmation. Do not expose payloads, endpoint
+names, internal status, or raw diagnostic output by default.
+
 ## Create Flow
 
 1. Preserve the complete incoming message exactly as `raw_text`.

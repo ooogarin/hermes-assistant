@@ -52,6 +52,50 @@ The API calculates `word_count`; do not claim an exact count from estimation whe
 API response is available. The material response includes the questions without their
 expected answers.
 
+## Telegram Material Format
+
+For a successfully created material, use this compact, scannable format. Do not add a
+process narration such as “Bacaan B1 tema keuangan jadi” before the metadata, and do
+not expose expected answers.
+
+```text
+✅ *RD-20260921-001*
+*Judul:* A Simple Plan for Your Money
+*Tipe:* Informative article
+*Level:* B1
+*Panjang:* 275 kata • 3 paragraf
+
+📖 *A Simple Plan for Your Money*
+
+<passage_text, preserving its paragraph breaks>
+
+────────
+
+✏️ *Pertanyaan*
+1. <question_text>
+2. <question_text>
+3. <question_text>
+
+────────
+
+💡 *Level B1*
+Kosakata kunci: budget, income, expenses, emergency fund, interest.
+_Balas dengan nomor jawaban, misalnya `1. ...`_
+```
+
+Rules for this format:
+
+- The first line is the API-returned `RD-...` code, not a generic success sentence.
+- Use the API-returned `word_count` for `Panjang`; never estimate it. State the number
+  of paragraphs only when it is directly clear from the generated or returned `passage_text`; otherwise omit the paragraph portion.
+- Preserve blank lines between paragraphs. Do not put the passage in a code block.
+- Use `Tipe`, `Level`, and `Panjang` in Indonesian; preserve the title, genre, passage, questions, and vocabulary in English when the material is English.
+- Keep the vocabulary note short: at most five relevant words or phrases. It is a learning aid, not a second explanation of the passage.
+- The ordinary response contains no endpoint, payload, internal status, tool trace, answer key, or grading claim.
+- For a default preview, use the same layout but replace the first line with
+  `📝 *Preview — belum disimpan*` and do not invent an `RD-...` code. For payload-only
+  and full-preview requests, follow the parent skill's preview rules.
+
 For cron, fetch settings and read `default_level`, `default_word_count`, `min_word_count`, and `max_word_count` from the response. Use those defaults in the `snake_case` create request, set `source: "cron"`, and choose a fresh topic/genre when possible. For a user request, use provided one-off overrides without changing settings unless explicitly asked; set `source: "request"`.
 
 Submission body is `{ "answers": [{ "question_number": 1, "user_answer": "..." }] }`. Reading does not grade answers as correct/partial/incorrect in MVP. Response questions use `question_number`, `question_text`, `user_answer`, and `expected_answer`. Once all questions have answers, show expected answers by fetching the dedicated endpoint. Also fetch them when explicitly requested.

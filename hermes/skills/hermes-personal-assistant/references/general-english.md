@@ -21,6 +21,26 @@ Preserve the user's intended meaning when correcting. Do not rewrite a sentence 
 more advanced style unless the user asks for natural or formal alternatives. Use
 Indonesian explanations by default while retaining English examples in English.
 
+## Telegram Output Format
+
+Keep conversational answers easy to scan. Start with a short label when useful, put
+the direct answer first, and separate examples from explanations:
+
+```text
+📘 *Meaning*
+`take it for granted` = menganggap sesuatu selalu tersedia atau pasti ada.
+
+*Examples*
+1. I took my family's support for granted.
+2. Don't take clean water for granted.
+
+💡 *Nuance:* The phrase often suggests that someone fails to appreciate something.
+```
+
+Do not add a generic process introduction, internal reasoning, unrelated lessons, or
+tool/API details. For a correction, use `✅ *Correction*`, then the corrected sentence,
+one short explanation, and an optional natural alternative.
+
 ## Routing Decisions
 
 - A short question such as `what does take it for granted mean?` stays here.

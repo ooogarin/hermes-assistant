@@ -19,5 +19,6 @@ Read the relevant document before changing code or defining a feature.
 | [frontend-screens/grammar.md](frontend-screens/grammar.md) | Grammar screen list, settings, data needs, and implementation order |
 | [frontend-screens/writing.md](frontend-screens/writing.md) | Writing screen list, settings, data needs, and implementation order |
 | [feature-docs/](feature-docs/) | Product and domain designs |
+| [audits/data-taxonomy-and-discovery-audit-2026-09-16.md](audits/data-taxonomy-and-discovery-audit-2026-09-16.md) | Deferred audit of categories, tags, search, and filtering across domain modules |
 
 `feature-docs/` is the source of truth for domain behavior. Cross-cutting technical decisions belong in the documents above.

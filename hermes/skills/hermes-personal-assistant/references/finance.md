@@ -112,6 +112,37 @@ the current list before mutating anything.
 After a successful mutation, report the stable date/daily-number reference. A failed
 or ambiguous mutation must not be described as completed.
 
+## Telegram Output Format
+
+Keep normal Finance responses compact and structured. Do not narrate the parsing or
+API process. Use the API-returned values for the final result.
+
+For a successful create:
+
+```text
+✅ *Transaksi tersimpan*
+*Tanggal:* 21 September 2026
+*Jenis:* Pengeluaran
+*Total:* Rp23.000
+
+1. *#1* Sarapan — Rp23.000
+   Kategori: Food & Drink
+   Lokasi: KR Kopi
+
+_Referensi: 2026-09-21 / #1_
+```
+
+For multiple transactions, show one numbered item per transaction and put the total
+after the list. Omit `Lokasi`, `Catatan`, or other empty fields. Never invent a stable
+daily number; use the number returned by the API.
+
+For a list, use `📋 *Transaksi — <tanggal>*` and show one compact item per result.
+For a summary, use `📊 *Ringkasan Keuangan*`, then show the period, mode, returned
+total, and returned category breakdown. Use only values returned by the API; omit a
+field that is not returned instead of calculating or guessing it. For PATCH or DELETE,
+first show the target and intended effect in the confirmation format; after success,
+show the concise result and stable `date / daily_number` reference.
+
 ## Preview-Only Finance Requests
 
 If the user explicitly says not to call or read/write the API, show a preview and stop.

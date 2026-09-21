@@ -58,6 +58,33 @@ Do not change persistent settings when the user gives a one-off request such as
 `grammar B2 10 soal`. A default-setting change requires the user to request it, then
 to confirm the exact current and proposed values after Hermes presents them.
 
+## Telegram Output Format
+
+For a created session, use this structure and do not reveal `correct_answer` or the
+full `explanation`:
+
+```text
+✅ *GR-20260921-001*
+*Mode:* Latihan
+*Level:* B1
+*Jumlah soal:* 5
+*Grammar point:* Simple present
+
+✏️ *Soal*
+1. She ___ to work every day.
+2. ...
+
+────────
+
+_Balas dengan nomor jawaban, misalnya `1. goes`._
+```
+
+For a listing, use `📋 *Sesi Grammar*` and show each session's code, mode, level,
+question count, and status as one compact item. For practice feedback, show the
+result, a concise correction, and short feedback; reveal the full explanation only
+when requested. For a completed exam/report, show the API-returned score and summary
+without reproducing the internal payload.
+
 For scheduled practice, fetch settings first, read `default_level` and exactly `daily_question_count` from the response, then create a request with `mode: "practice"` and `source: "cron"`. For on-request work use `source: "request"`. Avoid recent repetition when conversation or API-visible context makes that possible.
 
 ## Answers
