@@ -78,7 +78,7 @@ test('derives preview only from content text without an arbitrary character limi
   expect(getJunkExcerpt({ ...item, contentText: 'a'.repeat(600) })).toHaveLength(600);
 });
 
-test('renders clickable date-first rows, separate source, three tags, and no code column', () => {
+test('renders clickable date-first rows, separate source, and available tags without a code column', () => {
   render(
     <MemoryRouter>
       <JunkList items={[item]} selectedCode={item.code} toDetail={(code) => `/junk?preview=${code}`} />
@@ -88,8 +88,10 @@ test('renders clickable date-first rows, separate source, three tags, and no cod
   expect(row).toHaveAttribute('aria-current', 'true');
   expect(row.querySelector('time')).toHaveTextContent('8 Sep 2026');
   expect(screen.getByText('A useful description.')).toHaveClass('line-clamp-3');
-  expect(within(screen.getByRole('list', { name: 'Tag Junk' })).getAllByRole('listitem')).toHaveLength(6);
-  expect(screen.getByLabelText('2 tag lainnya')).toHaveTextContent('+2');
+  expect(within(screen.getByRole('list', { name: 'Tag Junk' })).getAllByRole('listitem')).toHaveLength(
+    item.tags.length,
+  );
+  expect(screen.queryByLabelText(/tag lainnya/)).not.toBeInTheDocument();
   expect(screen.queryByText(item.code)).not.toBeInTheDocument();
   expect(within(row).getByText('YouTube', { exact: false })).toBeInTheDocument();
   expect(row.querySelectorAll('a')).toHaveLength(0);
