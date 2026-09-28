@@ -32,6 +32,7 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
       raw_text: input.raw_text,
       content_text: input.content_text,
       source_url: input.source_url,
+      source_name: input.source_name,
       tags: input.tags,
     };
     const junkItemRow = await junkRepository.insert(trx, code, payload);
@@ -83,6 +84,7 @@ export const update = async ({ code }: JunkReferenceRequest, input: UpdateJunkRe
     content_text: input.content_text,
     source_url: input.source_url,
     tags: input.tags,
+    source_name: input.source_name,
   };
   const junkItemRow = await junkRepository.updateByCode(code, payload);
 
@@ -108,15 +110,24 @@ export const remove = async ({ code }: JunkReferenceRequest): Promise<void> => {
 const toJunkItem = (row: JunkItemRow): JunkItem => ({
   code: row.code,
   title: row.title,
-  category: row.category,
+  category: capitalizeWords(row.category),
   raw_text: row.raw_text,
   content_text: row.content_text,
   source_url: row.source_url,
-  tags: row.tags,
+  source_name: row.source_name,
+  tags: row.tags.map(capitalizeWords),
   created_at: toIsoTimestamp(row.created_at),
   updated_at: toIsoTimestamp(row.updated_at),
   deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
 });
+
+const capitalizeWords = (value: string): string =>
+  value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/(^|\s)[^\s]/g, (letter) => letter.toUpperCase());
 
 const junkItemNotFound = (): AppError => {
   return notFoundError('JUNK_ITEM_NOT_FOUND', 'Junk item not found');

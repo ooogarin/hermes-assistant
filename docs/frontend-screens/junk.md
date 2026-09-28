@@ -36,7 +36,7 @@ Proposed web routes are frontend navigation only. They do not alter the REST API
 **Purpose**
 Create a deliberate manual archive item without replacing the assisted Hermes capture flow.
 
-- Reuses the same feature form as edit for optional title, category, description, source URL, and tags.
+- Reuses the same feature form as edit for optional title, category, description, source URL, optional source name (maximum 200 characters), and tags.
 - Omits `rawText`, preserving its meaning as original Hermes input rather than synthesizing it in the browser.
 - Validates category, URL, field limits, and tags before POST; protects unsaved input.
 - On success, navigates to the generated item detail and shows a short confirmation.
@@ -58,14 +58,19 @@ Find a saved external item, narrow the collection, then open it for reading. The
 
 **UI composition**
 
-- Header: `Junk` with no supporting subtitle.
+- Header: `Junk` with no supporting subtitle; `Tambah Junk` stays alongside the title, outside the toolbar.
 - A single control row below the header, in this order: search field with a `Cari` button, `Filter` button, then `Urutkan` control.
 - `Cari` is disabled while the trimmed search field is empty. It is enabled only after the user has entered a non-whitespace keyword.
 - `Filter` opens a dismissible advanced-filter popover. The intended fields are category, tag, source URL, and created-date range, with `Reset` and `Terapkan filter` actions.
 - `Urutkan` is a compact ordinary sorter. The initial design offers newest first and oldest first by created date.
 - An always-visible quick category filter chip row directly below the controls: `Semua`, `Artikel`, `Video`, `Musik`, `Quote`, and `Tool`. The chips are shortcuts for the soft-text `category` field, not a new fixed enum. Categories outside this shortcut set remain searchable through the advanced filter.
 - One grouped table-like list surface with lightweight row separators.
-- Each row displays category, title or a safe title fallback, content excerpt, tags, source host or URL label, created date, and stable Junk code.
+- Columns: `Tanggal disimpan → Judul / Cuplikan → Sumber → Kategori → Tags`. Date means `created_at`, not last update.
+- Title uses at most two lines; excerpt is derived only from `content_text`, with normalized whitespace and a three-line ellipsis clamp. No stored preview field is added.
+- Source is a separate plain-text column, never a nested hyperlink. Prefer `source_name`, then a recognized platform label (e.g. YouTube), then hostname without `www.`.
+- Category uses colored text without an icon. Tags flow into the available row space and wrap naturally. Every tag that fits in the three-row excerpt-height area is shown; only overflow is replaced by `+N`, and at least one tag remains visible. Labels wrap inside chips without being cut off. Detail shows all tags.
+- Code is omitted from the list and remains available with a copy action in detail metadata.
+- The entire row is a keyboard-accessible link. There is no trailing chevron; hover, focus, and selected styling indicate the interaction. The table remains a table when its detail panel is open. At narrower widths, the source column is temporarily hidden to preserve the main table columns.
 - The header, toolbar, and content are vertically stacked. The application frame and list use the full available width when no item is selected.
 - The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, records it as `/junk?preview=:code`, shrinks the list, and opens SCR-JUNK-002 in a right supporting pane on wide screens. On narrow screens, the preview becomes the primary content.
 
@@ -81,11 +86,11 @@ Find a saved external item, narrow the collection, then open it for reading. The
 **Data contract**
 
 ```text
-GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&sourceUrl=<url>&limit=<1..100>
+GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&source_url=<url>&limit=<1..100>
 ```
 
 - `q` searches title, content text, category, and tags. It is sent only after an enabled `Cari` action.
-- `tag`, `category`, and `sourceUrl` are optional exact filters. A quick category chip sends its matching stored category value.
+- `tag`, `category`, and `source_url` are optional exact API filters. Category and tag filter values are trimmed and sent lowercase to match canonical lowercase database values. The service capitalizes category/tag labels in API responses for display. A quick category chip sends its matching category value. FE models and navigation query parameters use `sourceUrl`; the API adapter maps this to `source_url`.
 - UI tag chips may display `#` for readability, but the request sends the stored tag value without assuming that prefix is persisted.
 - The frontend formats dates in the Indonesian locale and never displays an internal database ID.
 - If `title` is null, the row uses a concise display fallback from available `contentText`, `sourceUrl`, or `rawText`; this is display-only and does not write a generated title back to the API.
@@ -102,13 +107,13 @@ GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&sourceUrl=<url>&limit
 | State | Behavior |
 | --- | --- |
 | Loading | Render list skeleton rows inside the existing list surface. |
-| Initial empty | Explain that no Junk items have been saved yet; do not show a browser-only capture flow. |
+| Initial empty | Explain that no Junk items have been saved yet; keep the header's manual-create action available. |
 | No results | Keep the query/filter visible and show `Tidak ada Junk yang cocok` with `Hapus pencarian`. |
 | Error | Keep search context visible and offer `Coba lagi` with safe non-technical copy. |
 
 **Out of scope**
 
-- Browser-driven Junk capture, uploads, media storage, or link archiving.
+- Automated browser capture, uploads, media storage, or link archiving. Manual creation is in scope.
 - Pagination UI before supporting API metadata exists.
 - Pinning, random resurfacing, related-item linking, or automatic Notes-versus-Junk classification.
 
@@ -124,19 +129,22 @@ Read one saved external item and understand its category, source, and saved desc
 
 **UI composition**
 
-- Right-side preview pane containing close and open-page controls in the title area.
-- Category, title or safe title fallback, and stable code.
-- Source URL as an external link only when `sourceUrl` is present and API-valid.
-- Full-width primary content from `contentText` when it is present, using the same readable body structure as Notes without an extra nested description container.
-- Tags as quiet supporting chips.
-- Compact metadata rows for category, source host, created date, and code.
-- Do not render `rawText` by default. It is preserved for origin/audit purposes and must not become a frontend debug surface without a specific user-facing need.
+- Side-panel header: `Detail` on the left; `⋮`, expand, and close icon buttons on the right. A divider separates this header from the reading content.
+- The side-panel `⋮` disclosure contains only `Edit` and `Hapus`. Hapus opens confirmation.
+- Body order: title → source link and clipboard icon → content → metadata. Category is shown only once, in metadata below content.
+- Source link uses the natural display name and an external-link icon; its title exposes the actual URL. A clipboard-only button copies the original URL with accessible success/failure feedback. Open only HTTP(S) links in a new tab with safe rel attributes.
+- Full-width primary content from `contentText`; missing content gets a quiet empty message. No nested description card.
+- Metadata order: code with copy icon → category → saved date → updated date only when different → all tags.
+- Full-page detail uses slightly more inner padding than Notes while keeping the reading column narrower than the Junk page.
+- Clipboard actions briefly show a check icon after a successful copy, then return to the clipboard icon after two seconds.
+- Full-page detail alone includes a `Teks asli` switch aligned to the right of the source row (wrapping on narrow screens). Default off shows `contentText`; on immediately replaces the body with `rawText`, preserving whitespace. Title and metadata remain unchanged. Disable the switch with an explanation when raw text is unavailable. It does not edit data or fetch content from the source.
 
 **Panel behavior**
 
 - Close removes the `preview` query parameter and restores the full-width list state.
-- Open page navigates from `/junk?preview=:code` to the standalone `/junk/:code` route.
-- The standalone route uses the full content width, keeps a compact return control, and is structurally ready for future update actions.
+- The pane sits in the list-content area below the toolbar and quick filters. Opening it never changes toolbar width or placement.
+- Open page navigates from `/junk?preview=:code` to standalone `/junk/:code`, replacing the list with full-page detail. The return control restores the list query and selected preview when opened from the list; direct entry returns to `/junk`.
+- The standalone route uses a centered readable content width, keeps a compact return control, places direct `Edit` and `Hapus` buttons beside the title, and adds the full-page-only raw-text switch. It has no extra `Detail` header.
 - The supporting pane becomes the full primary detail screen on narrow viewports.
 
 **Data contract**
@@ -146,8 +154,8 @@ GET /api/v1/junk/:code
 ```
 
 - The detail view uses `code`, never a database ID.
-- `title`, `rawText`, `contentText`, and `sourceUrl` are nullable. Omit a missing section rather than render a placeholder value.
-- `sourceUrl` has already passed API URL validation. Open it with safe external-link handling; do not fetch, archive, or preview external content in the initial frontend scope.
+- API fields `title`, `raw_text`, `content_text`, `source_url`, and `source_name` are nullable; the adapter exposes camelCase FE models.
+- A name without a URL is plain text. No source displays `Tanpa sumber`; invalid/non-HTTP(S) URLs are never clickable. Do not fetch, archive, or embed external content.
 
 **States**
 
@@ -170,7 +178,8 @@ Correct a saved Junk item after it has been created.
 **Proposed UI**
 
 - A detail-derived form, not a new browser-wide editor.
-- Editable fields: title, category, content text, source URL, and tags.
+- Editable fields: title, category, content text, source URL, source name, and tags.
+- Empty source name saves null and restores the display fallback. Requests use snake_case API fields, preserving omitted fields on PATCH.
 - Preserve unedited data. Disable save while a request is pending.
 - Keep `rawText` read-only and hidden by default because the API deliberately preserves it.
 - On success, return to the detail route and show a short non-blocking toast.
@@ -188,11 +197,11 @@ Require an explicit confirmation before removing a Junk item from active views.
 
 **Proposed UI**
 
-- Small dialog over the detail screen.
+- Small dialog opened from `⋮ → Hapus` in preview or the direct `Hapus` button in full-page detail.
 - Title names the affected item, using its title or code when the title is absent.
 - Brief copy explains that the item will no longer appear in active results.
 - Actions: secondary `Batal` and clearly destructive `Hapus`.
-- On success, return to `/junk` and show a short success toast.
+- On success in preview, close the pane and refresh the list while preserving filters. From full detail, return to the originating list filters (without the deleted selection), or `/junk` for direct entry, with a short success notice.
 
 **Data contract**
 

@@ -1,9 +1,10 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
+import { JunkActions } from '../../../components/junk/junk-actions';
 import { JunkDetailPane } from '../../../components/junk/junk-detail-pane';
 import { JunkList } from '../../../components/junk/junk-list';
 import { JunkToolbar } from '../../../components/junk/junk-toolbar';
@@ -20,8 +21,8 @@ const getOptionalValue = (value: string | null): string | undefined => value?.tr
 const toSearchParams = (filters: JunkListFilters, previewCode?: string): URLSearchParams => {
   const params = new URLSearchParams();
   if (filters.q !== undefined) params.set('q', filters.q);
-  if (filters.category !== undefined) params.set('category', filters.category);
-  if (filters.tag !== undefined) params.set('tag', filters.tag);
+  if (filters.category !== undefined) params.set('category', filters.category.toLowerCase());
+  if (filters.tag !== undefined) params.set('tag', filters.tag.toLowerCase());
   if (filters.sourceUrl !== undefined) params.set('sourceUrl', filters.sourceUrl);
   if (previewCode !== undefined) params.set('preview', previewCode);
   return params;
@@ -29,13 +30,14 @@ const toSearchParams = (filters: JunkListFilters, previewCode?: string): URLSear
 
 const JunkListPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCode = getOptionalValue(searchParams.get('preview'));
   const filters: JunkListFilters = {
-    category: getOptionalValue(searchParams.get('category')),
+    category: getOptionalValue(searchParams.get('category'))?.toLowerCase(),
     q: getOptionalValue(searchParams.get('q')),
     sourceUrl: getOptionalValue(searchParams.get('sourceUrl')),
-    tag: getOptionalValue(searchParams.get('tag')),
+    tag: getOptionalValue(searchParams.get('tag'))?.toLowerCase(),
   };
   const listKey = `${filters.q ?? ''}:${filters.category ?? ''}:${filters.tag ?? ''}:${filters.sourceUrl ?? ''}`;
   const items = useApiQuery(listKey, (signal) => getJunkItems(filters, signal));
@@ -60,9 +62,9 @@ const JunkListPage = () => {
   const applyFilters = () => {
     updateFilters({
       ...filters,
-      category: getOptionalValue(category),
+      category: getOptionalValue(category)?.toLowerCase(),
       sourceUrl: getOptionalValue(sourceUrl),
-      tag: getOptionalValue(tag),
+      tag: getOptionalValue(tag)?.toLowerCase(),
     });
     setFiltersOpen(false);
   };
@@ -80,7 +82,7 @@ const JunkListPage = () => {
     updateFilters({ ...filters, category: undefined, sourceUrl: undefined, tag: undefined });
   };
   const applyQuickCategory = (nextCategory?: string) => {
-    setCategory(nextCategory ?? '');
+    setCategory(nextCategory?.toLowerCase() ?? '');
     updateFilters({ ...filters, category: nextCategory });
   };
   const activeFilterCount = [filters.category, filters.tag, filters.sourceUrl].filter(Boolean).length;
@@ -122,7 +124,7 @@ const JunkListPage = () => {
             : 'grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.65fr)]'
         }
       >
-        <div className={selectedCode === undefined ? undefined : 'max-xl:hidden'}>
+        <div className={selectedCode === undefined ? 'min-w-0' : 'min-w-0 max-xl:hidden'}>
           {items.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
           {items.status === 'error' ? <ErrorState onRetry={items.retry} /> : null}
           {items.status === 'success' && items.data.length === 0 ? (
@@ -148,7 +150,7 @@ const JunkListPage = () => {
         </div>
 
         {selectedCode !== undefined ? (
-          <div className='max-xl:col-span-full'>
+          <div className='min-w-0 max-xl:col-span-full'>
             {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
             {detail.status === 'error' ? (
               detail.error instanceof ApiError && detail.error.status === 404 ? (
@@ -167,9 +169,22 @@ const JunkListPage = () => {
             ) : null}
             {detail.status === 'success' && detail.data !== null ? (
               <JunkDetailPane
+                key={selectedCode}
+                actions={
+                  <JunkActions
+                    key={selectedCode}
+                    item={detail.data}
+                    onDeleted={() => {
+                      closePreview();
+                      items.retry();
+                    }}
+                  />
+                }
                 item={detail.data}
                 onClose={closePreview}
-                onOpenPage={() => navigate(`/junk/${selectedCode}`)}
+                onOpenPage={() =>
+                  navigate(`/junk/${selectedCode}`, { state: { returnTo: location.pathname + location.search } })
+                }
               />
             ) : null}
           </div>

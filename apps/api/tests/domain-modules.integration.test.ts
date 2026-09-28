@@ -132,6 +132,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       raw_text: 'Useful Rust article',
       content_text: 'An article about Rust ownership.',
       source_url: 'https://example.com/rust',
+      source_name: 'Rust journal',
       tags: ['rust', 'programming'],
     });
     const second = await junkService.create({
@@ -140,6 +141,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       raw_text: 'A useful quote',
       content_text: 'A quote about deliberate practice.',
       source_url: null,
+      source_name: null,
       tags: ['learning'],
     });
 
@@ -151,7 +153,9 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       { code: first.code },
       { category: 'reference', tags: ['rust', 'backend'] },
     );
-    expect(updated).toMatchObject({ category: 'reference', tags: ['rust', 'backend'] });
+    expect(updated).toMatchObject({ category: 'reference', tags: ['rust', 'backend'], source_name: 'Rust journal' });
+    expect((await junkService.update({ code: first.code }, { source_name: 'New name' })).source_name).toBe('New name');
+    expect((await junkService.update({ code: first.code }, { source_name: null })).source_name).toBeNull();
 
     await junkService.remove({ code: first.code });
     await expect(junkService.getDetail({ code: first.code })).rejects.toMatchObject({ code: 'JUNK_ITEM_NOT_FOUND' });

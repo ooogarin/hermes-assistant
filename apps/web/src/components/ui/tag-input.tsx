@@ -10,6 +10,7 @@ type TagInputProps = {
   label: string;
   maxItems?: number;
   maxLength?: number;
+  lowercase?: boolean;
   onChange: (value: string[]) => void;
   placeholder?: string;
   value: string[];
@@ -21,6 +22,7 @@ export const TagInput = ({
   label,
   maxItems = 50,
   maxLength = 64,
+  lowercase = false,
   onChange,
   placeholder = 'Tulis tag',
   value,
@@ -31,13 +33,14 @@ export const TagInput = ({
   const [error, setError] = useState<string>();
 
   const addTag = () => {
-    const tag = draft.trim();
+    const trimmedTag = draft.trim();
+    const tag = lowercase ? trimmedTag.toLowerCase() : trimmedTag;
     if (tag.length === 0) return;
     if (tag.length > maxLength) {
       setError(`Tag maksimal ${maxLength} karakter.`);
       return;
     }
-    if (value.includes(tag)) {
+    if (value.some((current) => (lowercase ? current.toLowerCase() : current) === tag)) {
       setError('Tag sudah ditambahkan.');
       return;
     }

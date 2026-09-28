@@ -17,6 +17,7 @@ const junkItem: JunkItem = {
   raw_text: 'Artikel bagus soal Rust https://example.com/rust-ownership',
   content_text: 'Article about Rust ownership. User note: artikel bagus soal Rust.',
   source_url: 'https://example.com/rust-ownership',
+  source_name: null,
   tags: ['rust', 'programming'],
   created_at: '2026-09-05T10:00:00.000Z',
   updated_at: '2026-09-05T10:00:00.000Z',
@@ -175,4 +176,54 @@ test('soft deletes a junk item through the authenticated API', async () => {
 
   expect(response.status).toBe(204);
   expect(removedCode).toBe('JK-20260905-001');
+});
+
+test('accepts and trims an optional source name on create', async () => {
+  const response = await createJunkApp().request('http://localhost/api/v1/junk', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ category: 'video', source_name: '  YouTube  ' }),
+  });
+  expect(response.status).toBe(201);
+  expect(await response.json()).toMatchObject({ data: { source_name: 'YouTube' } });
+});
+
+test('PATCH can update or explicitly clear source_name', async () => {
+  for (const source_name of ['  My journal  ', null]) {
+    const response = await createJunkApp().request('http://localhost/api/v1/junk/JK-20260905-001', {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source_name }),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { source_name: source_name?.trim() ?? null } });
+  }
+});
+
+test('rejects blank, overlong, and non-string source names before reaching service', async () => {
+  for (const method of ['POST', 'PATCH']) {
+    for (const source_name of ['', '   ', 'a'.repeat(201), 123]) {
+      let called = false;
+      const app = createJunkApp({
+        create: async () => {
+          called = true;
+          return junkItem;
+        },
+        update: async () => {
+          called = true;
+          return junkItem;
+        },
+      });
+      const response = await app.request(
+        `http://localhost/api/v1/junk${method === 'PATCH' ? '/JK-20260905-001' : ''}`,
+        {
+          method,
+          headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ category: 'video', source_name }),
+        },
+      );
+      expect(response.status).toBe(400);
+      expect(called).toBe(false);
+    }
+  }
 });

@@ -1,17 +1,12 @@
 import { ExternalLink, Maximize2, X } from 'lucide-react';
-import { getJunkTitle, getSourceHost } from '../../features/junk/junk-display';
+import { useState } from 'react';
+import { getJunkTitle, getSafeSourceUrl, getSourceName } from '../../features/junk/junk-display';
 import { formatDate } from '../../lib/formatting/formatters';
 import { IconButton } from '../ui/icon-button';
 import { JunkCategoryLabel, JunkTags } from './junk-badges';
+import { JunkCopyButton } from './junk-copy-button';
 import type { ReactNode } from 'react';
 import type { JunkItem } from '../../features/junk/junk-api';
-
-const DetailSection = ({ children, title }: { children: ReactNode; title: string }) => (
-  <section className='border-t border-border pt-6'>
-    <h3 className='text-sm font-medium text-ink-muted'>{title}</h3>
-    <div className='mt-3 text-sm leading-7 text-ink'>{children}</div>
-  </section>
-);
 
 export const JunkDetailPane = ({
   actions,
@@ -26,74 +21,122 @@ export const JunkDetailPane = ({
   onClose?: () => void;
   onOpenPage?: () => void;
 }) => {
-  const sourceHost = getSourceHost(item.sourceUrl);
-
+  const [raw, setRaw] = useState(false);
+  const sourceUrl = getSafeSourceUrl(item.sourceUrl);
+  const sourceName = getSourceName(item);
+  const hasRaw = Boolean(item.rawText?.trim());
+  const content = mode === 'page' && raw ? item.rawText : item.contentText;
+  const Heading = mode === 'page' ? 'h1' : 'h2';
   return (
     <aside
-      className='min-h-full w-full rounded-surface border border-border bg-surface p-6 sm:p-8'
+      className='min-w-0 w-full rounded-surface border border-border bg-surface'
       aria-label={`Detail ${getJunkTitle(item)}`}
     >
-      <div className='flex items-start gap-4'>
-        <div className='min-w-0 flex-1'>
-          <JunkCategoryLabel category={item.category} />
-          <h2 className='mt-3 text-2xl font-semibold tracking-tight text-ink sm:text-3xl'>{getJunkTitle(item)}</h2>
-          {item.sourceUrl === null ? null : (
-            <a
-              className='mt-3 inline-flex items-start gap-2 break-all text-sm font-medium text-primary hover:underline'
-              href={item.sourceUrl}
-              rel='noreferrer'
-              target='_blank'
-            >
-              <ExternalLink aria-hidden='true' className='mt-0.5 shrink-0' size={16} />
-              {item.sourceUrl}
-            </a>
-          )}
-        </div>
-        {mode === 'preview' ? (
-          <div className='flex shrink-0 gap-2'>
-            <IconButton label='Buka halaman detail' onClick={onOpenPage}>
+      {mode === 'preview' ? (
+        <div className='flex items-center justify-between gap-4 border-b border-border px-5 py-3'>
+          <span className='text-sm font-semibold text-ink'>Detail</span>
+          <div className='flex shrink-0 items-center gap-2'>
+            {actions}
+            <IconButton label='Buka halaman detail' title='Perbesar' onClick={onOpenPage}>
               <Maximize2 aria-hidden='true' size={19} />
             </IconButton>
-            <IconButton label='Tutup preview' onClick={onClose}>
+            <IconButton label='Tutup preview' title='Tutup' onClick={onClose}>
               <X aria-hidden='true' size={19} />
             </IconButton>
           </div>
-        ) : actions === undefined ? null : (
-          <div className='flex shrink-0 flex-wrap gap-2'>{actions}</div>
-        )}
-      </div>
-
-      {item.contentText === null ? null : (
-        <article className='mt-7 whitespace-pre-wrap text-base leading-8 text-ink'>{item.contentText}</article>
-      )}
-
-      <div className='mt-8 space-y-6'>
-        <DetailSection title='Kategori'>
-          <JunkCategoryLabel category={item.category} />
-        </DetailSection>
-        {item.tags.length === 0 ? null : (
-          <DetailSection title='Tags'>
-            <JunkTags tags={item.tags} />
-          </DetailSection>
-        )}
-        <DetailSection title='Metadata'>
-          <dl className='grid gap-3'>
-            {sourceHost === null ? null : (
-              <div className='flex justify-between gap-4'>
-                <dt className='text-ink-muted'>Sumber</dt>
-                <dd>{sourceHost}</dd>
-              </div>
+        </div>
+      ) : null}
+      <div className={mode === 'page' ? 'mx-auto max-w-4xl p-6 sm:p-9' : 'p-5 sm:p-6'}>
+        <header className='flex flex-wrap items-start justify-between gap-x-6 gap-y-4'>
+          <Heading className='min-w-0 flex-1 break-words text-2xl font-semibold tracking-tight text-ink sm:text-3xl'>
+            {getJunkTitle(item)}
+          </Heading>
+          {mode === 'page' ? actions : null}
+        </header>
+        <div className='mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3'>
+          <div className='flex min-w-0 max-w-full items-center gap-2'>
+            {sourceUrl ? (
+              <>
+                <a
+                  className='inline-flex min-w-0 items-center gap-2 text-sm font-medium text-primary hover:underline'
+                  href={sourceUrl}
+                  title={sourceUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  <ExternalLink aria-hidden='true' size={16} className='shrink-0' />
+                  <span className='truncate'>{sourceName ?? 'Buka sumber'}</span>
+                  <span className='sr-only'> (tab baru)</span>
+                </a>
+                <JunkCopyButton key={sourceUrl} value={sourceUrl} label='Salin tautan' />
+              </>
+            ) : (
+              <span className='text-sm text-ink-muted'>{sourceName ?? 'Tanpa sumber'}</span>
             )}
-            <div className='flex justify-between gap-4'>
-              <dt className='text-ink-muted'>Tanggal disimpan</dt>
-              <dd>{formatDate(item.createdAt)}</dd>
-            </div>
-            <div className='flex justify-between gap-4'>
+          </div>
+          {mode === 'page' ? (
+            <label
+              className={`inline-flex items-center gap-2 text-sm ${hasRaw ? 'cursor-pointer text-ink-muted' : 'text-ink-muted/70'}`}
+              title={hasRaw ? 'Ganti antara konten dan teks asli' : 'Teks asli tidak tersedia'}
+            >
+              <input
+                className='peer sr-only'
+                type='checkbox'
+                role='switch'
+                aria-checked={raw}
+                checked={raw}
+                disabled={!hasRaw}
+                onChange={(event) => setRaw(event.target.checked)}
+              />
+              <span
+                aria-hidden='true'
+                className='relative h-5 w-9 rounded-full bg-ink-muted/30 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2'
+              />
+              Teks asli{hasRaw ? null : <span className='sr-only'> tidak tersedia</span>}
+            </label>
+          ) : null}
+        </div>
+        <article
+          aria-label={mode === 'page' && raw ? 'Teks asli' : 'Konten'}
+          className='mt-7 whitespace-pre-wrap break-words text-base leading-8 text-ink'
+        >
+          {content?.trim() ? content : <p className='text-sm text-ink-muted'>Belum ada konten.</p>}
+        </article>
+        <section className='mt-8 border-t border-border pt-6' aria-label='Informasi Junk'>
+          <dl className='space-y-2 text-sm'>
+            <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3'>
               <dt className='text-ink-muted'>Kode</dt>
-              <dd>{item.code}</dd>
+              <dd className='flex min-w-0 flex-wrap items-center gap-2'>
+                <span className='break-all text-sm text-ink-muted'>{item.code}</span>
+                <JunkCopyButton value={item.code} label='Salin kode' />
+              </dd>
+            </div>
+            <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3'>
+              <dt className='text-ink-muted'>Kategori</dt>
+              <dd>
+                <JunkCategoryLabel category={item.category} />
+              </dd>
+            </div>
+            <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3'>
+              <dt className='text-ink-muted'>Tanggal disimpan</dt>
+              <dd>
+                <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
+              </dd>
+            </div>
+            {item.updatedAt !== item.createdAt ? (
+              <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3'>
+                <dt className='text-ink-muted'>Tanggal diperbarui</dt>
+                <dd>
+                  <time dateTime={item.updatedAt}>{formatDate(item.updatedAt)}</time>
+                </dd>
+              </div>
+            ) : null}
+            <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-start gap-3'>
+              <dt className='text-ink-muted'>Tags</dt>
+              <dd>{item.tags.length ? <JunkTags tags={item.tags} /> : '—'}</dd>
             </div>
           </dl>
-        </DetailSection>
+        </section>
       </div>
     </aside>
   );

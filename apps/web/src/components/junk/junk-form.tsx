@@ -10,6 +10,7 @@ export type JunkFormValues = {
   category: string;
   contentText: string | null;
   sourceUrl: string | null;
+  sourceName: string | null;
   tags: string[];
   title: string | null;
 };
@@ -21,7 +22,14 @@ type JunkFormProps = {
   submitLabel: string;
 };
 
-const emptyValues: JunkFormValues = { category: '', contentText: null, sourceUrl: null, tags: [], title: null };
+const emptyValues: JunkFormValues = {
+  category: '',
+  contentText: null,
+  sourceUrl: null,
+  sourceName: null,
+  tags: [],
+  title: null,
+};
 const optionalValue = (value: string): string | null => value.trim() || null;
 
 export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabel }: JunkFormProps) => {
@@ -30,6 +38,7 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
   const [category, setCategory] = useState(initial.category);
   const [contentText, setContentText] = useState(initial.contentText ?? '');
   const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl ?? '');
+  const [sourceName, setSourceName] = useState(initial.sourceName ?? '');
   const [tags, setTags] = useState(initial.tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -40,6 +49,7 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
     category !== initial.category ||
     contentText !== (initial.contentText ?? '') ||
     sourceUrl !== (initial.sourceUrl ?? '') ||
+    sourceName !== (initial.sourceName ?? '') ||
     tags.length !== initial.tags.length ||
     tags.some((tag, index) => tag !== initial.tags[index]);
   const canLeave = useUnsavedChanges(dirty);
@@ -54,6 +64,7 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
         category: category.trim(),
         contentText: optionalValue(contentText),
         sourceUrl: optionalValue(sourceUrl),
+        sourceName: optionalValue(sourceName),
         tags,
         title: optionalValue(title),
       });
@@ -96,7 +107,16 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
           type='url'
           value={sourceUrl}
         />
-        <TagInput disabled={saving} label='Tags' onChange={setTags} value={tags} />
+        <TextField
+          disabled={saving}
+          label='Nama sumber (opsional)'
+          maxLength={200}
+          placeholder='Contoh: YouTube atau nama penerbit'
+          onChange={(event) => setSourceName(event.target.value)}
+          value={sourceName}
+        />
+        <p className='-mt-4 text-sm text-ink-muted'>Jika kosong, nama platform atau domain akan digunakan.</p>
+        <TagInput disabled={saving} label='Tags' lowercase onChange={setTags} value={tags} />
       </div>
       {!valid && dirty ? (
         <p className='mt-4 text-sm text-danger'>Kategori wajib diisi, URL harus valid, dan maksimal 50 tag.</p>

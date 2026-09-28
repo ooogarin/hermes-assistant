@@ -25,6 +25,7 @@ export type JunkItem = {
   raw_text: string | null;
   content_text: string | null;
   source_url: string | null;
+  source_name: string | null;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -49,6 +50,7 @@ export type CreateJunkPayload = {
   raw_text: string | null;
   content_text: string | null;
   source_url: string | null;
+  source_name: string | null;
   tags: string[];
 };
 
@@ -65,6 +67,7 @@ export type UpdateJunkPayload = {
   category?: string;
   content_text?: string | null;
   source_url?: string | null;
+  source_name?: string | null;
   tags?: string[];
 };
 
@@ -79,6 +82,7 @@ export type JunkItemRow = {
   raw_text: string | null;
   content_text: string | null;
   source_url: string | null;
+  source_name: string | null;
   tags: string[];
   created_at: Date | string;
   updated_at: Date | string;

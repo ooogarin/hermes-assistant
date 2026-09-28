@@ -13,6 +13,7 @@ const toFormValues = (item: JunkItem): JunkFormValues => ({
   category: item.category,
   contentText: item.contentText,
   sourceUrl: item.sourceUrl,
+  sourceName: item.sourceName,
   tags: item.tags,
   title: item.title,
 });
@@ -28,6 +29,7 @@ const JunkEditPage = () => {
     if (values.category !== current.category) input.category = values.category;
     if (values.contentText !== current.contentText) input.contentText = values.contentText;
     if (values.sourceUrl !== current.sourceUrl) input.sourceUrl = values.sourceUrl;
+    if (values.sourceName !== current.sourceName) input.sourceName = values.sourceName;
     if (values.tags.join() !== current.tags.join()) input.tags = values.tags;
     await updateJunkItem(code, input);
     navigate(`/junk/${code}`, { replace: true, state: { notice: 'Junk berhasil diperbarui.' } });

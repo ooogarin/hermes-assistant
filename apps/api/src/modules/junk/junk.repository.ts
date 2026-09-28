@@ -45,6 +45,7 @@ export const insert = async (
       raw_text,
       content_text,
       source_url,
+      source_name,
       tags
     ) VALUES (
       ${code},
@@ -53,6 +54,7 @@ export const insert = async (
       ${input.raw_text},
       ${input.content_text},
       ${input.source_url},
+      ${input.source_name},
       ${trx.array(input.tags, 'TEXT')}
     )
     RETURNING
@@ -62,6 +64,7 @@ export const insert = async (
       raw_text,
       content_text,
       source_url,
+      source_name,
       tags,
       created_at,
       updated_at,
@@ -84,6 +87,7 @@ export const findByCode = async (code: string): Promise<JunkItemRow | null> => {
       raw_text,
       content_text,
       source_url,
+      source_name,
       tags,
       created_at,
       updated_at,
@@ -110,6 +114,7 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
       raw_text,
       content_text,
       source_url,
+      source_name,
       tags,
       created_at,
       updated_at,
@@ -141,6 +146,7 @@ export const updateByCode = async (code: string, input: UpdateJunkPayload): Prom
       category = CASE WHEN ${input.category !== undefined} THEN ${input.category ?? ''} ELSE category END,
       content_text = CASE WHEN ${input.content_text !== undefined} THEN ${input.content_text ?? null} ELSE content_text END,
       source_url = CASE WHEN ${input.source_url !== undefined} THEN ${input.source_url ?? null} ELSE source_url END,
+      source_name = CASE WHEN ${input.source_name !== undefined} THEN ${input.source_name ?? null} ELSE source_name END,
       tags = CASE WHEN ${input.tags !== undefined} THEN ${database.array(input.tags ?? [], 'TEXT')} ELSE tags END,
       updated_at = NOW()
     WHERE code = ${code}
@@ -152,6 +158,7 @@ export const updateByCode = async (code: string, input: UpdateJunkPayload): Prom
       raw_text,
       content_text,
       source_url,
+      source_name,
       tags,
       created_at,
       updated_at,
