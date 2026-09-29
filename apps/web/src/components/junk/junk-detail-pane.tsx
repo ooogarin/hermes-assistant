@@ -2,6 +2,7 @@ import { ExternalLink, Maximize2, X } from 'lucide-react';
 import { useState } from 'react';
 import { getJunkTitle, getSafeSourceUrl, getSourceName } from '../../features/junk/junk-display';
 import { formatDate } from '../../lib/formatting/formatters';
+import { detailContentClassName } from '../ui/detail-layout';
 import { IconButton } from '../ui/icon-button';
 import { JunkCategoryLabel, JunkTags } from './junk-badges';
 import { JunkCopyButton } from './junk-copy-button';
@@ -46,7 +47,7 @@ export const JunkDetailPane = ({
           </div>
         </div>
       ) : null}
-      <div className={mode === 'page' ? 'mx-auto max-w-4xl p-6 sm:p-9' : 'p-5 sm:p-6'}>
+      <div className={detailContentClassName[mode]}>
         <header className='flex flex-wrap items-start justify-between gap-x-6 gap-y-4'>
           <Heading className='min-w-0 flex-1 break-words text-2xl font-semibold tracking-tight text-ink sm:text-3xl'>
             {getJunkTitle(item)}

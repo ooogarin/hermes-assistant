@@ -1,42 +1,36 @@
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
+import { NoteActions } from '../../../components/notes/note-actions';
 import { NoteDetailPane } from '../../../components/notes/note-detail-pane';
-import { Button } from '../../../components/ui/button';
-import { ButtonLink } from '../../../components/ui/button-link';
-import { ConfirmationDialog } from '../../../components/ui/confirmation-dialog';
 import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { deleteNote, getNote } from '../notes-api';
+import { getNote } from '../notes-api';
 
 const NotesDetailPage = () => {
   const { code = '' } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo =
+    typeof location.state?.returnTo === 'string' && /^\/notes(?:\?|$)/.test(location.state.returnTo)
+      ? location.state.returnTo
+      : '/notes';
   const detail = useApiQuery(code, (signal) => getNote(code, signal));
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string>();
-
-  const remove = async () => {
-    setDeleting(true);
-    setDeleteError(undefined);
-    try {
-      await deleteNote(code);
-      navigate('/notes', { replace: true, state: { notice: 'Catatan berhasil dihapus.' } });
-    } catch {
-      setDeleting(false);
-      setConfirmOpen(false);
-      setDeleteError('Catatan belum dapat dihapus. Coba lagi.');
-    }
+  const onDeleted = () => {
+    const destination = new URL(returnTo, window.location.origin);
+    destination.searchParams.delete('preview');
+    navigate(`${destination.pathname}${destination.search}`, {
+      replace: true,
+      state: { notice: 'Catatan berhasil dihapus.' },
+    });
   };
 
   return (
     <div className='space-y-4'>
       <NavigationNotice />
-      <Link className='inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline' to='/notes'>
+      <Link className='inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline' to={returnTo}>
         <ArrowLeft aria-hidden='true' size={18} />
         Kembali ke Notes
       </Link>
@@ -48,7 +42,7 @@ const NotesDetailPage = () => {
             title='Catatan tidak ditemukan'
             description='Catatan ini mungkin sudah tidak tersedia.'
             action={
-              <Link className='font-semibold text-primary hover:underline' to='/notes'>
+              <Link className='font-semibold text-primary hover:underline' to={returnTo}>
                 Kembali ke Notes
               </Link>
             }
@@ -58,38 +52,12 @@ const NotesDetailPage = () => {
         )
       ) : null}
       {detail.status === 'success' ? (
-        <>
-          <NoteDetailPane
-            actions={
-              <>
-                <ButtonLink
-                  icon={<Pencil aria-hidden='true' size={17} />}
-                  label='Edit'
-                  to={`/notes/${code}/edit`}
-                  variant='secondary'
-                />
-                <Button onClick={() => setConfirmOpen(true)} variant='danger'>
-                  <Trash2 aria-hidden='true' size={17} /> Hapus
-                </Button>
-              </>
-            }
-            mode='page'
-            note={detail.data}
-          />
-          {deleteError === undefined ? null : (
-            <p className='text-sm text-danger' role='alert'>
-              {deleteError}
-            </p>
-          )}
-          <ConfirmationDialog
-            description='Catatan ini tidak akan muncul lagi di daftar Notes.'
-            onClose={() => setConfirmOpen(false)}
-            onConfirm={remove}
-            open={confirmOpen}
-            pending={deleting}
-            title={`Hapus “${detail.data.title}”?`}
-          />
-        </>
+        <NoteDetailPane
+          key={code}
+          actions={<NoteActions key={code} note={detail.data} onDeleted={onDeleted} presentation='buttons' />}
+          mode='page'
+          note={detail.data}
+        />
       ) : null}
     </div>
   );

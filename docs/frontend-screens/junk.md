@@ -135,7 +135,7 @@ Read one saved external item and understand its category, source, and saved desc
 - Source link uses the natural display name and an external-link icon; its title exposes the actual URL. A clipboard-only button copies the original URL with accessible success/failure feedback. Open only HTTP(S) links in a new tab with safe rel attributes.
 - Full-width primary content from `contentText`; missing content gets a quiet empty message. No nested description card.
 - Metadata order: code with copy icon → category → saved date → updated date only when different → all tags.
-- Full-page detail uses slightly more inner padding than Notes while keeping the reading column narrower than the Junk page.
+- Full-page detail shares the same centered reading width and inner padding as Notes.
 - Clipboard actions briefly show a check icon after a successful copy, then return to the clipboard icon after two seconds.
 - Full-page detail alone includes a `Teks asli` switch aligned to the right of the source row (wrapping on narrow screens). Default off shows `contentText`; on immediately replaces the body with `rawText`, preserving whitespace. Title and metadata remain unchanged. Disable the switch with an explanation when raw text is unavailable. It does not edit data or fetch content from the source.
 

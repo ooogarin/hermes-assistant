@@ -31,7 +31,6 @@ export const JunkList = ({
       <span className='hidden whitespace-nowrap @min-[58rem]:block'>Sumber</span>
       <span className='whitespace-nowrap'>Kategori</span>
       <span className='whitespace-nowrap'>Tags</span>
-      <span />
     </div>
     <ul>
       {items.map((item) => {

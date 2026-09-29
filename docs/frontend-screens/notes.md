@@ -64,8 +64,9 @@ Find a saved note, narrow the collection, then open a note for reading. The defa
 - `Filter` opens a dismissible advanced-filter popover. The intended fields are type, category, tag, source, and created-date range, with `Reset` and `Terapkan filter` actions.
 - `Urutkan` is a compact ordinary sorter. The initial design offers newest first and oldest first by created date.
 - An always-visible quick filter chip row directly below the controls: `Semua`, `Fact`, `Personal`, `Idea`, and `Quote`. It is a shortcut for a note-type filter; the soft-text `category` field remains an advanced-filter field. This wording avoids conflating the domain's fixed `type` enum with its free-form `category`.
-- One grouped, table-like list surface matching the Junk list structure, with a column header and lightweight row separators.
-- Each full-width row displays type, title/content excerpt, tags, created date, and stable note code. While the supporting preview is open, the list uses a compact variant without the redundant code column because the selected code is already visible in the detail pane.
+- One grouped, table-like list surface matching the Junk list structure, with a readable one-line column header and lightweight row separators.
+- Columns run `Tanggal disimpan → Judul / Cuplikan → Tipe → Kategori → Tags` on wide lists. The category column is omitted as the list narrows beside the preview; source and code belong in detail, not the list.
+- Each full-width row is clickable, shows a title and a content excerpt limited to three lines, and highlights the selected note. Tags fill up to three rows; only tags that do not fit are represented by `+N`.
 - The outer page stacks the header, toolbar, and content region vertically. The content region uses the full available width while no note is selected.
 - The application content frame and toolbar use the full available width; the search group absorbs remaining toolbar space while Filter and Sort retain compact widths and equal heights.
 - The initial list state has no selected row and no detail pane. Selecting a row applies a selected-row indicator, records the selection as `/notes?preview=:code`, shrinks the list, and opens SCR-NOTE-002 in a right supporting pane on wide screens. On narrow screens, the preview becomes the primary content.
@@ -103,13 +104,13 @@ GET /api/v1/notes?q=<keyword>&type=<type>&tag=<tag>&category=<category>&limit=<1
 | State | Behavior |
 | --- | --- |
 | Loading | Render list skeleton rows inside the existing list surface. |
-| Initial empty | Explain that no notes have been saved yet; do not show a browser-only “create note” flow. |
+| Initial empty | Explain that no notes have been saved yet; the header create action remains available without a duplicate empty-state button. |
 | No results | Keep the query/filter visible and show `Tidak ada catatan yang cocok` with `Hapus pencarian`. |
 | Error | Keep search context visible and offer `Coba lagi` with safe non-technical copy. |
 
 **Out of scope**
 
-- Browser-driven note capture or AI metadata generation.
+- AI metadata generation in the browser.
 - Pagination UI before supporting API metadata exists.
 - Pinning, related notes, exports, random resurfacing, active reminder delivery, and note linking.
 
@@ -125,19 +126,18 @@ Read one saved note and understand its metadata and origin. On desktop this begi
 
 **UI composition**
 
-- Right-side preview pane containing close and open-page controls at its outer edge.
-- The preview title shares its top row with the pane controls so the reading content starts without an empty control-only region.
-- Note title followed by one compact metadata line: colored type, category, created date, and stable code.
-- Readable note content using a constrained text width.
-- Tags as quiet supporting chips.
-- Source section only when `source` is present.
-- Origin section only when `sourceContext` or `sourceReference` is present.
+- Right-side preview pane with a separate compact control header: `Detail`, a `⋮` menu containing Edit and Hapus, an open-page control, and close.
+- Standalone detail uses direct Edit and Hapus buttons beside the title. It has no redundant `Detail` heading.
+- Note title and readable content lead the page. Full-page detail shares the same centered reading width and inner padding as Junk.
+- A quiet metadata section follows the content: code with a copy icon, type, category, saved date, updated date when different, optional source, optional origin, then all tags. Metadata labels stay left-aligned with even vertical spacing; the Tags label aligns to the top of wrapped chips.
+- The copy icon briefly becomes a check after a successful copy and returns to a clipboard icon after two seconds.
+- `source` remains plain text, even when it resembles a URL, because the API does not distinguish a verified link from a human-readable source name.
 
 **Panel behavior**
 
 - Close removes the `preview` query parameter, restores the default list-only state, and lets the list expand to the full content width.
-- Open page navigates from `/notes?preview=:code` to the standalone `/notes/:code` route.
-- The full-page route omits a redundant detail page header, uses the full available content width, keeps a compact return control, and remains structurally ready for future update and other note actions.
+- Open page navigates from `/notes?preview=:code` to the standalone `/notes/:code` route. Returning from that page restores the selected preview and the active list filters.
+- The full-page route omits a redundant detail page header, keeps the reading content in a restrained width, and provides a compact return control.
 - The supporting pane becomes the full primary detail screen on narrow viewports.
 
 **Data contract**

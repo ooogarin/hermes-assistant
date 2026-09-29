@@ -1,5 +1,5 @@
 import { classNames } from '../../lib/class-names';
-import { TagList } from '../ui/chip';
+import { ResponsiveTags } from '../ui/responsive-tags';
 import type { Note } from '../../features/notes/notes-api';
 
 const noteTypeLabels: Record<Note['type'], string> = {
@@ -15,4 +15,6 @@ export const NoteTypeLabel = ({ className, type }: { className?: string; type: N
   <span className={classNames('font-semibold text-primary', className ?? 'text-xs')}>{noteTypeLabels[type]}</span>
 );
 
-export const NoteTags = ({ tags }: { tags: string[] }) => <TagList label='Tag catatan' tags={tags} />;
+export const NoteTags = ({ tags, maxRows }: { tags: string[]; maxRows?: number }) => (
+  <ResponsiveTags label='Tag catatan' maxRows={maxRows} tags={tags} />
+);

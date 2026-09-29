@@ -3,21 +3,8 @@ import { formatDate } from '../../lib/formatting/formatters';
 import { NoteTags, NoteTypeLabel } from './note-badges';
 import type { Note } from '../../features/notes/notes-api';
 
-const excerpt = (content: string): string => (content.length > 150 ? `${content.slice(0, 150)}…` : content);
-const noteColumns = 'xl:grid-cols-[6.5rem_minmax(12rem,2fr)_minmax(7rem,1fr)_6.5rem_9rem]';
-const compactNoteColumns = 'xl:grid-cols-[5rem_minmax(10rem,2fr)_minmax(6rem,1fr)_5.5rem]';
-
-const Header = ({ compact }: { compact: boolean }) => (
-  <div
-    className={`hidden gap-3 border-b border-border px-4 py-3 text-xs font-medium text-ink-muted xl:grid ${compact ? compactNoteColumns : noteColumns}`}
-  >
-    <span>Tipe</span>
-    <span>Judul / Cuplikan</span>
-    <span>Tags</span>
-    <span>Tanggal</span>
-    {compact ? null : <span>Kode</span>}
-  </div>
-);
+const columns =
+  'grid-cols-[8.5rem_minmax(10rem,1fr)_5.5rem_10.5rem] @min-[58rem]:grid-cols-[8.5rem_minmax(14rem,1fr)_6rem_8rem_12rem]';
 
 export const NoteList = ({
   notes,
@@ -28,37 +15,48 @@ export const NoteList = ({
   selectedCode?: string;
   toDetail: (code: string) => string;
 }) => (
-  <section className='overflow-hidden rounded-surface border border-border bg-surface' aria-labelledby='notes-list'>
+  <section
+    className='@container min-w-0 overflow-hidden rounded-surface border border-border bg-surface'
+    aria-labelledby='notes-list'
+  >
     <h2 id='notes-list' className='sr-only'>
       Daftar Notes
     </h2>
-    <Header compact={selectedCode !== undefined} />
+    <div
+      aria-hidden='true'
+      className={`grid gap-4 border-b border-border px-5 py-3 text-sm font-semibold text-ink-muted ${columns}`}
+    >
+      <span className='whitespace-nowrap'>Tanggal disimpan</span>
+      <span className='whitespace-nowrap'>Judul / Cuplikan</span>
+      <span className='whitespace-nowrap'>Tipe</span>
+      <span className='hidden whitespace-nowrap @min-[58rem]:block'>Kategori</span>
+      <span className='whitespace-nowrap'>Tags</span>
+    </div>
     <ul>
       {notes.map((note) => (
         <li key={note.code} className='border-b border-border last:border-b-0'>
           <Link
-            className={
-              note.code === selectedCode
-                ? 'block border-l-4 border-primary bg-primary-subtle px-4 py-4'
-                : 'block border-l-4 border-transparent px-4 py-4 transition-colors hover:bg-surface-subtle'
-            }
+            aria-current={note.code === selectedCode ? 'true' : undefined}
+            className={`block border-l-4 px-4 py-5 transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${note.code === selectedCode ? 'border-primary bg-primary-subtle' : 'border-transparent hover:bg-surface-subtle'}`}
             to={toDetail(note.code)}
           >
-            <div
-              className={`grid gap-3 xl:items-start ${selectedCode === undefined ? noteColumns : compactNoteColumns}`}
-            >
-              <NoteTypeLabel className='text-sm' type={note.type} />
+            <div className={`grid items-start gap-3 @min-[58rem]:gap-4 ${columns}`}>
+              <time dateTime={note.createdAt} className='text-sm text-ink-muted'>
+                {formatDate(note.createdAt)}
+              </time>
               <div className='min-w-0'>
-                <h3 className='text-sm font-semibold text-ink'>{note.title}</h3>
-                <p className='mt-1 break-words text-sm leading-6 text-ink-muted'>{excerpt(note.content)}</p>
+                <h3 className='line-clamp-2 break-words text-sm font-semibold text-ink'>{note.title}</h3>
+                <p className='mt-1 line-clamp-3 break-words text-sm leading-6 text-ink-muted'>
+                  {note.content.replace(/\s+/g, ' ').trim()}
+                </p>
               </div>
-              <div className='min-w-0 self-start'>
-                <NoteTags tags={note.tags} />
+              <NoteTypeLabel className='text-sm' type={note.type} />
+              <span className='hidden min-w-0 truncate text-sm text-ink-muted @min-[58rem]:block' title={note.category}>
+                {note.category}
+              </span>
+              <div className='min-w-0 max-w-64'>
+                <NoteTags maxRows={3} tags={note.tags} />
               </div>
-              <span className='whitespace-nowrap text-sm text-ink-muted'>{formatDate(note.createdAt)}</span>
-              {selectedCode === undefined ? (
-                <span className='whitespace-nowrap text-sm text-ink-muted'>{note.code}</span>
-              ) : null}
             </div>
           </Link>
         </li>

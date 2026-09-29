@@ -1,10 +1,11 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { PageHeader } from '../../../components/layout/page-header';
+import { NoteActions } from '../../../components/notes/note-actions';
 import { NoteDetailPane } from '../../../components/notes/note-detail-pane';
 import { NoteList } from '../../../components/notes/note-list';
 import { NotesToolbar } from '../../../components/notes/notes-toolbar';
@@ -29,6 +30,7 @@ const toSearchParams = (filters: NoteListFilters, previewCode?: string): URLSear
 
 const NotesListPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCode = getOptionalValue(searchParams.get('preview'));
   const filters: NoteListFilters = {
@@ -119,10 +121,10 @@ const NotesListPage = () => {
         className={
           selectedCode === undefined
             ? undefined
-            : 'grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(24rem,0.75fr)]'
+            : 'grid items-start gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(22rem,0.65fr)]'
         }
       >
-        <div className={selectedCode === undefined ? undefined : 'max-xl:hidden'}>
+        <div className={selectedCode === undefined ? 'min-w-0' : 'min-w-0 max-xl:hidden'}>
           {notes.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
           {notes.status === 'error' ? <ErrorState onRetry={notes.retry} /> : null}
           {notes.status === 'success' && notes.data.length === 0 ? (
@@ -148,7 +150,7 @@ const NotesListPage = () => {
         </div>
 
         {selectedCode !== undefined ? (
-          <div className='max-xl:col-span-full'>
+          <div className='min-w-0 max-xl:col-span-full'>
             {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
             {detail.status === 'error' ? (
               detail.error instanceof ApiError && detail.error.status === 404 ? (
@@ -167,9 +169,22 @@ const NotesListPage = () => {
             ) : null}
             {detail.status === 'success' && detail.data !== null ? (
               <NoteDetailPane
+                key={selectedCode}
+                actions={
+                  <NoteActions
+                    key={selectedCode}
+                    note={detail.data}
+                    onDeleted={() => {
+                      closePreview();
+                      notes.retry();
+                    }}
+                  />
+                }
                 note={detail.data}
                 onClose={closePreview}
-                onOpenPage={() => navigate(`/notes/${selectedCode}`)}
+                onOpenPage={() =>
+                  navigate(`/notes/${selectedCode}`, { state: { returnTo: location.pathname + location.search } })
+                }
               />
             ) : null}
           </div>
