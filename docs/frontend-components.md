@@ -20,6 +20,12 @@ Supported variants are `primary`, `secondary`, `danger`, and `ghost`; supported 
 
 `Field` owns the visible label and helper/error message. `Input`, `Textarea`, `TextField`, `TextAreaField`, and `SelectField` share the global control treatment. Domain-specific composites may place the primitive input inside a unit or date wrapper, but must not duplicate its base state styling.
 
+## Calendar picker
+
+`DatePicker` is the shared calendar control for date selection across the frontend, including Finance reports and forms, and date-range filters in Notes and Junk. It accepts optional minimum and maximum dates, can be disabled, and supports clearing optional filter dates. Paired range controls use the other selected date as their boundary.
+
+The `position` prop accepts `top` or `bottom` (default) to place the calendar above or below its trigger. Notes and Junk filters use `position='top'` to keep the calendar above the date fields. Horizontal placement is controlled separately by `align` (`start` or `end`).
+
 `SearchField` accepts a custom leading icon, clear label, and clear handler. `SearchForm` composes it with an optional action icon and configurable action label.
 
 ## Choice dropdown

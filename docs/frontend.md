@@ -58,20 +58,20 @@ Create sends one to 100 transaction rows that share an explicit date, type, and 
 Notes is read-only in this phase. Its list and detail routes use the API as the source of truth:
 
 ```text
-GET /api/v1/notes?q=<keyword>&type=<type>&category=<category>&tag=<tag>&limit=100
+GET /api/v1/notes?q=<keyword>&type=<type>&category=<category>&tag=<tag>&source=<name-or-domain>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
 GET /api/v1/notes/:code
 ```
 
-Source, date-range, and alternative ordering controls remain disabled until those query parameters exist in the API contract; the UI never presents a partial browser-side result as a complete server-side filter. The list uses `/notes?preview=:code` for its supporting pane, while `/notes/:code` is a standalone detail page.
+Keyword, type, category, tag, source, date-range, and ordering filters are applied by the API. Notes uses the shared calendar picker for its optional date range. The list uses `/notes?preview=:code` for its supporting pane, while `/notes/:code` is a standalone detail page.
 
 Junk follows the same list, preview, and standalone-detail structure:
 
 ```text
-GET /api/v1/junk?q=<keyword>&category=<category>&tag=<tag>&sourceUrl=<url>&limit=100
+GET /api/v1/junk?q=<keyword>&category=<category>&tag=<tag>&source=<name-or-domain>&source_url=<url>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
 GET /api/v1/junk/:code
 ```
 
-Keyword, category, tag, and exact source-URL filters are API-backed. Date range and alternative ordering remain unavailable until the API contract supports them. The list uses `/junk?preview=:code`; `/junk/:code` is the standalone detail page.
+Keyword, category, tag, source, exact source-URL, date-range, and ordering filters are applied by the API. Junk uses the shared calendar picker for its optional date range. The list uses `/junk?preview=:code`; `/junk/:code` is the standalone detail page.
 
 Reading provides settings, direct known-code material, complete answer submission, and expected-answer review:
 

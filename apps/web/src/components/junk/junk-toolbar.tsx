@@ -1,8 +1,9 @@
 import { ArrowDownUp } from 'lucide-react';
 import { Button } from '../ui/button';
+import { DatePicker } from '../ui/date-picker';
 import { FilterChip } from '../ui/filter-chip';
 import { FilterPopover } from '../ui/filter-popover';
-import { Input, TextField } from '../ui/form-field';
+import { TextField } from '../ui/form-field';
 import { SearchForm } from '../ui/search-form';
 
 type JunkToolbarProps = {
@@ -118,18 +119,23 @@ export const JunkToolbar = ({
           <div className='grid gap-2 text-sm font-medium text-ink'>
             Rentang tanggal
             <div className='grid grid-cols-2 gap-3'>
-              <Input
-                aria-label='Dari tanggal'
+              <DatePicker
+                clearable
                 className='min-w-0'
-                onChange={(event) => onFromChange(event.target.value)}
-                type='date'
+                label='Dari tanggal'
+                max={to || undefined}
+                onChange={onFromChange}
+                position='top'
                 value={from}
               />
-              <Input
-                aria-label='Sampai tanggal'
+              <DatePicker
+                align='end'
+                clearable
                 className='min-w-0'
-                onChange={(event) => onToChange(event.target.value)}
-                type='date'
+                label='Sampai tanggal'
+                min={from || undefined}
+                onChange={onToChange}
+                position='top'
                 value={to}
               />
             </div>

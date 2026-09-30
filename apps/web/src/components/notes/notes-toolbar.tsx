@@ -1,9 +1,10 @@
 import { ArrowDownUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ChoiceDropdown } from '../ui/choice-dropdown';
+import { DatePicker } from '../ui/date-picker';
 import { FilterChip } from '../ui/filter-chip';
 import { FilterPopover } from '../ui/filter-popover';
-import { Input, TextField } from '../ui/form-field';
+import { TextField } from '../ui/form-field';
 import { SearchForm } from '../ui/search-form';
 import type { NoteType } from '../../features/notes/notes-api';
 
@@ -132,24 +133,23 @@ export const NotesToolbar = ({
             <div className='grid gap-2 text-sm font-medium text-ink'>
               Rentang tanggal
               <div className='grid grid-cols-2 gap-3'>
-                <label className='sr-only' htmlFor='notes-date-from'>
-                  Dari tanggal
-                </label>
-                <Input
-                  id='notes-date-from'
+                <DatePicker
+                  clearable
                   className='min-w-0'
-                  onChange={(event) => onFromChange(event.target.value)}
-                  type='date'
+                  label='Dari tanggal'
+                  max={to || undefined}
+                  onChange={onFromChange}
+                  position='top'
                   value={from}
                 />
-                <label className='sr-only' htmlFor='notes-date-to'>
-                  Sampai tanggal
-                </label>
-                <Input
-                  id='notes-date-to'
+                <DatePicker
+                  align='end'
+                  clearable
                   className='min-w-0'
-                  onChange={(event) => onToChange(event.target.value)}
-                  type='date'
+                  label='Sampai tanggal'
+                  min={from || undefined}
+                  onChange={onToChange}
+                  position='top'
                   value={to}
                 />
               </div>

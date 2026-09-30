@@ -5,7 +5,8 @@ import { getFinanceCategories } from '../../features/finance/finance-api';
 import { useApiQuery } from '../../lib/hooks/use-api-query';
 import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
 import { Button } from '../ui/button';
-import { TextAreaField, TextField } from '../ui/form-field';
+import { DatePicker } from '../ui/date-picker';
+import { Field, TextAreaField } from '../ui/form-field';
 import { SelectField } from '../ui/select-field';
 import {
   areFinanceTransactionsEqual,
@@ -93,15 +94,9 @@ export const FinanceTransactionBatchForm = ({
     <form className='mt-7 grid gap-6' onSubmit={submit}>
       <section className='rounded-surface border border-border bg-surface p-6 sm:p-8'>
         <div className='grid gap-5 sm:grid-cols-2'>
-          <TextField
-            disabled={saving}
-            label='Tanggal'
-            max={maxDate}
-            onChange={(event) => setDate(event.target.value)}
-            required
-            type='date'
-            value={date}
-          />
+          <Field label='Tanggal'>
+            <DatePicker disabled={saving} label='Tanggal transaksi' max={maxDate} onChange={setDate} value={date} />
+          </Field>
           <SelectField
             disabled={saving}
             label='Jenis'
