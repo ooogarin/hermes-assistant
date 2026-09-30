@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -60,7 +60,7 @@ afterEach(() => {
   });
 });
 
-test('lists notes date first with a short excerpt and tags, without a code column', () => {
+test('lists notes title first with all metadata, a short excerpt and tags, without a code column', () => {
   render(
     <MemoryRouter>
       <NoteList notes={[note]} selectedCode={note.code} toDetail={(code) => `/notes?preview=${code}`} />
@@ -68,12 +68,37 @@ test('lists notes date first with a short excerpt and tags, without a code colum
   );
   const row = screen.getByRole('link');
   expect(row).toHaveAttribute('aria-current', 'true');
+  expect(row.firstElementChild).toContainElement(screen.getByRole('heading', { name: note.title }));
+  expect(row).toHaveAttribute('href', `/notes?preview=${note.code}`);
   expect(row.querySelector('time')).toHaveTextContent('8 Sep 2026');
   expect(screen.getByText(note.contentText)).toHaveClass('line-clamp-3');
   expect(within(screen.getByRole('list', { name: 'Tag catatan' })).getAllByRole('listitem')).toHaveLength(3);
   expect(screen.queryByText(note.code)).not.toBeInTheDocument();
   expect(row).toHaveTextContent('Fact');
   expect(row).toHaveTextContent('Knowledge');
+});
+
+test('offers keyboard access and overflow guidance only while the columns exceed the list width', () => {
+  let width = 640;
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return this.getAttribute('aria-label') === 'Kolom daftar Notes' ? width : 0;
+  });
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(960);
+  render(
+    <MemoryRouter>
+      <NoteList notes={[note]} toDetail={(code) => `/notes?preview=${code}`} />
+    </MemoryRouter>,
+  );
+  const region = screen.getByRole('region', { name: 'Kolom daftar Notes' });
+  expect(region).toHaveAttribute('tabindex', '0');
+  expect(region).toHaveAccessibleDescription('Geser horizontal untuk melihat semua kolom');
+  expect(within(region).getByText(note.category)).toBeInTheDocument();
+  fireEvent.scroll(region, { target: { scrollLeft: 320 } });
+  expect(region).toHaveAttribute('tabindex', '0');
+  width = 960;
+  fireEvent.scroll(region, { target: { scrollLeft: 0 } });
+  expect(region).not.toHaveAttribute('tabindex');
+  expect(screen.queryByText('Geser horizontal untuk melihat semua kolom')).not.toBeInTheDocument();
 });
 
 test('opens and copies the source URL, switches original text, and copies the note code', async () => {

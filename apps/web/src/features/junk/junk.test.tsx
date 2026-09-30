@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, test, vi } from 'vitest';
@@ -78,7 +78,7 @@ test('derives preview only from content text without an arbitrary character limi
   expect(getJunkExcerpt({ ...item, contentText: 'a'.repeat(600) })).toHaveLength(600);
 });
 
-test('renders clickable date-first rows, separate source, and available tags without a code column', () => {
+test('renders clickable title-first rows, separate source, and available tags without a code column', () => {
   render(
     <MemoryRouter>
       <JunkList items={[item]} selectedCode={item.code} toDetail={(code) => `/junk?preview=${code}`} />
@@ -86,6 +86,8 @@ test('renders clickable date-first rows, separate source, and available tags wit
   );
   const row = screen.getByRole('link');
   expect(row).toHaveAttribute('aria-current', 'true');
+  expect(row.firstElementChild).toContainElement(screen.getByRole('heading', { name: 'A saved video' }));
+  expect(row).toHaveAttribute('href', `/junk?preview=${item.code}`);
   expect(row.querySelector('time')).toHaveTextContent('8 Sep 2026');
   expect(screen.getByText('A useful description.')).toHaveClass('line-clamp-3');
   expect(within(screen.getByRole('list', { name: 'Tag Junk' })).getAllByRole('listitem')).toHaveLength(
@@ -95,6 +97,29 @@ test('renders clickable date-first rows, separate source, and available tags wit
   expect(screen.queryByText(item.code)).not.toBeInTheDocument();
   expect(within(row).getByText('YouTube', { exact: false })).toBeInTheDocument();
   expect(row.querySelectorAll('a')).toHaveLength(0);
+});
+
+test('offers keyboard access and overflow guidance only while the columns exceed the list width', () => {
+  let width = 640;
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+    return this.getAttribute('aria-label') === 'Kolom daftar Junk' ? width : 0;
+  });
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(960);
+  render(
+    <MemoryRouter>
+      <JunkList items={[item]} toDetail={(code) => `/junk?preview=${code}`} />
+    </MemoryRouter>,
+  );
+  const region = screen.getByRole('region', { name: 'Kolom daftar Junk' });
+  expect(region).toHaveAttribute('tabindex', '0');
+  expect(region).toHaveAccessibleDescription('Geser horizontal untuk melihat semua kolom');
+  expect(within(region).getByText(item.category)).toBeInTheDocument();
+  fireEvent.scroll(region, { target: { scrollLeft: 320 } });
+  expect(region).toHaveAttribute('tabindex', '0');
+  width = 960;
+  fireEvent.scroll(region, { target: { scrollLeft: 0 } });
+  expect(region).not.toHaveAttribute('tabindex');
+  expect(screen.queryByText('Geser horizontal untuk melihat semua kolom')).not.toBeInTheDocument();
 });
 
 test('preview has content only, one category, icon-only copy, expand, and close controls', async () => {
