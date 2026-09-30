@@ -11,8 +11,9 @@ import type { Note, UpdateNoteInput } from '../notes-api';
 
 const toFormValues = (note: Note): NoteFormValues => ({
   category: note.category,
-  content: note.content,
-  source: note.source,
+  contentText: note.contentText,
+  sourceName: note.sourceName,
+  sourceUrl: note.sourceUrl,
   tags: note.tags,
   title: note.title,
   type: note.type,
@@ -26,10 +27,11 @@ const NotesEditPage = () => {
   const save = async (values: NoteFormValues, current: Note) => {
     const input: UpdateNoteInput = {};
     if (values.title !== current.title) input.title = values.title;
-    if (values.content !== current.content) input.content = values.content;
+    if (values.contentText !== current.contentText) input.contentText = values.contentText;
     if (values.type !== current.type) input.type = values.type;
     if (values.category !== current.category) input.category = values.category;
-    if (values.source !== current.source) input.source = values.source;
+    if (values.sourceName !== current.sourceName) input.sourceName = values.sourceName;
+    if (values.sourceUrl !== current.sourceUrl) input.sourceUrl = values.sourceUrl;
     if (values.tags.join() !== current.tags.join()) input.tags = values.tags;
     await updateNote(code, input);
     navigate(`/notes/${code}`, { replace: true, state: { notice: 'Catatan berhasil diperbarui.' } });

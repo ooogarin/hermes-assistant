@@ -101,6 +101,38 @@ test('rejects an invalid junk payload without calling the service', async () => 
   });
 });
 
+test('keeps original whitespace, canonicalizes tags, and allows a titleless URL', async () => {
+  let saved: CreateJunkRequest | undefined;
+  const response = await createJunkApp({
+    create: async (input) => {
+      saved = input;
+      return { ...junkItem, ...input };
+    },
+  }).request('http://localhost/api/v1/junk', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      category: 'Music',
+      raw_text: '  original\n',
+      source_url: 'https://example.org/song',
+      tags: ['Old-Song', 'old-song'],
+    }),
+  });
+  expect(response.status).toBe(201);
+  expect(saved).toMatchObject({ category: 'music', raw_text: '  original\n', tags: ['old-song'], title: null });
+});
+
+test('rejects contentless junk and non-HTTP source URLs', async () => {
+  for (const body of [{ category: 'music' }, { category: 'music', source_url: 'ftp://example.org/song' }]) {
+    const response = await createJunkApp().request('http://localhost/api/v1/junk', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    expect(response.status).toBe(400);
+  }
+});
+
 test('passes search filters to the junk service', async () => {
   let searchInput: ListJunkRequest | undefined;
   const app = createJunkApp({
@@ -111,7 +143,7 @@ test('passes search filters to the junk service', async () => {
   });
 
   const response = await app.request(
-    'http://localhost/api/v1/junk?q=rust&tag=programming&category=article&source_url=https%3A%2F%2Fexample.com%2Frust-ownership&limit=10',
+    'http://localhost/api/v1/junk?q=rust&tag=programming&category=article&source=Example&from=2026-09-01&to=2026-09-30&sort=oldest&source_url=https%3A%2F%2Fexample.com%2Frust-ownership&limit=10',
     { headers: { Authorization: 'Bearer test-api-key' } },
   );
 
@@ -121,6 +153,10 @@ test('passes search filters to the junk service', async () => {
     tag: 'programming',
     category: 'article',
     source_url: 'https://example.com/rust-ownership',
+    source: 'Example',
+    from: '2026-09-01',
+    to: '2026-09-30',
+    sort: 'oldest',
     limit: 10,
   });
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [junkItem] }) });
@@ -182,7 +218,7 @@ test('accepts and trims an optional source name on create', async () => {
   const response = await createJunkApp().request('http://localhost/api/v1/junk', {
     method: 'POST',
     headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ category: 'video', source_name: '  YouTube  ' }),
+    body: JSON.stringify({ category: 'video', title: 'Saved video', source_name: '  YouTube  ' }),
   });
   expect(response.status).toBe(201);
   expect(await response.json()).toMatchObject({ data: { source_name: 'YouTube' } });

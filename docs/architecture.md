@@ -78,7 +78,7 @@ Liveness does not depend on PostgreSQL; readiness may use a lightweight database
 - Mount application routes below `/api/v1` and use plural, lowercase resource paths.
 - Use `GET` for reads, `POST` for creates or explicit commands, `PATCH` for partial updates, and `DELETE` for removals.
 - Validate every body, query, path parameter, and relevant header with Zod.
-- Request bodies, query parameters, and path parameters use `camelCase`. Response JSON uses recursive `snake_case`, including nested objects, collection metadata, and error fields.
+- Request bodies, query parameters, path parameters, and response JSON use `snake_case`, including nested objects, collection metadata, and error fields.
 - Use ISO 8601 dates/timestamps and UUID strings for public identifiers unless a feature design explicitly defines a user-facing code or another identifier.
 - Authenticate application routes with `Authorization: Bearer <INTERNAL_API_KEY>`. `GET /health` and `GET /health/ready` are public.
 

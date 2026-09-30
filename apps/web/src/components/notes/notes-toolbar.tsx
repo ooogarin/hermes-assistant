@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ArrowDownUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ChoiceDropdown } from '../ui/choice-dropdown';
 import { FilterChip } from '../ui/filter-chip';
@@ -11,9 +11,18 @@ type NotesToolbarProps = {
   activeFilterCount: number;
   activeType?: NoteType;
   category: string;
+  from: string;
+  to: string;
+  source: string;
+  sort: 'newest' | 'oldest';
+  dateRangeInvalid: boolean;
   filtersOpen: boolean;
   onApply: () => void;
   onCategoryChange: (value: string) => void;
+  onFromChange: (value: string) => void;
+  onToChange: (value: string) => void;
+  onSourceChange: (value: string) => void;
+  onSortChange: () => void;
   onCloseFilters: () => void;
   onQueryChange: (value: string) => void;
   onQuickTypeChange: (value?: NoteType) => void;
@@ -45,9 +54,18 @@ export const NotesToolbar = ({
   activeFilterCount,
   activeType,
   category,
+  from,
+  to,
+  source,
+  sort,
+  dateRangeInvalid,
   filtersOpen,
   onApply,
   onCategoryChange,
+  onFromChange,
+  onToChange,
+  onSourceChange,
+  onSortChange,
   onCloseFilters,
   onQueryChange,
   onQuickTypeChange,
@@ -106,10 +124,10 @@ export const NotesToolbar = ({
               value={tag}
             />
             <TextField
-              disabled
               label='Sumber'
-              placeholder='Semua sumber'
-              title='Filter sumber belum didukung oleh API.'
+              onChange={(event) => onSourceChange(event.target.value)}
+              placeholder='Nama atau domain sumber'
+              value={source}
             />
             <div className='grid gap-2 text-sm font-medium text-ink'>
               Rentang tanggal
@@ -120,9 +138,9 @@ export const NotesToolbar = ({
                 <Input
                   id='notes-date-from'
                   className='min-w-0'
-                  disabled
+                  onChange={(event) => onFromChange(event.target.value)}
                   type='date'
-                  title='Filter rentang tanggal belum didukung oleh API.'
+                  value={from}
                 />
                 <label className='sr-only' htmlFor='notes-date-to'>
                   Sampai tanggal
@@ -130,26 +148,28 @@ export const NotesToolbar = ({
                 <Input
                   id='notes-date-to'
                   className='min-w-0'
-                  disabled
+                  onChange={(event) => onToChange(event.target.value)}
                   type='date'
-                  title='Filter rentang tanggal belum didukung oleh API.'
+                  value={to}
                 />
               </div>
             </div>
           </div>
-          <p className='mt-4 text-xs leading-5 text-ink-muted'>
-            Sumber, rentang tanggal, dan urutan lama menunggu dukungan API.
-          </p>
+          {dateRangeInvalid ? (
+            <p className='text-sm text-danger'>Tanggal akhir harus sama atau setelah tanggal awal.</p>
+          ) : null}
           <div className='mt-5 flex items-center justify-between gap-3'>
             <Button variant='ghost' onClick={onReset}>
               Reset
             </Button>
-            <Button onClick={onApply}>Terapkan filter</Button>
+            <Button disabled={dateRangeInvalid} onClick={onApply}>
+              Terapkan filter
+            </Button>
           </div>
         </FilterPopover>
 
-        <Button className='h-12' variant='secondary' disabled title='Urutan terlama belum didukung oleh API.'>
-          Urutkan: Terbaru <ChevronDown aria-hidden='true' size={17} />
+        <Button className='h-12' variant='secondary' onClick={onSortChange}>
+          Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
         </Button>
       </div>
 

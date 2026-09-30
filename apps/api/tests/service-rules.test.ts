@@ -10,6 +10,7 @@ import type {
   GrammarSessionListRow,
   GrammarSessionRow,
 } from '../src/modules/grammar/grammar.types';
+import type { JunkItemRow } from '../src/modules/junk/junk.types';
 import type {
   ReadingMaterial,
   ReadingMaterialListRow,
@@ -175,7 +176,7 @@ let grammarAnswerWriteCount = 0;
 let committedTransactionCount = 0;
 let rolledBackTransactionCount = 0;
 let noteResult: { code: string } | null = null;
-let junkResult: { code: string } | null = null;
+let junkResult: JunkItemRow | null = null;
 let readingSettingsResult = readingSettingsRow;
 let readingMaterialResult: ReadingMaterialRow | null = readingMaterialRow;
 let readingQuestionsResult: ReadingQuestionWithAnswerRow[] = readingQuestionRows;
@@ -585,6 +586,29 @@ test('junk returns a stable domain error when an item is absent', async () => {
   await expect(junkService.remove({ code: 'JK-20260905-001' })).rejects.toMatchObject({
     code: 'JUNK_ITEM_NOT_FOUND',
     statusCode: 404,
+  });
+});
+
+test('junk formats category and tags without changing separators needed for filtering', async () => {
+  junkResult = {
+    code: 'JK-20260928-001',
+    title: 'Saved item',
+    category: 'personal-growth',
+    raw_text: null,
+    content_text: 'A useful item',
+    source_url: null,
+    source_name: null,
+    tags: ['advisory-lock', 'api_v1'],
+    created_at: '2026-09-28T00:00:00.000Z',
+    updated_at: '2026-09-28T00:00:00.000Z',
+    deleted_at: null,
+  };
+  const detail = await junkService.getDetail({ code: 'JK-20260928-001' });
+  expect(detail.category).toBe('Personal-Growth');
+  expect(detail.tags).toEqual(['Advisory-Lock', 'Api_V1']);
+  await expect(junkService.update({ code: detail.code }, { title: null, content_text: null })).rejects.toMatchObject({
+    code: 'JUNK_CONTENT_REQUIRED',
+    statusCode: 400,
   });
 });
 

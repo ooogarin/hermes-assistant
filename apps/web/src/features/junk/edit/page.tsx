@@ -63,6 +63,7 @@ const JunkEditPage = () => {
       {item.status === 'success' ? (
         <JunkForm
           cancelTo={`/junk/${code}`}
+          hasRawText={Boolean(item.data.rawText?.trim())}
           initial={toFormValues(item.data)}
           onSubmit={(values) => save(values, item.data)}
           submitLabel='Simpan perubahan'

@@ -106,6 +106,9 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   const tag = input.tag ?? null;
   const category = input.category ?? null;
   const source_url = input.source_url ?? null;
+  const source = input.source ?? null;
+  const from = input.from ?? null;
+  const to = input.to ?? null;
   const rows = await database<JunkItemRow[]>`
     SELECT
       code,
@@ -121,16 +124,27 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
       deleted_at
     FROM junk_items
     WHERE deleted_at IS NULL
-      AND (${query}::TEXT IS NULL OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT))
+      AND (
+        ${query}::TEXT IS NULL
+        OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT)
+        OR code = UPPER(${query}::TEXT)
+        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${query}::TEXT)) > 0
+        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${query}::TEXT)) > 0
+      )
       AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
       AND (${category}::TEXT IS NULL OR category = ${category})
       AND (${source_url}::TEXT IS NULL OR source_url = ${source_url})
+      AND (
+        ${source}::TEXT IS NULL
+        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${source}::TEXT)) > 0
+        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${source}::TEXT)) > 0
+      )
+      AND (${from}::DATE IS NULL OR created_at >= (${from}::DATE AT TIME ZONE 'Asia/Jakarta'))
+      AND (${to}::DATE IS NULL OR created_at < ((${to}::DATE + 1) AT TIME ZONE 'Asia/Jakarta'))
     ORDER BY
-      CASE
-        WHEN ${query}::TEXT IS NULL THEN 0
-        ELSE ts_rank(search_vector, websearch_to_tsquery('simple', ${query}::TEXT))
-      END DESC,
-      created_at DESC
+      CASE WHEN ${input.sort}::TEXT = 'newest' THEN created_at END DESC,
+      CASE WHEN ${input.sort}::TEXT = 'oldest' THEN created_at END ASC,
+      code DESC
     LIMIT ${input.limit}
   `;
 

@@ -34,15 +34,15 @@ names, internal status, or raw diagnostic output by default.
 ## Create Flow
 
 1. Preserve the complete incoming message exactly as `raw_text`.
-2. Extract the first valid external URL into `source_url` when one is present. Keep it
+2. Extract the first valid HTTP(S) URL into `source_url` when one is present. Keep it
    as a URL only; do not download or archive the external file.
 3. Use a user-provided title/caption as `title`. If none was provided, keep `title` as
    `null`; do not invent an AI fallback title.
-4. Suggest one practical soft-text `category` such as `article`, `video`, `music`,
+4. Suggest one practical lowercase `category` such as `article`, `video`, `music`,
    `meme`, `quote`, `tool`, or `reference`.
 5. Build concise `content_text` from the user's caption, quote, and available visible
    context. Do not pretend to know the content of a URL that was not inspected.
-6. Add a small set of searchable tags and save immediately with `POST /api/v1/junk`.
+6. Add a small set of distinct lowercase searchable tags and save immediately with `POST /api/v1/junk`. Supply at least one of title, raw text, content text, or source URL.
 7. Return the generated `JK-...` code and the key metadata only.
 
 For an item with no URL, `source_url` is `null`. For uploaded media, preserve only the
@@ -51,7 +51,7 @@ text/caption supported by the MVP and explain that media storage is not availabl
 ## Endpoints
 
 - `POST /api/v1/junk`
-- `GET /api/v1/junk` with optional `q`, `tag`, `category`, `source_url`, and `limit` (1–100, default 20)
+- `GET /api/v1/junk` with optional `q`, `tag`, `category`, `source`, `source_url`, `from`, `to`, `sort` (`newest` or `oldest`), and `limit` (1–100, default 20)
 - `GET|PATCH|DELETE /api/v1/junk/:code`
 
 Create body:
@@ -63,13 +63,14 @@ Create body:
   "raw_text": "original Telegram message",
   "content_text": "Clean searchable description of the item",
   "source_url": "https://example.com/article",
+  "source_name": "Example Journal",
   "tags": ["reference", "database"]
 }
 ```
 
-Preserve the original input in `raw_text`. Put a cleaned/searchable representation in `content_text`. Store only a user-provided title; do not invent a fallback title. Prefer existing categories where practical. Uploaded media and media metadata are outside MVP.
+Preserve the original input, including whitespace, in `raw_text`. Put a cleaned/searchable representation in `content_text`. Store only a user-provided title; do not invent a fallback title. Use `source_name` for a natural label when known. Prefer existing categories where practical. Uploaded media and media metadata are outside MVP.
 
-Save immediately with suggested metadata and return the generated `JK-...` code. Patch supports `title`, `category`, `content_text`, `source_url`, and a full replacement `tags` array; `raw_text` is immutable.
+Save immediately with suggested metadata and return the generated `JK-...` code. Patch supports `title`, `category`, `content_text`, `source_url`, `source_name`, and a full replacement `tags` array; `raw_text` is immutable.
 
 Target resolution follows Notes: explicit code, then current latest item or keyword search. After one match, show the `JK-...` code and intended mutation, then wait for
 explicit confirmation; ask for a code when multiple match, and report no match honestly. Never reclassify Junk as Notes.
@@ -85,7 +86,7 @@ explicit confirmation; ask for a code when multiple match, and report no match h
   resolve the latest active item through the API.
 - A keyword correction/delete requires one resolved match plus explicit confirmation
   after showing its code and intended effect. For multiple matches, show codes and titles and ask the user to choose.
-- PATCH supports `title`, `category`, `content_text`, `source_url`, and a full
+- PATCH supports `title`, `category`, `content_text`, `source_url`, `source_name`, and a full
   replacement `tags` array. `raw_text` is immutable.
 - DELETE is a soft delete; do not describe it as permanent file removal.
 

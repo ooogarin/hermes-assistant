@@ -44,20 +44,24 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
     const { segment: dateSegment } = getJakartaDateCodeParts(new Date());
     const firstNote = await notesService.create({
       title: 'Postgres advisory lock',
-      content: 'An advisory lock prevents concurrent migration runs.',
+      content_text: 'An advisory lock prevents concurrent migration runs.',
+      raw_text: null,
       type: 'fact',
-      category: 'Tech/Programming',
-      source: 'postgresql.org',
+      category: 'tech/programming',
+      source_name: 'postgresql.org',
+      source_url: null,
       source_context: null,
       source_reference: null,
       tags: ['postgres', 'database'],
     });
     const secondNote = await notesService.create({
       title: 'Database idea',
-      content: 'Document the migration runner.',
+      content_text: 'Document the migration runner.',
+      raw_text: null,
       type: 'idea',
-      category: 'Tech/Programming',
-      source: null,
+      category: 'tech/programming',
+      source_name: null,
+      source_url: null,
       source_context: null,
       source_reference: null,
       tags: ['database'],
@@ -65,10 +69,12 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
 
     expect(firstNote.code).toBe(`NT-${dateSegment}-001`);
     expect(secondNote.code).toBe(`NT-${dateSegment}-002`);
-    expect((await notesService.list({ q: 'advisory', limit: 20 })).map((note) => note.code)).toEqual([firstNote.code]);
-    expect((await notesService.list({ tag: 'database', limit: 20 })).map((note) => note.code).sort()).toEqual(
-      [firstNote.code, secondNote.code].sort(),
-    );
+    expect((await notesService.list({ q: 'advisory', sort: 'newest', limit: 20 })).map((note) => note.code)).toEqual([
+      firstNote.code,
+    ]);
+    expect(
+      (await notesService.list({ tag: 'database', sort: 'newest', limit: 20 })).map((note) => note.code).sort(),
+    ).toEqual([firstNote.code, secondNote.code].sort());
 
     const updatedNote = await notesService.update(
       { code: firstNote.code },
@@ -79,11 +85,11 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
     );
 
     expect(updatedNote.category).toBe('Database');
-    expect(updatedNote.tags).toEqual(['postgres', 'advisory-lock']);
+    expect(updatedNote.tags).toEqual(['Postgres', 'Advisory-Lock']);
 
     await notesService.remove({ code: firstNote.code });
 
-    expect(await notesService.list({ tag: 'advisory-lock', limit: 20 })).toEqual([]);
+    expect(await notesService.list({ tag: 'advisory-lock', sort: 'newest', limit: 20 })).toEqual([]);
     await expect(notesService.getDetail({ code: firstNote.code })).rejects.toMatchObject({ code: 'NOTE_NOT_FOUND' });
   });
 
@@ -92,5 +98,36 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
     const statuses = await getMigrationStatus(getDatabase(), migrations);
 
     expect(statuses).toContainEqual({ name: '0001_create_notes.ts', status: 'applied' });
+    expect(statuses).toContainEqual({ name: '0009_align_notes_junk_schema.ts', status: 'applied' });
+  });
+
+  test('preserves existing note content and source when aligning the schema', async () => {
+    const databaseClient = getDatabase();
+    const migrations = await loadMigrations(migrationDirectory);
+    await resetTestDatabase(databaseClient);
+    await migrateDatabase(
+      databaseClient,
+      migrations.filter(({ name }) => name !== '0009_align_notes_junk_schema.ts'),
+    );
+    await databaseClient`
+      INSERT INTO notes (code, title, content, type, category, source)
+      VALUES ('NT-20260906-001', 'Existing note', 'Original content', 'fact', 'tech', 'Personal journal')
+    `;
+
+    await migrateDatabase(databaseClient, migrations);
+
+    const [note] = await databaseClient<
+      { content_text: string; source_name: string | null; source_url: string | null; raw_text: string | null }[]
+    >`
+      SELECT content_text, source_name, source_url, raw_text
+      FROM notes
+      WHERE code = 'NT-20260906-001'
+    `;
+    expect(note).toEqual({
+      content_text: 'Original content',
+      source_name: 'Personal journal',
+      source_url: null,
+      raw_text: null,
+    });
   });
 });

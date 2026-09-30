@@ -10,8 +10,9 @@ import type { NoteType } from '../../features/notes/notes-api';
 
 export type NoteFormValues = {
   category: string;
-  content: string;
-  source: string | null;
+  contentText: string;
+  sourceName: string | null;
+  sourceUrl: string | null;
   tags: string[];
   title: string;
   type: NoteType;
@@ -25,30 +26,44 @@ type NoteFormProps = {
 };
 
 const noteTypes: NoteType[] = ['fact', 'personal', 'news', 'quote', 'idea', 'reminder'];
-const emptyValues: NoteFormValues = { category: '', content: '', source: null, tags: [], title: '', type: 'fact' };
+const emptyValues: NoteFormValues = {
+  category: '',
+  contentText: '',
+  sourceName: null,
+  sourceUrl: null,
+  tags: [],
+  title: '',
+  type: 'fact',
+};
 
 export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabel }: NoteFormProps) => {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial.title);
-  const [content, setContent] = useState(initial.content);
+  const [contentText, setContentText] = useState(initial.contentText);
   const [type, setType] = useState(initial.type);
   const [category, setCategory] = useState(initial.category);
-  const [source, setSource] = useState(initial.source ?? '');
+  const [sourceName, setSourceName] = useState(initial.sourceName ?? '');
+  const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl ?? '');
   const [tags, setTags] = useState(initial.tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+  const validUrl =
+    sourceUrl.trim() === '' ||
+    (URL.canParse(sourceUrl.trim()) && ['http:', 'https:'].includes(new URL(sourceUrl.trim()).protocol));
   const valid =
     title.trim().length > 0 &&
-    content.trim().length > 0 &&
+    contentText.trim().length > 0 &&
     category.trim().length > 0 &&
+    validUrl &&
     tags.length <= 50 &&
     tags.every((tag) => tag.length <= 64);
   const dirty =
     title !== initial.title ||
-    content !== initial.content ||
+    contentText !== initial.contentText ||
     type !== initial.type ||
     category !== initial.category ||
-    source !== (initial.source ?? '') ||
+    sourceName !== (initial.sourceName ?? '') ||
+    sourceUrl !== (initial.sourceUrl ?? '') ||
     tags.length !== initial.tags.length ||
     tags.some((tag, index) => tag !== initial.tags[index]);
   const canLeave = useUnsavedChanges(dirty);
@@ -61,8 +76,9 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
     try {
       await onSubmit({
         category: category.trim(),
-        content: content.trim(),
-        source: source.trim() || null,
+        contentText: contentText.trim(),
+        sourceName: sourceName.trim() || null,
+        sourceUrl: sourceUrl.trim() || null,
         tags,
         title: title.trim(),
         type,
@@ -88,9 +104,9 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
           disabled={saving}
           label='Isi catatan'
           maxLength={20_000}
-          onChange={(event) => setContent(event.target.value)}
+          onChange={(event) => setContentText(event.target.value)}
           required
-          value={content}
+          value={contentText}
         />
         <div className='grid gap-5 sm:grid-cols-2'>
           <Field label='Tipe'>
@@ -118,15 +134,26 @@ export const NoteForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
         </div>
         <TextField
           disabled={saving}
-          label='Sumber'
-          maxLength={500}
-          onChange={(event) => setSource(event.target.value)}
-          value={source}
+          label='URL sumber'
+          maxLength={2_000}
+          onChange={(event) => setSourceUrl(event.target.value)}
+          type='url'
+          value={sourceUrl}
         />
-        <TagInput disabled={saving} label='Tags' onChange={setTags} value={tags} />
+        <TextField
+          disabled={saving}
+          label='Nama sumber (opsional)'
+          maxLength={200}
+          onChange={(event) => setSourceName(event.target.value)}
+          placeholder='Contoh: YouTube atau nama buku'
+          value={sourceName}
+        />
+        <TagInput disabled={saving} label='Tags' lowercase onChange={setTags} value={tags} />
       </div>
       {!valid && dirty ? (
-        <p className='mt-4 text-sm text-danger'>Judul, isi, dan kategori wajib diisi; maksimal 50 tag.</p>
+        <p className='mt-4 text-sm text-danger'>
+          Judul, isi, dan kategori wajib diisi; URL harus valid dan maksimal 50 tag.
+        </p>
       ) : null}
       {error === undefined ? null : (
         <p className='mt-4 text-sm text-danger' role='alert'>

@@ -61,7 +61,7 @@ Find a saved external item, narrow the collection, then open it for reading. The
 - Header: `Junk` with no supporting subtitle; `Tambah Junk` stays alongside the title, outside the toolbar.
 - A single control row below the header, in this order: search field with a `Cari` button, `Filter` button, then `Urutkan` control.
 - `Cari` is disabled while the trimmed search field is empty. It is enabled only after the user has entered a non-whitespace keyword.
-- `Filter` opens a dismissible advanced-filter popover. The intended fields are category, tag, source URL, and created-date range, with `Reset` and `Terapkan filter` actions.
+- `Filter` opens a dismissible advanced-filter popover for category, tag, source name/domain, exact source URL, and created-date range, with `Reset` and `Terapkan filter` actions.
 - `Urutkan` is a compact ordinary sorter. The initial design offers newest first and oldest first by created date.
 - An always-visible quick category filter chip row directly below the controls: `Semua`, `Artikel`, `Video`, `Musik`, `Quote`, and `Tool`. The chips are shortcuts for the soft-text `category` field, not a new fixed enum. Categories outside this shortcut set remain searchable through the advanced filter.
 - One grouped table-like list surface with lightweight row separators.
@@ -86,11 +86,11 @@ Find a saved external item, narrow the collection, then open it for reading. The
 **Data contract**
 
 ```text
-GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&source_url=<url>&limit=<1..100>
+GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&source=<name-or-domain>&source_url=<url>&from=<date>&to=<date>&sort=<newest|oldest>&limit=<1..100>
 ```
 
-- `q` searches title, content text, category, and tags. It is sent only after an enabled `Cari` action.
-- `tag`, `category`, and `source_url` are optional exact API filters. Category and tag filter values are trimmed and sent lowercase to match canonical lowercase database values. The service capitalizes category/tag labels in API responses for display. A quick category chip sends its matching category value. FE models and navigation query parameters use `sourceUrl`; the API adapter maps this to `source_url`.
+- `q` searches title, content text, category, tags, code, and source name/URL. It is sent only after an enabled `Cari` action.
+- `tag`, `category`, and `source_url` are optional exact API filters. `source` matches a source name or URL substring; `from` and `to` filter Jakarta calendar dates inclusively. Category and tag values are sent lowercase, while display labels preserve punctuation. FE models and navigation query parameters use `sourceUrl`; the API adapter maps this to `source_url`.
 - UI tag chips may display `#` for readability, but the request sends the stored tag value without assuming that prefix is persisted.
 - The frontend formats dates in the Indonesian locale and never displays an internal database ID.
 - If `title` is null, the row uses a concise display fallback from available `contentText`, `sourceUrl`, or `rawText`; this is display-only and does not write a generated title back to the API.
@@ -98,8 +98,7 @@ GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&source_url=<url>&limi
 **Known API limitations**
 
 - The current list response has `limit` but no page, cursor, or total metadata. Do not display pagination until the API supports it.
-- The current API supports keyword, tag, category, and exact source-URL filters, but has no created-date-range or explicit sort-direction parameters. The visual design includes date and sorter controls, but integration must not silently filter or sort only the limited client result set. Those controls remain unavailable until the API capability exists, or the API is extended as a separate backend change.
-- The API's current natural order is relevance first when a query is present, then newest created date. The `Terbaru` display may reflect that default; `Terlama` requires an explicit API sort parameter.
+- Filtering and sorting are handled by the API before the list limit is applied; the default order is newest saved date.
 - The API has no category-vocabulary endpoint. Quick chips are a curated shortcut from the accepted design, not a complete list of categories; the advanced category field begins as text input.
 
 **States**

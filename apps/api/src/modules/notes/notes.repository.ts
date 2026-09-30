@@ -41,20 +41,24 @@ export const insert = async (
     INSERT INTO notes (
       code,
       title,
-      content,
+      content_text,
+      raw_text,
       type,
       category,
-      source,
+      source_name,
+      source_url,
       source_context,
       source_reference,
       tags
     ) VALUES (
       ${code},
       ${input.title},
-      ${input.content},
+      ${input.content_text},
+      ${input.raw_text},
       ${input.type}::note_type,
       ${input.category},
-      ${input.source},
+      ${input.source_name},
+      ${input.source_url},
       ${input.source_context},
       ${input.source_reference},
       ${trx.array(input.tags, 'TEXT')}
@@ -62,10 +66,12 @@ export const insert = async (
     RETURNING
       code,
       title,
-      content,
+      content_text,
+      raw_text,
       type,
       category,
-      source,
+      source_name,
+      source_url,
       source_context,
       source_reference,
       tags,
@@ -86,10 +92,12 @@ export const findByCode = async (code: string): Promise<NoteRow | null> => {
     SELECT
       code,
       title,
-      content,
+      content_text,
+      raw_text,
       type,
       category,
-      source,
+      source_name,
+      source_url,
       source_context,
       source_reference,
       tags,
@@ -110,14 +118,19 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
   const type = input.type ?? null;
   const tag = input.tag ?? null;
   const category = input.category ?? null;
+  const source = input.source ?? null;
+  const from = input.from ?? null;
+  const to = input.to ?? null;
   const rows = await database<NoteRow[]>`
     SELECT
       code,
       title,
-      content,
+      content_text,
+      raw_text,
       type,
       category,
-      source,
+      source_name,
+      source_url,
       source_context,
       source_reference,
       tags,
@@ -126,16 +139,28 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
       deleted_at
     FROM notes
     WHERE deleted_at IS NULL
-      AND (${query}::TEXT IS NULL OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT))
+      AND (
+        ${query}::TEXT IS NULL
+        OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT)
+        OR code = UPPER(${query}::TEXT)
+        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${query}::TEXT)) > 0
+        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${query}::TEXT)) > 0
+        OR STRPOS(LOWER(category), LOWER(${query}::TEXT)) > 0
+      )
       AND (${type}::note_type IS NULL OR type = ${type}::note_type)
       AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
       AND (${category}::TEXT IS NULL OR category = ${category})
+      AND (
+        ${source}::TEXT IS NULL
+        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${source}::TEXT)) > 0
+        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${source}::TEXT)) > 0
+      )
+      AND (${from}::DATE IS NULL OR created_at >= (${from}::DATE AT TIME ZONE 'Asia/Jakarta'))
+      AND (${to}::DATE IS NULL OR created_at < ((${to}::DATE + 1) AT TIME ZONE 'Asia/Jakarta'))
     ORDER BY
-      CASE
-        WHEN ${query}::TEXT IS NULL THEN 0
-        ELSE ts_rank(search_vector, websearch_to_tsquery('simple', ${query}::TEXT))
-      END DESC,
-      created_at DESC
+      CASE WHEN ${input.sort}::TEXT = 'newest' THEN created_at END DESC,
+      CASE WHEN ${input.sort}::TEXT = 'oldest' THEN created_at END ASC,
+      code DESC
     LIMIT ${input.limit}
   `;
 
@@ -148,10 +173,11 @@ export const updateByCode = async (code: string, input: UpdateNotePayload): Prom
     UPDATE notes
     SET
       title = CASE WHEN ${input.title !== undefined} THEN ${input.title ?? ''} ELSE title END,
-      content = CASE WHEN ${input.content !== undefined} THEN ${input.content ?? ''} ELSE content END,
+      content_text = CASE WHEN ${input.content_text !== undefined} THEN ${input.content_text ?? ''} ELSE content_text END,
       type = CASE WHEN ${input.type !== undefined} THEN ${input.type ?? 'fact'}::note_type ELSE type END,
       category = CASE WHEN ${input.category !== undefined} THEN ${input.category ?? ''} ELSE category END,
-      source = CASE WHEN ${input.source !== undefined} THEN ${input.source ?? null} ELSE source END,
+      source_name = CASE WHEN ${input.source_name !== undefined} THEN ${input.source_name ?? null} ELSE source_name END,
+      source_url = CASE WHEN ${input.source_url !== undefined} THEN ${input.source_url ?? null} ELSE source_url END,
       source_context = CASE WHEN ${input.source_context !== undefined} THEN ${input.source_context ?? null} ELSE source_context END,
       source_reference = CASE
         WHEN ${input.source_reference !== undefined} THEN ${input.source_reference ?? null}
@@ -164,10 +190,12 @@ export const updateByCode = async (code: string, input: UpdateNotePayload): Prom
     RETURNING
       code,
       title,
-      content,
+      content_text,
+      raw_text,
       type,
       category,
-      source,
+      source_name,
+      source_url,
       source_context,
       source_reference,
       tags,

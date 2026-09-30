@@ -36,7 +36,7 @@ Proposed web routes are frontend navigation only. They do not alter the REST API
 **Purpose**
 Create a deliberate manual note without replacing the assisted Hermes capture flow.
 
-- Reuses the same feature form as edit for title, content, type, category, source, and tags.
+- Reuses the same feature form as edit for title, content, type, category, optional source name/URL, and tags.
 - Sends `sourceContext` and `sourceReference` as their API defaults by omitting them.
 - Validates required fields, field limits, and tags before POST; protects unsaved input.
 - On success, navigates to the generated note detail and shows a short confirmation.
@@ -83,20 +83,19 @@ Find a saved note, narrow the collection, then open a note for reading. The defa
 **Data contract**
 
 ```text
-GET /api/v1/notes?q=<keyword>&type=<type>&tag=<tag>&category=<category>&limit=<1..100>
+GET /api/v1/notes?q=<keyword>&type=<type>&tag=<tag>&category=<category>&source=<name-or-domain>&from=<date>&to=<date>&sort=<newest|oldest>&limit=<1..100>
 ```
 
-- `q` searches title, content, and tags. It is sent only after an enabled `Cari` action.
+- `q` searches title, content text, category, tags, code, and external source name/URL. It is sent only after an enabled `Cari` action.
 - `type` is an optional exact filter over the fixed note-type enum.
-- `tag` and `category` are optional exact filters.
+- `tag` and `category` are optional exact lowercase filters. `source` matches a source name or URL substring; `from` and `to` filter Jakarta calendar dates inclusively. `sort` controls saved-date order.
 - UI tag chips may display `#` for readability, but the request sends the stored tag value without assuming that prefix is persisted.
 - Dates use the Indonesian locale. The frontend never displays an internal database ID.
 
 **Known API limitations**
 
 - The current list response has `limit` but no page, cursor, or total metadata. Do not display pagination until the API supports it.
-- The current API has no query parameters for source, created-date range, or explicit sort direction. The visual design includes those advanced controls, but integration must not silently filter or sort only the limited client result set. Those controls remain unavailable until the API capability exists.
-- The API's current natural order is relevance first when a query is present, then newest created date. The `Terbaru` display may reflect that default; `Terlama` requires an explicit API sort parameter.
+- Filtering and sorting are handled by the API before the list limit is applied; the default order is newest saved date.
 - The API has no category-vocabulary endpoint. The category field begins as a text input, not a speculative category dropdown.
 
 **States**
@@ -129,9 +128,9 @@ Read one saved note and understand its metadata and origin. On desktop this begi
 - Right-side preview pane with a separate compact control header: `Detail`, a `⋮` menu containing Edit and Hapus, an open-page control, and close.
 - Standalone detail uses direct Edit and Hapus buttons beside the title. It has no redundant `Detail` heading.
 - Note title and readable content lead the page. Full-page detail shares the same centered reading width and inner padding as Junk.
-- A quiet metadata section follows the content: code with a copy icon, type, category, saved date, updated date when different, optional source, optional origin, then all tags. Metadata labels stay left-aligned with even vertical spacing; the Tags label aligns to the top of wrapped chips.
+- A source row below the title displays the natural source name, an external link and copy icon when an HTTP(S) URL exists. A quiet metadata section follows the content: code with a copy icon, type, category, saved date, updated date when different, optional origin, then all tags. Metadata labels stay left-aligned with even vertical spacing; the Tags label aligns to the top of wrapped chips.
 - The copy icon briefly becomes a check after a successful copy and returns to a clipboard icon after two seconds.
-- `source` remains plain text, even when it resembles a URL, because the API does not distinguish a verified link from a human-readable source name.
+- Full-page detail offers a `Teks asli` switch when `raw_text` exists; the preview always shows `content_text`.
 
 **Panel behavior**
 
@@ -147,7 +146,7 @@ GET /api/v1/notes/:code
 ```
 
 - The detail view uses `code`, never a database ID.
-- `source`, `sourceContext`, and `sourceReference` are nullable. Omit an absent section instead of rendering placeholder values.
+- `sourceName`, `sourceUrl`, `rawText`, `sourceContext`, and `sourceReference` are nullable. Omit an absent section instead of rendering placeholder values.
 - `reminder` is presented as a note type only. It must not imply a due date, scheduler, or notification.
 
 **States**
@@ -161,7 +160,6 @@ GET /api/v1/notes/:code
 **Out of scope**
 
 - Automatic source fetching or previewing external content.
-- Rendering source text as a link unless the API contract later distinguishes a validated URL from a human-readable source name.
 
 ## SCR-NOTE-003 — Edit note
 
@@ -171,7 +169,7 @@ Correct a saved note after it has been created.
 **Proposed UI**
 
 - A detail-derived form, not a new browser-wide editor.
-- Editable fields: title, content, type, category, source, tags, and supported source metadata.
+- Editable fields: title, content text, type, category, source name, source URL, tags, and supported source metadata. Original text is read-only after creation.
 - Preserve unedited data. Disable save while a request is pending.
 - On success, return to the detail route and show a short non-blocking toast.
 

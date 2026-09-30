@@ -25,10 +25,12 @@ export type NoteReferenceRequest = {
 export type Note = {
   code: string;
   title: string;
-  content: string;
+  content_text: string;
+  raw_text: string | null;
   type: NoteType;
   category: string;
-  source: string | null;
+  source_name: string | null;
+  source_url: string | null;
   source_context: string | null;
   source_reference: string | null;
   tags: string[];
@@ -51,10 +53,12 @@ export type NotesService = {
 
 export type CreateNotePayload = {
   title: string;
-  content: string;
+  content_text: string;
+  raw_text: string | null;
   type: NoteType;
   category: string;
-  source: string | null;
+  source_name: string | null;
+  source_url: string | null;
   source_context: string | null;
   source_reference: string | null;
   tags: string[];
@@ -65,15 +69,20 @@ export type ListNotesRepositoryQuery = {
   type?: NoteType;
   tag?: string;
   category?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  sort: 'newest' | 'oldest';
   limit: number;
 };
 
 export type UpdateNotePayload = {
   title?: string;
-  content?: string;
+  content_text?: string;
   type?: NoteType;
   category?: string;
-  source?: string | null;
+  source_name?: string | null;
+  source_url?: string | null;
   source_context?: string | null;
   source_reference?: string | null;
   tags?: string[];
@@ -86,10 +95,12 @@ export type UpdateNotePayload = {
 export type NoteRow = {
   code: string;
   title: string;
-  content: string;
+  content_text: string;
+  raw_text: string | null;
   type: NoteType;
   category: string;
-  source: string | null;
+  source_name: string | null;
+  source_url: string | null;
   source_context: string | null;
   source_reference: string | null;
   tags: string[];

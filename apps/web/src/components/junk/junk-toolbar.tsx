@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ArrowDownUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { FilterChip } from '../ui/filter-chip';
 import { FilterPopover } from '../ui/filter-popover';
@@ -9,9 +9,18 @@ type JunkToolbarProps = {
   activeCategory?: string;
   activeFilterCount: number;
   category: string;
+  from: string;
+  to: string;
+  source: string;
+  sort: 'newest' | 'oldest';
+  dateRangeInvalid: boolean;
   filtersOpen: boolean;
   onApply: () => void;
   onCategoryChange: (value: string) => void;
+  onFromChange: (value: string) => void;
+  onToChange: (value: string) => void;
+  onSourceChange: (value: string) => void;
+  onSortChange: () => void;
   onCloseFilters: () => void;
   onQueryChange: (value: string) => void;
   onQuickCategoryChange: (value?: string) => void;
@@ -38,9 +47,18 @@ export const JunkToolbar = ({
   activeCategory,
   activeFilterCount,
   category,
+  from,
+  to,
+  source,
+  sort,
+  dateRangeInvalid,
   filtersOpen,
   onApply,
   onCategoryChange,
+  onFromChange,
+  onToChange,
+  onSourceChange,
+  onSortChange,
   onCloseFilters,
   onQueryChange,
   onQuickCategoryChange,
@@ -85,6 +103,12 @@ export const JunkToolbar = ({
             value={tag}
           />
           <TextField
+            label='Sumber'
+            onChange={(event) => onSourceChange(event.target.value)}
+            placeholder='Nama atau domain sumber'
+            value={source}
+          />
+          <TextField
             label='URL sumber'
             onChange={(event) => onSourceUrlChange(event.target.value)}
             placeholder='https://example.com/...'
@@ -97,33 +121,35 @@ export const JunkToolbar = ({
               <Input
                 aria-label='Dari tanggal'
                 className='min-w-0'
-                disabled
+                onChange={(event) => onFromChange(event.target.value)}
                 type='date'
-                title='Filter rentang tanggal belum didukung oleh API.'
+                value={from}
               />
               <Input
                 aria-label='Sampai tanggal'
                 className='min-w-0'
-                disabled
+                onChange={(event) => onToChange(event.target.value)}
                 type='date'
-                title='Filter rentang tanggal belum didukung oleh API.'
+                value={to}
               />
             </div>
           </div>
         </div>
-        <p className='mt-4 text-xs leading-5 text-ink-muted'>
-          Rentang tanggal dan urutan terlama menunggu dukungan API.
-        </p>
+        {dateRangeInvalid ? (
+          <p className='text-sm text-danger'>Tanggal akhir harus sama atau setelah tanggal awal.</p>
+        ) : null}
         <div className='mt-5 flex items-center justify-between gap-3'>
           <Button variant='ghost' onClick={onReset}>
             Reset
           </Button>
-          <Button onClick={onApply}>Terapkan filter</Button>
+          <Button disabled={dateRangeInvalid} onClick={onApply}>
+            Terapkan filter
+          </Button>
         </div>
       </FilterPopover>
 
-      <Button className='h-12' variant='secondary' disabled title='Urutan terlama belum didukung oleh API.'>
-        Urutkan: Terbaru <ChevronDown aria-hidden='true' size={17} />
+      <Button className='h-12' variant='secondary' onClick={onSortChange}>
+        Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
       </Button>
     </div>
 

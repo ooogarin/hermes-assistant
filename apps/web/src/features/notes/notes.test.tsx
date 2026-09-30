@@ -14,10 +14,12 @@ import type { Note } from './notes-api';
 const note: Note = {
   code: 'NT-20260908-001',
   title: 'Focus is a skill',
-  content: 'A short reminder to protect focused work blocks.',
+  contentText: 'A short reminder to protect focused work blocks.',
+  rawText: '  Original reminder\n',
   type: 'fact',
   category: 'Knowledge',
-  source: 'https://example.org/article',
+  sourceName: 'Example Journal',
+  sourceUrl: 'https://example.org/article',
   sourceContext: null,
   sourceReference: null,
   tags: ['focus', 'habits', 'work'],
@@ -29,10 +31,12 @@ const note: Note = {
 const wireNote = {
   code: note.code,
   title: note.title,
-  content: note.content,
+  content_text: note.contentText,
+  raw_text: note.rawText,
   type: note.type,
   category: note.category,
-  source: note.source,
+  source_name: note.sourceName,
+  source_url: note.sourceUrl,
   source_context: note.sourceContext,
   source_reference: note.sourceReference,
   tags: note.tags,
@@ -65,22 +69,25 @@ test('lists notes date first with a short excerpt and tags, without a code colum
   const row = screen.getByRole('link');
   expect(row).toHaveAttribute('aria-current', 'true');
   expect(row.querySelector('time')).toHaveTextContent('8 Sep 2026');
-  expect(screen.getByText(note.content)).toHaveClass('line-clamp-3');
+  expect(screen.getByText(note.contentText)).toHaveClass('line-clamp-3');
   expect(within(screen.getByRole('list', { name: 'Tag catatan' })).getAllByRole('listitem')).toHaveLength(3);
   expect(screen.queryByText(note.code)).not.toBeInTheDocument();
   expect(row).toHaveTextContent('Fact');
   expect(row).toHaveTextContent('Knowledge');
 });
 
-test('shows the source as plain text and copies the note code from the detail', async () => {
+test('opens and copies the source URL, switches original text, and copies the note code', async () => {
   const user = userEvent.setup();
   render(<NoteDetailPane note={note} mode='page' />);
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(note.title);
-  expect(screen.getByText(note.source ?? '')).toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: note.source ?? '' })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Example Journal/ })).toHaveAttribute('href', note.sourceUrl);
+  await user.click(screen.getByRole('button', { name: 'Salin tautan' }));
+  expect(await navigator.clipboard.readText()).toBe(note.sourceUrl);
+  await user.click(screen.getByRole('switch', { name: /Teks asli/ }));
+  expect(screen.getByRole('article', { name: 'Teks asli' })).toHaveTextContent('Original reminder');
   await user.click(screen.getByRole('button', { name: 'Salin kode' }));
   expect(await navigator.clipboard.readText()).toBe(note.code);
-  expect(screen.getByText('Berhasil disalin')).toBeInTheDocument();
+  expect(screen.getAllByText('Berhasil disalin')).toHaveLength(2);
 });
 
 test('tag overflow uses all three available rows before showing +N', () => {

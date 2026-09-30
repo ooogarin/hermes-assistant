@@ -147,13 +147,15 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     expect(first.code).toMatch(/^JK-\d{8}-001$/);
     expect(second.code).toMatch(/^JK-\d{8}-002$/);
-    expect((await junkService.list({ q: 'ownership', limit: 20 })).map(({ code }) => code)).toEqual([first.code]);
+    expect((await junkService.list({ q: 'ownership', sort: 'newest', limit: 20 })).map(({ code }) => code)).toEqual([
+      first.code,
+    ]);
 
     const updated = await junkService.update(
       { code: first.code },
       { category: 'reference', tags: ['rust', 'backend'] },
     );
-    expect(updated).toMatchObject({ category: 'reference', tags: ['rust', 'backend'], source_name: 'Rust journal' });
+    expect(updated).toMatchObject({ category: 'Reference', tags: ['Rust', 'Backend'], source_name: 'Rust journal' });
     expect((await junkService.update({ code: first.code }, { source_name: 'New name' })).source_name).toBe('New name');
     expect((await junkService.update({ code: first.code }, { source_name: null })).source_name).toBeNull();
 

@@ -13,10 +13,12 @@ import type {
 const note: Note = {
   code: 'NT-20260726-001',
   title: 'Postgres advisory locks',
-  content: 'Transaction advisory locks are released when the transaction ends.',
+  content_text: 'Transaction advisory locks are released when the transaction ends.',
+  raw_text: null,
   type: 'fact',
-  category: 'Tech/Programming',
-  source: 'postgresql.org',
+  category: 'tech/programming',
+  source_name: 'postgresql.org',
+  source_url: null,
   source_context: null,
   source_reference: null,
   tags: ['postgres', 'database'],
@@ -64,10 +66,10 @@ test('creates a note through the authenticated API', async () => {
     },
     body: JSON.stringify({
       title: 'Postgres advisory locks',
-      content: 'Transaction advisory locks are released when the transaction ends.',
+      content_text: 'Transaction advisory locks are released when the transaction ends.',
       type: 'fact',
-      category: 'Tech/Programming',
-      source: 'postgresql.org',
+      category: 'tech/programming',
+      source_name: 'postgresql.org',
       tags: ['postgres', 'database'],
     }),
   });
@@ -94,7 +96,7 @@ test('accepts an explicit General English save through Notes', async () => {
     },
     body: JSON.stringify({
       title: 'Although vs even though',
-      content: 'Both introduce contrast; even though is more emphatic.',
+      content_text: 'Both introduce contrast; even though is more emphatic.',
       type: 'fact',
       category: 'English',
       source_context: 'general_chat',
@@ -133,6 +135,46 @@ test('rejects an invalid note payload without calling the service', async () => 
   });
 });
 
+test('canonicalizes note categories and tags while preserving original text', async () => {
+  let saved: CreateNoteRequest | undefined;
+  const response = await createNotesApp({
+    create: async (input) => {
+      saved = input;
+      return { ...note, ...input };
+    },
+  }).request('http://localhost/api/v1/notes', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: 'A note',
+      content_text: 'Clean text',
+      raw_text: '  Original\n',
+      type: 'fact',
+      category: 'Personal-Growth',
+      source_url: 'https://example.org/note',
+      source_name: 'Example Journal',
+      tags: ['Old-Song', 'old-song'],
+    }),
+  });
+  expect(response.status).toBe(201);
+  expect(saved).toMatchObject({ category: 'personal-growth', tags: ['old-song'], raw_text: '  Original\n' });
+});
+
+test('rejects non-HTTP note source URLs', async () => {
+  const response = await createNotesApp().request('http://localhost/api/v1/notes', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test-api-key', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: 'A note',
+      content_text: 'Body',
+      type: 'fact',
+      category: 'tech',
+      source_url: 'ftp://example.org',
+    }),
+  });
+  expect(response.status).toBe(400);
+});
+
 test('rejects malformed JSON without calling the service', async () => {
   let createCalled = false;
   const app = createNotesApp({
@@ -169,7 +211,7 @@ test('passes search filters to the notes service', async () => {
   });
 
   const response = await app.request(
-    'http://localhost/api/v1/notes?q=advisory&tag=postgres&category=Tech%2FProgramming&limit=10',
+    'http://localhost/api/v1/notes?q=advisory&tag=Postgres&category=Tech%2FProgramming&source=PostgreSQL&from=2026-07-01&to=2026-07-31&sort=oldest&limit=10',
     { headers: { Authorization: 'Bearer test-api-key' } },
   );
 
@@ -177,7 +219,11 @@ test('passes search filters to the notes service', async () => {
   expect(searchInput).toEqual({
     q: 'advisory',
     tag: 'postgres',
-    category: 'Tech/Programming',
+    category: 'tech/programming',
+    source: 'PostgreSQL',
+    from: '2026-07-01',
+    to: '2026-07-31',
+    sort: 'oldest',
     limit: 10,
   });
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [note] }) });
@@ -217,7 +263,7 @@ test('updates a note through its stable code', async () => {
   });
 
   expect(response.status).toBe(200);
-  expect(updateInput).toEqual({ category: 'Database', tags: ['postgres'] });
+  expect(updateInput).toEqual({ category: 'database', tags: ['postgres'] });
 });
 
 test('soft deletes a note through the authenticated API', async () => {

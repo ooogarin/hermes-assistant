@@ -47,7 +47,7 @@ export const NoteList = ({
               <div className='min-w-0'>
                 <h3 className='line-clamp-2 break-words text-sm font-semibold text-ink'>{note.title}</h3>
                 <p className='mt-1 line-clamp-3 break-words text-sm leading-6 text-ink-muted'>
-                  {note.content.replace(/\s+/g, ' ').trim()}
+                  {note.contentText.replace(/\s+/g, ' ').trim()}
                 </p>
               </div>
               <NoteTypeLabel className='text-sm' type={note.type} />

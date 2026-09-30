@@ -41,7 +41,7 @@ raw text unless the user asks for them.
 4. Choose a searchable category and a small set of specific tags. Prefer the user's
    wording and existing categories when available; do not invent a category lookup
    endpoint because categories are flexible text in this MVP.
-5. Fill source metadata only when the source or originating feature is known.
+5. Fill `source_name` for a natural source label and `source_url` for an HTTP(S) link when known. Keep `source_context` and `source_reference` for the originating Hermes feature. Preserve the exact original message as `raw_text` when available.
 6. Save immediately by default with `POST /api/v1/notes`, then report the returned
    `NT-...` code.
 
@@ -61,7 +61,7 @@ from it without a separate explicit scheduling request.
 ## Endpoints
 
 - `POST /api/v1/notes`
-- `GET /api/v1/notes` with optional `q`, `tag`, `category`, and `limit` (1–100, default 20)
+- `GET /api/v1/notes` with optional `q`, `type`, `tag`, `category`, `source`, `from`, `to`, `sort` (`newest` or `oldest`), and `limit` (1–100, default 20)
 - `GET|PATCH|DELETE /api/v1/notes/:code`
 
 Create body:
@@ -69,17 +69,19 @@ Create body:
 ```json
 {
   "title": "PostgreSQL indexing note",
-  "content": "Use a partial index when queries consistently filter the same predicate.",
+  "content_text": "Use a partial index when queries consistently filter the same predicate.",
+  "raw_text": "original Telegram message",
   "type": "fact",
   "category": "database",
-  "source": null,
+  "source_name": null,
+  "source_url": null,
   "source_context": "general_chat",
   "source_reference": null,
   "tags": ["postgresql", "index"]
 }
 ```
 
-Allowed `type`: `fact`, `personal`, `news`, `quote`, `idea`, `reminder`. `category` is flexible; prefer an existing category when a search reveals a good match. `tags` is the full replacement list on patch.
+Allowed `type`: `fact`, `personal`, `news`, `quote`, `idea`, `reminder`. Keep category and tags lowercase; preserve punctuation such as hyphens. `raw_text` is optional and immutable after creation. `tags` is the full replacement list on patch.
 
 Save immediately with useful cleaned metadata; confirmation is not required by default. Return the generated `NT-...` code. Reminders are passive records in MVP: never create a scheduled notification from a note unless the user separately requests a Hermes cron job.
 
@@ -98,7 +100,7 @@ Never move a message between Notes and Junk by inference; topic choice is author
 
 - `"cari catatan soal postgres"` → `GET /api/v1/notes?q=postgres`.
 - `"catatan tag #database"` → `GET /api/v1/notes?tag=database`.
-- Combine `q`, `tag`, `category`, and `limit` only when each filter is explicit or
+- Combine `q`, `tag`, `category`, `source`, date range, sort, and `limit` only when each filter is explicit or
   clearly implied by the request.
 - Search results should include code, title, category, tags, and date so the user can
   choose accurately.

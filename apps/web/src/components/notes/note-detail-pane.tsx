@@ -1,5 +1,7 @@
-import { Maximize2, X } from 'lucide-react';
+import { ExternalLink, Maximize2, X } from 'lucide-react';
+import { useState } from 'react';
 import { formatDate } from '../../lib/formatting/formatters';
+import { getSafeSourceUrl, getSourceName } from '../../lib/formatting/source';
 import { CopyButton } from '../ui/copy-button';
 import { detailContentClassName } from '../ui/detail-layout';
 import { IconButton } from '../ui/icon-button';
@@ -16,8 +18,13 @@ type NoteDetailPaneProps = {
 };
 
 export const NoteDetailPane = ({ actions, mode = 'preview', note, onClose, onOpenPage }: NoteDetailPaneProps) => {
+  const [raw, setRaw] = useState(false);
   const Heading = mode === 'page' ? 'h1' : 'h2';
   const origin = [note.sourceContext, note.sourceReference].filter((value): value is string => value !== null);
+  const sourceUrl = getSafeSourceUrl(note.sourceUrl);
+  const sourceName = getSourceName(note);
+  const hasRaw = Boolean(note.rawText?.trim());
+  const content = mode === 'page' && raw ? note.rawText : note.contentText;
   return (
     <aside
       className='min-w-0 w-full rounded-surface border border-border bg-surface'
@@ -45,7 +52,56 @@ export const NoteDetailPane = ({ actions, mode = 'preview', note, onClose, onOpe
           {mode === 'page' ? actions : null}
         </header>
 
-        <article className='mt-7 whitespace-pre-wrap break-words text-base leading-8 text-ink'>{note.content}</article>
+        <div className='mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3'>
+          <div className='flex min-w-0 max-w-full items-center gap-2'>
+            {sourceUrl ? (
+              <>
+                <a
+                  className='inline-flex min-w-0 items-center gap-2 text-sm font-medium text-primary hover:underline'
+                  href={sourceUrl}
+                  title={sourceUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  <ExternalLink aria-hidden='true' size={16} className='shrink-0' />
+                  <span className='truncate'>{sourceName ?? 'Buka sumber'}</span>
+                  <span className='sr-only'> (tab baru)</span>
+                </a>
+                <CopyButton value={sourceUrl} label='Salin tautan' />
+              </>
+            ) : sourceName ? (
+              <span className='text-sm text-ink-muted'>{sourceName}</span>
+            ) : null}
+          </div>
+          {mode === 'page' ? (
+            <label
+              className={`inline-flex items-center gap-2 text-sm ${hasRaw ? 'cursor-pointer text-ink-muted' : 'text-ink-muted/70'}`}
+              title={hasRaw ? 'Ganti antara konten dan teks asli' : 'Teks asli tidak tersedia'}
+            >
+              <input
+                className='peer sr-only'
+                type='checkbox'
+                role='switch'
+                aria-checked={raw}
+                checked={raw}
+                disabled={!hasRaw}
+                onChange={(event) => setRaw(event.target.checked)}
+              />
+              <span
+                aria-hidden='true'
+                className='relative h-5 w-9 rounded-full bg-ink-muted/30 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2'
+              />
+              Teks asli{hasRaw ? null : <span className='sr-only'> tidak tersedia</span>}
+            </label>
+          ) : null}
+        </div>
+
+        <article
+          aria-label={mode === 'page' && raw ? 'Teks asli' : 'Konten'}
+          className='mt-7 whitespace-pre-wrap break-words text-base leading-8 text-ink'
+        >
+          {content}
+        </article>
 
         <section className='mt-8 border-t border-border pt-6' aria-label='Informasi Notes'>
           <dl className='space-y-2 text-sm'>
@@ -80,12 +136,6 @@ export const NoteDetailPane = ({ actions, mode = 'preview', note, onClose, onOpe
                 </dd>
               </div>
             ) : null}
-            {note.source === null ? null : (
-              <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-start gap-3'>
-                <dt className='text-ink-muted'>Sumber</dt>
-                <dd className='break-words'>{note.source}</dd>
-              </div>
-            )}
             {origin.length === 0 ? null : (
               <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-start gap-3'>
                 <dt className='text-ink-muted'>Asal</dt>

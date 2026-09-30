@@ -30,7 +30,16 @@ const junkItemSchema = z
 const junkListSchema = z.object({ items: z.array(junkItemSchema) }).transform(({ items }) => items);
 
 export type JunkItem = z.output<typeof junkItemSchema>;
-export type JunkListFilters = { category?: string; q?: string; sourceUrl?: string; tag?: string };
+export type JunkListFilters = {
+  category?: string;
+  q?: string;
+  sourceUrl?: string;
+  source?: string;
+  tag?: string;
+  from?: string;
+  to?: string;
+  sort?: 'newest' | 'oldest';
+};
 export type CreateJunkInput = Pick<
   JunkItem,
   'category' | 'contentText' | 'sourceUrl' | 'sourceName' | 'tags' | 'title'
@@ -48,7 +57,7 @@ const toPayload = ({ contentText, sourceUrl, sourceName, ...input }: UpdateJunkI
 
 export const getJunkItems = (filters: JunkListFilters, signal?: AbortSignal): Promise<JunkItem[]> =>
   apiRequest(
-    `/api/v1/junk${buildQueryString({ category: normalizeFilter(filters.category), q: filters.q, tag: normalizeFilter(filters.tag), source_url: filters.sourceUrl, limit: 100 })}`,
+    `/api/v1/junk${buildQueryString({ category: normalizeFilter(filters.category), q: filters.q, tag: normalizeFilter(filters.tag), source_url: filters.sourceUrl, source: filters.source, from: filters.from, to: filters.to, sort: filters.sort, limit: 100 })}`,
     junkListSchema,
     { signal },
   );

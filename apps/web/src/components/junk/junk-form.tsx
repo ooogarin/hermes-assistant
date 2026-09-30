@@ -17,6 +17,7 @@ export type JunkFormValues = {
 
 type JunkFormProps = {
   cancelTo: string;
+  hasRawText?: boolean;
   initial?: JunkFormValues;
   onSubmit: (values: JunkFormValues) => Promise<void>;
   submitLabel: string;
@@ -32,7 +33,13 @@ const emptyValues: JunkFormValues = {
 };
 const optionalValue = (value: string): string | null => value.trim() || null;
 
-export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabel }: JunkFormProps) => {
+export const JunkForm = ({
+  cancelTo,
+  hasRawText = false,
+  initial = emptyValues,
+  onSubmit,
+  submitLabel,
+}: JunkFormProps) => {
   const navigate = useNavigate();
   const [title, setTitle] = useState(initial.title ?? '');
   const [category, setCategory] = useState(initial.category);
@@ -42,8 +49,15 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
   const [tags, setTags] = useState(initial.tags);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
-  const validUrl = sourceUrl.trim() === '' || URL.canParse(sourceUrl.trim());
-  const valid = category.trim().length > 0 && tags.length <= 50 && tags.every((tag) => tag.length <= 64) && validUrl;
+  const validUrl =
+    sourceUrl.trim() === '' ||
+    (URL.canParse(sourceUrl.trim()) && ['http:', 'https:'].includes(new URL(sourceUrl.trim()).protocol));
+  const valid =
+    category.trim().length > 0 &&
+    (hasRawText || [title, contentText, sourceUrl].some((value) => value.trim().length > 0)) &&
+    tags.length <= 50 &&
+    tags.every((tag) => tag.length <= 64) &&
+    validUrl;
   const dirty =
     title !== (initial.title ?? '') ||
     category !== initial.category ||
@@ -119,7 +133,9 @@ export const JunkForm = ({ cancelTo, initial = emptyValues, onSubmit, submitLabe
         <TagInput disabled={saving} label='Tags' lowercase onChange={setTags} value={tags} />
       </div>
       {!valid && dirty ? (
-        <p className='mt-4 text-sm text-danger'>Kategori wajib diisi, URL harus valid, dan maksimal 50 tag.</p>
+        <p className='mt-4 text-sm text-danger'>
+          Kategori dan minimal salah satu judul, deskripsi, atau URL wajib diisi. URL harus HTTP(S), maksimal 50 tag.
+        </p>
       ) : null}
       {error === undefined ? null : (
         <p className='mt-4 text-sm text-danger' role='alert'>

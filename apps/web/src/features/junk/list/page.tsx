@@ -24,6 +24,10 @@ const toSearchParams = (filters: JunkListFilters, previewCode?: string): URLSear
   if (filters.category !== undefined) params.set('category', filters.category.toLowerCase());
   if (filters.tag !== undefined) params.set('tag', filters.tag.toLowerCase());
   if (filters.sourceUrl !== undefined) params.set('sourceUrl', filters.sourceUrl);
+  if (filters.source !== undefined) params.set('source', filters.source);
+  if (filters.from !== undefined) params.set('from', filters.from);
+  if (filters.to !== undefined) params.set('to', filters.to);
+  if (filters.sort === 'oldest') params.set('sort', 'oldest');
   if (previewCode !== undefined) params.set('preview', previewCode);
   return params;
 };
@@ -38,8 +42,12 @@ const JunkListPage = () => {
     q: getOptionalValue(searchParams.get('q')),
     sourceUrl: getOptionalValue(searchParams.get('sourceUrl')),
     tag: getOptionalValue(searchParams.get('tag'))?.toLowerCase(),
+    source: getOptionalValue(searchParams.get('source')),
+    from: getOptionalValue(searchParams.get('from')),
+    to: getOptionalValue(searchParams.get('to')),
+    sort: searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest',
   };
-  const listKey = `${filters.q ?? ''}:${filters.category ?? ''}:${filters.tag ?? ''}:${filters.sourceUrl ?? ''}`;
+  const listKey = toSearchParams(filters).toString();
   const items = useApiQuery(listKey, (signal) => getJunkItems(filters, signal));
   const detail = useApiQuery(selectedCode ?? 'no-selected-junk', (signal) =>
     selectedCode === undefined ? Promise.resolve(null) : getJunkItem(selectedCode, signal),
@@ -48,6 +56,9 @@ const JunkListPage = () => {
   const [category, setCategory] = useState(filters.category ?? '');
   const [tag, setTag] = useState(filters.tag ?? '');
   const [sourceUrl, setSourceUrl] = useState(filters.sourceUrl ?? '');
+  const [source, setSource] = useState(filters.source ?? '');
+  const [from, setFrom] = useState(filters.from ?? '');
+  const [to, setTo] = useState(filters.to ?? '');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
@@ -55,7 +66,10 @@ const JunkListPage = () => {
     setCategory(filters.category ?? '');
     setTag(filters.tag ?? '');
     setSourceUrl(filters.sourceUrl ?? '');
-  }, [filters.category, filters.q, filters.sourceUrl, filters.tag]);
+    setSource(filters.source ?? '');
+    setFrom(filters.from ?? '');
+    setTo(filters.to ?? '');
+  }, [filters.category, filters.q, filters.sourceUrl, filters.tag, filters.source, filters.from, filters.to]);
 
   const updateFilters = (next: JunkListFilters) => setSearchParams(toSearchParams(next, selectedCode));
   const applySearch = () => updateFilters({ ...filters, q: getOptionalValue(query) });
@@ -65,6 +79,9 @@ const JunkListPage = () => {
       category: getOptionalValue(category)?.toLowerCase(),
       sourceUrl: getOptionalValue(sourceUrl),
       tag: getOptionalValue(tag)?.toLowerCase(),
+      source: getOptionalValue(source),
+      from: getOptionalValue(from),
+      to: getOptionalValue(to),
     });
     setFiltersOpen(false);
   };
@@ -73,19 +90,40 @@ const JunkListPage = () => {
     setCategory('');
     setTag('');
     setSourceUrl('');
+    setSource('');
+    setFrom('');
+    setTo('');
     setSearchParams(toSearchParams({}, selectedCode));
   };
   const resetAdvancedFilters = () => {
     setCategory('');
     setTag('');
     setSourceUrl('');
-    updateFilters({ ...filters, category: undefined, sourceUrl: undefined, tag: undefined });
+    setSource('');
+    setFrom('');
+    setTo('');
+    updateFilters({
+      ...filters,
+      category: undefined,
+      sourceUrl: undefined,
+      tag: undefined,
+      source: undefined,
+      from: undefined,
+      to: undefined,
+    });
   };
   const applyQuickCategory = (nextCategory?: string) => {
     setCategory(nextCategory?.toLowerCase() ?? '');
     updateFilters({ ...filters, category: nextCategory });
   };
-  const activeFilterCount = [filters.category, filters.tag, filters.sourceUrl].filter(Boolean).length;
+  const activeFilterCount = [
+    filters.category,
+    filters.tag,
+    filters.sourceUrl,
+    filters.source,
+    filters.from,
+    filters.to,
+  ].filter(Boolean).length;
   const hasActiveQuery = filters.q !== undefined || activeFilterCount > 0;
   const previewUrl = (code: string) => `/junk?${toSearchParams(filters, code).toString()}`;
   const closePreview = () => setSearchParams(toSearchParams(filters));
@@ -101,9 +139,18 @@ const JunkListPage = () => {
         activeCategory={filters.category}
         activeFilterCount={activeFilterCount}
         category={category}
+        dateRangeInvalid={Boolean(from && to && from > to)}
+        from={from}
+        to={to}
+        source={source}
+        sort={filters.sort ?? 'newest'}
         filtersOpen={filtersOpen}
         onApply={applyFilters}
         onCategoryChange={setCategory}
+        onFromChange={setFrom}
+        onToChange={setTo}
+        onSourceChange={setSource}
+        onSortChange={() => updateFilters({ ...filters, sort: filters.sort === 'oldest' ? 'newest' : 'oldest' })}
         onCloseFilters={() => setFiltersOpen(false)}
         onQueryChange={setQuery}
         onQuickCategoryChange={applyQuickCategory}

@@ -59,6 +59,10 @@ export type ListJunkRepositoryQuery = {
   tag?: string;
   category?: string;
   source_url?: string;
+  source?: string;
+  from?: string;
+  to?: string;
+  sort: 'newest' | 'oldest';
   limit: number;
 };
 
