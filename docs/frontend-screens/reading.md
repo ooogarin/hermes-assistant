@@ -2,6 +2,8 @@
 
 > Status: List, settings, and known-code workflows implemented. Visual references: [Reading list](../frontend-design/reading-list.png), [Reading detail](../frontend-design/reading-detail.png), and [Reading settings](../frontend-design/reading-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Reading screens.
 
+The approved redesign is saved in [Reading list and detail](../frontend-design/reading-approved.png). It uses five list columns (title/excerpt, genre, level, tags, saved date), manual read-status labels, and an item-count footer without pagination. Detail keeps the passage primary, puts optional questions in a collapsed section below it, and aligns the manual mark-read action beside the material title, matching Notes/Junk detail actions. The frontend already consumes `title` and `content_text` from the API, with `contentText` used by components as in Notes. The layout, question/answer, status, and pagination changes remain pending.
+
 ## Scope
 
 Reading helps the user practise English comprehension with generated passages and free-form answers. Persistent defaults determine the level and word-count target for routine reading materials. A user may still request a one-off level, topic, genre, or length without changing those defaults.
@@ -38,8 +40,8 @@ Find a reading material and continue or review it.
 **UI composition**
 
 - Header: `Reading` and the local `Pengaturan` action, with no supporting subtitle.
-- Search field for topic, genre, or tag; status quick filters `Semua`, `Belum dijawab`, and `Selesai`; plus a multi-select level filter and genre filter.
-- One grouped table-like list with topic, genre, level, word count/reading time, tags, created date, source, status, and stable material code. Desktop columns remain on one row; long topic and genre values truncate, while tags show a compact `+N` remainder so status and code are never clipped.
+- Search field for title, genre, or tag; status quick filters `Semua`, `Belum dijawab`, and `Selesai`; plus a multi-select level filter and genre filter.
+- One grouped table-like list with title, genre, level, word count/reading time, tags, created date, source, status, and stable material code. Desktop columns remain on one row; long title and genre values truncate, while tags show a compact `+N` remainder so status and code are never clipped.
 - Selecting a row opens SCR-READ-003.
 
 **Data contract**
@@ -130,7 +132,7 @@ Read one known passage and submit one complete set of answers to its questions.
 
 **UI composition**
 
-- Compact `Semua Reading` return action, the same bordered `Pengaturan` action used by the other English modules, and material metadata: code, topic, genre, level, target/actual word count, reading time if the frontend has a documented display rule, tags, and source.
+- Compact `Semua Reading` return action, the same bordered `Pengaturan` action used by the other English modules, and material metadata: code, title, genre, level, target/actual word count, reading time if the frontend has a documented display rule, tags, and source.
 - Passage column with a comfortable reading width.
 - Question-and-answer column showing all stored questions in order and free-form answer fields.
 - One primary `Kirim jawaban` action after the final answer field.

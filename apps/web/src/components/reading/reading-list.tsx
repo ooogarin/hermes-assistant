@@ -31,7 +31,7 @@ export const ReadingList = ({ items }: { items: ReadingMaterialListItem[] }) => 
     <div
       className={`hidden gap-1.5 border-b border-border px-5 py-3 text-xs font-medium text-ink-muted xl:grid ${readingColumns}`}
     >
-      <span>Topik</span>
+      <span>Judul</span>
       <span>Genre</span>
       <span>Level</span>
       <span>Detail</span>
@@ -55,7 +55,7 @@ export const ReadingList = ({ items }: { items: ReadingMaterialListItem[] }) => 
                 <span className='inline-flex size-9 shrink-0 items-center justify-center rounded-control border border-border text-ink-muted'>
                   <BookOpen aria-hidden='true' size={19} />
                 </span>
-                <span className='min-w-0 truncate font-semibold text-ink'>{item.topic}</span>
+                <span className='min-w-0 truncate font-semibold text-ink'>{item.title}</span>
               </div>
               <LearningListCell hideLabelAt='xl' label='Genre'>
                 <span className='block truncate text-sm text-ink-muted'>{item.genre}</span>
@@ -69,7 +69,7 @@ export const ReadingList = ({ items }: { items: ReadingMaterialListItem[] }) => 
               <LearningListCell className='col-span-2 self-start sm:col-span-1' hideLabelAt='xl' label='Tags'>
                 <TagList
                   className='self-start'
-                  label={`Tag ${item.topic}`}
+                  label={`Tag ${item.title}`}
                   maxVisible={1}
                   tags={item.tags}
                   wrap={false}

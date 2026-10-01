@@ -27,6 +27,7 @@ coverage/
 info-vps.txt
 
 # Design references and generated QA screenshots
-docs/frontend-design/
+docs/frontend-design/*
+!docs/frontend-design/reading-approved.png
 tmp/
 .tmp/

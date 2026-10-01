@@ -33,21 +33,21 @@ const readingQuestionSchema = z
 const readingMaterialSchema = z
   .object({
     code: z.string(),
-    topic: z.string(),
+    title: z.string(),
     level: z.string(),
     genre: z.string(),
     tags: z.array(z.string()),
     target_word_count: z.number().int().positive(),
     word_count: z.number().int().nonnegative(),
-    passage_text: z.string(),
+    content_text: z.string(),
     is_override: z.boolean(),
     source: z.enum(['cron', 'request']),
     questions: z.array(readingQuestionSchema),
   })
-  .transform(({ is_override, passage_text, target_word_count, word_count, ...material }) => ({
+  .transform(({ is_override, content_text, target_word_count, word_count, ...material }) => ({
     ...material,
     isOverride: is_override,
-    passageText: passage_text,
+    contentText: content_text,
     targetWordCount: target_word_count,
     wordCount: word_count,
   }));
@@ -69,7 +69,7 @@ const expectedAnswersSchema = z.object({ items: z.array(expectedAnswerSchema) })
 const readingListItemSchema = z
   .object({
     code: z.string(),
-    topic: z.string(),
+    title: z.string(),
     genre: z.string(),
     level: z.string(),
     target_word_count: z.number().int().positive(),

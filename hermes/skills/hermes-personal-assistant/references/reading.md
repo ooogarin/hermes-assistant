@@ -16,12 +16,12 @@ Create material body:
 
 ```json
 {
-  "topic": "Urban gardening",
+  "title": "Urban gardening",
   "level": "B1",
   "genre": "informative article",
   "tags": ["environment", "cities"],
   "target_word_count": 350,
-  "passage_text": "...",
+  "content_text": "...",
   "source": "request",
   "questions": [
     { "question_text": "...", "expected_answer": "..." },
@@ -33,7 +33,7 @@ Create material body:
 
 ## Create Material Flow
 
-1. Resolve `topic`, `level`, `genre`, and target length from the request. For a request
+1. Resolve `title`, `level`, `genre`, and target length from the request. For a request
    without overrides, fetch Reading settings and use `default_level` and
    `default_word_count`; keep the stored min/max bounds in mind.
 2. Treat user-provided level, length, topic, or genre as a one-off override. A Reading
@@ -67,7 +67,7 @@ not expose expected answers.
 
 📖 *A Simple Plan for Your Money*
 
-<passage_text, preserving its paragraph breaks>
+<content_text, preserving its paragraph breaks>
 
 ────────
 
@@ -87,7 +87,7 @@ Rules for this format:
 
 - The first line is the API-returned `RD-...` code, not a generic success sentence.
 - Use the API-returned `word_count` for `Panjang`; never estimate it. State the number
-  of paragraphs only when it is directly clear from the generated or returned `passage_text`; otherwise omit the paragraph portion.
+  of paragraphs only when it is directly clear from the generated or returned `content_text`; otherwise omit the paragraph portion.
 - Preserve blank lines between paragraphs. Do not put the passage in a code block.
 - Use `Tipe`, `Level`, and `Panjang` in Indonesian; preserve the title, genre, passage, questions, and vocabulary in English when the material is English.
 - Keep the vocabulary note short: at most five relevant words or phrases. It is a learning aid, not a second explanation of the passage.

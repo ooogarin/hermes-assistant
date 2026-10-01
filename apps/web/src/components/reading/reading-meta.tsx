@@ -8,8 +8,8 @@ export const ReadingMeta = ({ material, className }: { material: ReadingMaterial
       <dd className='font-medium text-ink'>{material.code}</dd>
     </div>
     <div>
-      <dt className='sr-only'>Topik</dt>
-      <dd>{material.topic}</dd>
+      <dt className='sr-only'>Judul</dt>
+      <dd>{material.title}</dd>
     </div>
     <div>
       <dt className='sr-only'>Genre</dt>

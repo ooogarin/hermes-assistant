@@ -99,25 +99,27 @@ export const insertMaterial = async (
   const [material] = await trx<IdRow[]>`
     INSERT INTO reading_materials (
       code,
-      topic,
+      title,
       level,
       genre,
       tags,
       target_word_count,
+      target_question_count,
       word_count,
-      passage_text,
+      content_text,
       is_override,
       source
     )
     VALUES (
       ${code},
-      ${input.topic},
+      ${input.title},
       ${input.level},
       ${input.genre},
       ${trx.array(input.tags, 'TEXT')},
       ${input.target_word_count},
+      ${input.questions.length},
       ${word_count},
-      ${input.passage_text},
+      ${input.content_text},
       ${is_override},
       ${input.source}::reading_source
     )
@@ -186,13 +188,13 @@ const findMaterialRowWithExecutor = async (
     SELECT
       id,
       code,
-      topic,
+      title,
       level,
       genre,
       tags,
       target_word_count,
       word_count,
-      passage_text,
+      content_text,
       is_override,
       source
     FROM reading_materials
@@ -223,7 +225,7 @@ export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<R
         SELECT
           m.id,
           m.code,
-          m.topic,
+          m.title,
           m.genre,
           m.level,
           m.target_word_count,
@@ -252,7 +254,7 @@ export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<R
       )
       SELECT
         code,
-        topic,
+        title,
         genre,
         level,
         target_word_count,
@@ -265,7 +267,7 @@ export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<R
         created_at
       FROM material_summary
       WHERE (${searchPattern}::TEXT IS NULL OR (
-        topic ILIKE ${searchPattern}
+        title ILIKE ${searchPattern}
         OR genre ILIKE ${searchPattern}
         OR code ILIKE ${searchPattern}
         OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
@@ -297,7 +299,7 @@ export const countMaterials = async (input: ListReadingMaterialsQuery): Promise<
         SELECT
           m.id,
           m.code,
-          m.topic,
+          m.title,
           m.genre,
           m.level,
           m.tags,
@@ -312,7 +314,7 @@ export const countMaterials = async (input: ListReadingMaterialsQuery): Promise<
       SELECT COUNT(*)::INTEGER AS total
       FROM material_summary
       WHERE (${searchPattern}::TEXT IS NULL OR (
-        topic ILIKE ${searchPattern}
+        title ILIKE ${searchPattern}
         OR genre ILIKE ${searchPattern}
         OR code ILIKE ${searchPattern}
         OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}

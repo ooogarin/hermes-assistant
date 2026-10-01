@@ -12,12 +12,12 @@ const questionSchema = z.object({
 });
 
 export const createMaterialSchema = z.object({
-  topic: textSchema(300),
+  title: textSchema(300),
   level: textSchema(32),
   genre: textSchema(100),
   tags: z.array(textSchema(64)).max(50).default([]),
   target_word_count: z.number().int().positive().max(20_000),
-  passage_text: textSchema(100_000),
+  content_text: textSchema(100_000),
   source: sourceSchema,
   questions: z.array(questionSchema).min(3).max(5),
 });

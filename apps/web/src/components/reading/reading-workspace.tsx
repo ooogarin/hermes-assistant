@@ -38,9 +38,9 @@ export const ReadingWorkspace = ({ material, onSubmit, submitting }: ReadingWork
       <ReadingMeta className='border-b border-border px-6 py-5 lg:px-8' material={material} />
       <div className='grid lg:grid-cols-[minmax(0,1fr)_minmax(28rem,1.05fr)]'>
         <article className='border-b border-border px-6 py-8 lg:border-b-0 lg:border-r lg:px-8'>
-          <h2 className='text-2xl font-semibold tracking-tight text-ink'>{material.topic}</h2>
+          <h2 className='text-2xl font-semibold tracking-tight text-ink'>{material.title}</h2>
           <div className='mt-6 max-w-(--reading-width) whitespace-pre-wrap text-base leading-8 text-ink'>
-            {material.passageText}
+            {material.contentText}
           </div>
         </article>
 

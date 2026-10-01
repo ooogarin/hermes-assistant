@@ -38,13 +38,13 @@ export type ReadingQuestion = {
 
 export type ReadingMaterial = {
   code: string;
-  topic: string;
+  title: string;
   level: string;
   genre: string;
   tags: string[];
   target_word_count: number;
   word_count: number;
-  passage_text: string;
+  content_text: string;
   is_override: boolean;
   source: ReadingSource;
   questions: ReadingQuestion[];
@@ -58,7 +58,7 @@ export type ReadingExpectedAnswer = {
 
 export type ReadingMaterialListItem = {
   code: string;
-  topic: string;
+  title: string;
   genre: string;
   level: string;
   target_word_count: number;
@@ -98,12 +98,12 @@ export type ReadingService = {
 // ====================================================================================================
 
 export type CreateReadingMaterialPayload = {
-  topic: string;
+  title: string;
   level: string;
   genre: string;
   tags: string[];
   target_word_count: number;
-  passage_text: string;
+  content_text: string;
   source: ReadingSource;
   questions: Array<{
     question_number: number;
@@ -157,13 +157,13 @@ export type ReadingSettingsRow = {
 export type ReadingMaterialRow = {
   id: number;
   code: string;
-  topic: string;
+  title: string;
   level: string;
   genre: string;
   tags: string[];
   target_word_count: number;
   word_count: number;
-  passage_text: string;
+  content_text: string;
   is_override: boolean;
   source: ReadingSource;
 };
@@ -179,7 +179,7 @@ export type ReadingExpectedAnswerRow = {
 };
 export type ReadingMaterialListRow = {
   code: string;
-  topic: string;
+  title: string;
   genre: string;
   level: string;
   target_word_count: number;

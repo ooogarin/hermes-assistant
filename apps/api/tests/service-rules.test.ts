@@ -77,13 +77,13 @@ const readingSettings: ReadingSettings = {
 
 const readingMaterial: ReadingMaterial = {
   code: 'RD-20260905-001',
-  topic: 'Morning market',
+  title: 'Morning market',
   level: 'A1',
   genre: 'story',
   tags: [],
   target_word_count: 300,
   word_count: 5,
-  passage_text: 'Mira visits the morning market.',
+  content_text: 'Mira visits the morning market.',
   is_override: false,
   source: 'request',
   questions: [
@@ -104,13 +104,13 @@ const readingSettingsRow: ReadingSettingsRow = {
 const readingMaterialRow: ReadingMaterialRow = {
   id: 1,
   code: readingMaterial.code,
-  topic: readingMaterial.topic,
+  title: readingMaterial.title,
   level: readingMaterial.level,
   genre: readingMaterial.genre,
   tags: readingMaterial.tags,
   target_word_count: readingMaterial.target_word_count,
   word_count: readingMaterial.word_count,
-  passage_text: readingMaterial.passage_text,
+  content_text: readingMaterial.content_text,
   is_override: readingMaterial.is_override,
   source: readingMaterial.source,
 };
@@ -405,12 +405,12 @@ test('create flows return the transaction-local result without a post-commit rea
     ],
   });
   const createdReadingMaterial = await readingService.createMaterial({
-    topic: 'Morning market',
+    title: 'Morning market',
     level: 'A1',
     genre: 'story',
     tags: [],
     target_word_count: 300,
-    passage_text: 'Mira visits the market.',
+    content_text: 'Mira visits the market.',
     source: 'request',
     questions: [{ question_text: 'Who visits?', expected_answer: 'Mira.' }],
   });
@@ -452,7 +452,7 @@ test('reading and writing services compose list responses from repository rows',
   readingListResult = [
     {
       code: readingMaterial.code,
-      topic: readingMaterial.topic,
+      title: readingMaterial.title,
       genre: readingMaterial.genre,
       level: readingMaterial.level,
       target_word_count: readingMaterial.target_word_count,
@@ -487,7 +487,7 @@ test('reading and writing services compose list responses from repository rows',
     items: [
       {
         code: readingMaterial.code,
-        topic: readingMaterial.topic,
+        title: readingMaterial.title,
         genre: readingMaterial.genre,
         level: readingMaterial.level,
         target_word_count: readingMaterial.target_word_count,

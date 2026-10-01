@@ -70,7 +70,7 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
       trx,
       code,
       payload,
-      countWords(input.passage_text),
+      countWords(input.content_text),
       is_override,
     );
     await readingRepository.insertQuestions(trx, materialId.id, payload.questions);
@@ -206,12 +206,12 @@ const toReadingSettings = (row: ReadingSettingsRow): ReadingSettings => ({
 });
 
 const toCreateReadingMaterialPayload = (input: CreateReadingMaterialRequest): CreateReadingMaterialPayload => ({
-  topic: input.topic,
+  title: input.title,
   level: input.level,
   genre: input.genre,
   tags: input.tags,
   target_word_count: input.target_word_count,
-  passage_text: input.passage_text,
+  content_text: input.content_text,
   source: input.source,
   questions: input.questions.map((question, index) => ({
     question_number: index + 1,
@@ -228,13 +228,13 @@ const toReadingQuestion = (row: ReadingQuestionWithAnswerRow): ReadingQuestion =
 
 const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestionWithAnswerRow[]): ReadingMaterial => ({
   code: row.code,
-  topic: row.topic,
+  title: row.title,
   level: row.level,
   genre: row.genre,
   tags: row.tags,
   target_word_count: row.target_word_count,
   word_count: row.word_count,
-  passage_text: row.passage_text,
+  content_text: row.content_text,
   is_override: row.is_override,
   source: row.source,
   questions: questions.map(toReadingQuestion),
@@ -242,7 +242,7 @@ const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestionWi
 
 const toReadingMaterialListItem = (row: ReadingMaterialListRow): ReadingMaterialListItem => ({
   code: row.code,
-  topic: row.topic,
+  title: row.title,
   genre: row.genre,
   level: row.level,
   target_word_count: row.target_word_count,

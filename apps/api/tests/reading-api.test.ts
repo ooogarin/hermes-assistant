@@ -22,13 +22,13 @@ const settings: ReadingSettings = {
 
 const material: ReadingMaterial = {
   code: 'RD-20260905-001',
-  topic: 'A morning market',
+  title: 'A morning market',
   level: 'A1',
   genre: 'story',
   tags: ['daily-life'],
   target_word_count: 300,
   word_count: 8,
-  passage_text: 'Mira visits the market early every Sunday morning.',
+  content_text: 'Mira visits the market early every Sunday morning.',
   is_override: false,
   source: 'request',
   questions: [
@@ -48,7 +48,7 @@ const materialList: ReadingMaterialList = {
   items: [
     {
       code: material.code,
-      topic: material.topic,
+      title: material.title,
       genre: material.genre,
       level: material.level,
       target_word_count: material.target_word_count,
@@ -177,12 +177,12 @@ test('creates a reading material without exposing expected answers', async () =>
     method: 'POST',
     headers,
     body: JSON.stringify({
-      topic: material.topic,
+      title: material.title,
       level: material.level,
       genre: material.genre,
       tags: material.tags,
       target_word_count: material.target_word_count,
-      passage_text: material.passage_text,
+      content_text: material.content_text,
       source: material.source,
       questions: expectedAnswers.map(({ question_text, expected_answer }) => ({
         question_text,
@@ -192,10 +192,36 @@ test('creates a reading material without exposing expected answers', async () =>
   });
 
   expect(response.status).toBe(201);
+  expect(createInput).toMatchObject({ title: material.title, content_text: material.content_text });
   expect(createInput?.questions).toEqual(
     expectedAnswers.map(({ question_text, expected_answer }) => ({ question_text, expected_answer })),
   );
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(material) });
+});
+
+test('rejects create requests that use only the former topic and passage_text names', async () => {
+  let createCalled = false;
+  const response = await createReadingApp({
+    createMaterial: async () => {
+      createCalled = true;
+      return material;
+    },
+  }).request('http://localhost/api/v1/reading/materials', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      topic: material.title,
+      passage_text: material.content_text,
+      level: material.level,
+      genre: material.genre,
+      target_word_count: material.target_word_count,
+      source: material.source,
+      questions: expectedAnswers.map(({ question_text, expected_answer }) => ({ question_text, expected_answer })),
+    }),
+  });
+
+  expect(response.status).toBe(400);
+  expect(createCalled).toBe(false);
 });
 
 test('rejects a reading material with fewer than three questions', async () => {
@@ -209,11 +235,11 @@ test('rejects a reading material with fewer than three questions', async () => {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      topic: material.topic,
+      title: material.title,
       level: material.level,
       genre: material.genre,
       target_word_count: material.target_word_count,
-      passage_text: material.passage_text,
+      content_text: material.content_text,
       source: material.source,
       questions: expectedAnswers.slice(0, 2).map(({ question_text, expected_answer }) => ({
         question_text,

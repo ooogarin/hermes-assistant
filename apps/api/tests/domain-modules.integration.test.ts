@@ -306,12 +306,12 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
   test('persists one complete reading submission and protects expected answers', async () => {
     const material = await readingService.createMaterial({
-      topic: 'Morning market',
+      title: 'Morning market',
       level: 'A1',
       genre: 'story',
       tags: ['daily-life'],
       target_word_count: 300,
-      passage_text: 'Mira visits the market early every Sunday morning.',
+      content_text: 'Mira visits the market early every Sunday morning.',
       source: 'request',
       questions: [
         { question_text: 'Who visits the market?', expected_answer: 'Mira.' },
@@ -354,7 +354,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         sort: 'newest',
       }),
     ).resolves.toMatchObject({
-      items: [{ code: material.code, status: 'completed', question_count: 3, answeredQuestionCount: 3 }],
+      items: [{ code: material.code, status: 'completed', question_count: 3, answered_question_count: 3 }],
       meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
     });
 
