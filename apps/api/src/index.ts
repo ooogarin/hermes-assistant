@@ -13,6 +13,7 @@ const app = createApp({
   internalApiKey: environment.internalApiKey,
   isDatabaseReady: () => isDatabaseReady(database),
   readinessTimeoutMs: environment.readinessTimeoutMs,
+  webAuth: environment.webAuth,
 });
 
 const server = Bun.serve({

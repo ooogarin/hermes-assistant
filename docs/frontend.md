@@ -122,7 +122,15 @@ bun run dev:web
 
 `apps/web/vite.config.ts` loads `.env` from the workspace root. It forwards relative `/api` requests to `API_PROXY_TARGET` (default `http://127.0.0.1:3000`) and adds the internal bearer credential only in the Vite server process.
 
-`INTERNAL_API_KEY` is an internal service credential, not a browser credential. Never prefix it with `VITE_`, interpolate it into frontend source, place it in local storage, or send it from browser code. This proxy is for local development only. A deployed frontend needs an explicit user authentication or backend-for-frontend design before it can safely access protected API routes.
+`INTERNAL_API_KEY` is an internal service credential, not a browser credential. Never prefix it with `VITE_`, interpolate it into frontend source, place it in local storage, or send it from browser code. This proxy is for local development only.
+
+## Planned personal web authentication
+
+[Personal Web Authentication Design](auth-design.md) defines the implemented backend boundary: one static password hash in server ENV, an HttpOnly cookie containing a random session token, a bounded session store in the single Bun process, and API middleware that accepts a valid browser session or the existing Agent bearer credential. No user entity or RBAC is introduced. Restart/redeploy clears browser sessions.
+
+The frontend will add public `/login` outside `AppShell`, a session-checking protected layout around existing routes, and `Keluar` in the sidebar/mobile drawer. The [Login screen specification](frontend-screens/auth.md) defines fields, responsive behavior, accessible feedback, direct-link return, expiry, and retry. In that frontend stage, browser API requests remain relative and carry only their session cookie, and Vite must stop injecting the Agent key.
+
+Frontend auth is still a design target. The current Vite proxy continues to authenticate domain requests with the Agent key. Public deployment remains blocked until login/session/logout UI and removal of proxy key injection are implemented and tested together through the same-origin HTTPS proxy. Backend implementation targets one API instance and a configurable seven-day session lifetime. Exact deployment host, fallback route, and login visual remain open frontend/deployment choices.
 
 Shared navigation, screen, state, and accessibility conventions are defined in [frontend-screens.md](frontend-screens.md). Module-specific screen specifications will be added only after the related API data is available.
 

@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { AppError } from '../src/core/errors/app-error';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
+import { testWebAuth } from './fixtures/auth';
 import type {
   CreateNoteRequest,
   ListNotesRequest,
@@ -51,10 +52,7 @@ const { createApp } = await import('../src/app');
 const createNotesApp = (overrides: Partial<NotesService> = {}) => {
   activeNotesService = createNotesServiceStub(overrides);
 
-  return createApp({
-    internalApiKey: 'test-api-key',
-    isDatabaseReady: async () => true,
-  });
+  return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
 };
 
 test('creates a note through the authenticated API', async () => {

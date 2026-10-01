@@ -25,3 +25,9 @@ If documents conflict, the newest explicit user decision wins. Update the affect
 3. Make the smallest cohesive change and add proportionate tests.
 4. Run available formatting, linting, type checks, and relevant tests.
 5. Update docs when behavior, schema, API, or architecture changes.
+
+## Git naming
+
+- Use a conventional change type for branch names: `feat/<slug>`, `fix/<slug>`, `docs/<slug>`, `chore/<slug>`, or another appropriate type.
+- Use conventional commit messages such as `feat: add personal web authentication` or `docs: define personal web auth`.
+- Git branch names cannot contain spaces or `:`; express the requested type with `/` in branch names.

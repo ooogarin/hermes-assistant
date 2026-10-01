@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
+import { testWebAuth } from './fixtures/auth';
 import type {
   CreateReadingMaterialRequest,
   ReadingExpectedAnswer,
@@ -92,10 +93,7 @@ const { createApp } = await import('../src/app');
 const createReadingApp = (overrides: Partial<ReadingService> = {}) => {
   activeReadingService = createReadingServiceStub(overrides);
 
-  return createApp({
-    internalApiKey: 'test-api-key',
-    isDatabaseReady: async () => true,
-  });
+  return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
 };
 
 const headers = {

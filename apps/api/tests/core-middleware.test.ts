@@ -3,9 +3,10 @@ import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { createApp } from '../src/app';
 import { AppError } from '../src/core/errors/app-error';
+import { testWebAuth } from './fixtures/auth';
 
 const createTestApp = (isDatabaseReady: () => Promise<boolean> = async () => true) => {
-  return createApp({ internalApiKey: 'test-api-key', isDatabaseReady });
+  return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady });
 };
 
 test('returns a public health response with a generated request ID', async () => {
@@ -48,6 +49,7 @@ test('returns a safe unavailable response when PostgreSQL is unavailable', async
 
 test('bounds the readiness check with a timeout', async () => {
   const app = createApp({
+    webAuth: testWebAuth,
     internalApiKey: 'test-api-key',
     isDatabaseReady: () => new Promise<boolean>(() => undefined),
     readinessTimeoutMs: 5,
@@ -179,4 +181,22 @@ test('maps unexpected errors to a generic API failure', async () => {
     },
     request_id: expect.any(String),
   });
+});
+
+test('maps auth transport HTTP exceptions to stable safe errors', async () => {
+  for (const [statusCode, code] of [
+    [413, 'PAYLOAD_TOO_LARGE'],
+    [415, 'UNSUPPORTED_MEDIA_TYPE'],
+    [429, 'RATE_LIMITED'],
+  ] as const) {
+    const app = createTestApp();
+    app.get('/test/transport-error', () => {
+      throw new HTTPException(statusCode, { message: 'Sensitive internal transport detail' });
+    });
+    const response = await app.request('http://localhost/test/transport-error');
+    expect(response.status).toBe(statusCode);
+    const payload = await response.text();
+    expect(payload).toContain(code);
+    expect(payload).not.toContain('Sensitive internal transport detail');
+  }
 });

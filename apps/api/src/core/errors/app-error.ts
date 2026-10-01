@@ -7,7 +7,7 @@ export type AppErrorOptions = {
   cause?: unknown;
 };
 
-export type AppErrorStatusCode = 400 | 401 | 403 | 404 | 409 | 500 | 503;
+export type AppErrorStatusCode = 400 | 401 | 403 | 404 | 409 | 413 | 415 | 429 | 500 | 503;
 
 export class AppError extends Error {
   readonly code: string;

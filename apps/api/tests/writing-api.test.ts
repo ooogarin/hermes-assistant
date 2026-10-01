@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
+import { testWebAuth } from './fixtures/auth';
 import { writingAnalysis } from './fixtures/writing';
 import type {
   CreateWritingMaterialRequest,
@@ -100,10 +101,7 @@ const { createApp } = await import('../src/app');
 const createWritingApp = (overrides: Partial<WritingService> = {}) => {
   activeWritingService = createWritingServiceStub(overrides);
 
-  return createApp({
-    internalApiKey: 'test-api-key',
-    isDatabaseReady: async () => true,
-  });
+  return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
 };
 
 const headers = {

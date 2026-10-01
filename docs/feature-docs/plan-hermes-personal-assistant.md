@@ -374,7 +374,7 @@ Weekly Reports principle:
 These can be decided during implementation:
 
 - exact REST endpoint contracts;
-- authentication between Hermes/API/website;
+- website authentication deployment choices and frontend integration: [personal auth backend](../auth-design.md) implements a static password and API-process sessions; Hermes Agent continues to use its existing internal API key;
 - deployment process and process manager;
 - backup strategy for PostgreSQL;
 - whether MCP should be added in a later phase.
