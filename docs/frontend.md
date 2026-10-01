@@ -126,11 +126,11 @@ bun run dev:web
 
 ## Planned personal web authentication
 
-[Personal Web Authentication Design](auth-design.md) defines the proposed production boundary: one static password hash in server ENV, an HttpOnly cookie containing a random session token, a bounded session store in the single Bun process, and API middleware that accepts a valid browser session or the existing Agent bearer credential. No user entity or RBAC is introduced. Restart/redeploy clears browser sessions.
+[Personal Web Authentication Design](auth-design.md) defines the implemented backend boundary: one static password hash in server ENV, an HttpOnly cookie containing a random session token, a bounded session store in the single Bun process, and API middleware that accepts a valid browser session or the existing Agent bearer credential. No user entity or RBAC is introduced. Restart/redeploy clears browser sessions.
 
-The frontend will add public `/login` outside `AppShell`, a session-checking protected layout around existing routes, and `Keluar` in the sidebar/mobile drawer. The [Login screen specification](frontend-screens/auth.md) defines fields, responsive behavior, accessible feedback, direct-link return, expiry, and retry. Browser API requests remain relative and carry only their session cookie; Vite must stop injecting the Agent key when auth is implemented.
+The frontend will add public `/login` outside `AppShell`, a session-checking protected layout around existing routes, and `Keluar` in the sidebar/mobile drawer. The [Login screen specification](frontend-screens/auth.md) defines fields, responsive behavior, accessible feedback, direct-link return, expiry, and retry. In that frontend stage, browser API requests remain relative and carry only their session cookie, and Vite must stop injecting the Agent key.
 
-This is a design target, not implemented behavior. Public deployment remains blocked until the API and FE boundary is built and tested through the same-origin HTTPS proxy. Exact deployment host, one-instance topology, session duration, fallback route, and login visual remain proposed choices in the design.
+Frontend auth is still a design target. The current Vite proxy continues to authenticate domain requests with the Agent key. Public deployment remains blocked until login/session/logout UI and removal of proxy key injection are implemented and tested together through the same-origin HTTPS proxy. Backend implementation targets one API instance and a configurable seven-day session lifetime. Exact deployment host, fallback route, and login visual remain open frontend/deployment choices.
 
 Shared navigation, screen, state, and accessibility conventions are defined in [frontend-screens.md](frontend-screens.md). Module-specific screen specifications will be added only after the related API data is available.
 

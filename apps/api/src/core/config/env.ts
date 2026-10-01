@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { WebAuthConfiguration } from '../auth/auth.types';
 
 const logLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const databaseUrlSchema = z.url().refine((value) => {
@@ -8,6 +9,41 @@ const databaseUrlSchema = z.url().refine((value) => {
 }, 'Must be a PostgreSQL URL.');
 const internalApiKeySchema = z.string().trim().min(32).max(512);
 const placeholderInternalApiKey = 'replace-with-a-long-random-secret';
+
+const passwordHashSchema = z
+  .string()
+  .max(1_024)
+  .refine((value) => {
+    const parameters =
+      /^\$argon2id\$v=19\$m=(\d{1,6}),t=(\d),p=(\d)\$[A-Za-z0-9+/]{8,128}\$[A-Za-z0-9+/]{16,128}$/.exec(value);
+    if (parameters === null) return false;
+    const memory = Number(parameters[1]);
+    const iterations = Number(parameters[2]);
+    const parallelism = Number(parameters[3]);
+    if (memory < 19_456 || memory > 65_536 || iterations < 2 || iterations > 4 || parallelism < 1 || parallelism > 4) {
+      return false;
+    }
+
+    try {
+      Bun.password.verifySync('hermes-auth-configuration-check', value);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Must be a valid Argon2id password hash with supported parameters.');
+
+const webOriginSchema = z.url().refine((value) => {
+  try {
+    const url = new URL(value);
+    if (url.origin !== value || url.username !== '' || url.password !== '') return false;
+    return (
+      url.protocol === 'https:' ||
+      (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
+    );
+  } catch {
+    return false;
+  }
+}, 'Must be an HTTPS origin or a local HTTP development origin.');
 
 const databaseEnvironmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
@@ -21,6 +57,9 @@ const environmentSchema = databaseEnvironmentSchema
     PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
     INTERNAL_API_KEY: internalApiKeySchema,
     READINESS_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2_000),
+    WEB_AUTH_PASSWORD_HASH: passwordHashSchema,
+    WEB_AUTH_ORIGIN: webOriginSchema,
+    WEB_AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(604_800).default(604_800),
   })
   .superRefine((value, context) => {
     if (value.NODE_ENV === 'production' && value.INTERNAL_API_KEY === placeholderInternalApiKey) {
@@ -29,6 +68,10 @@ const environmentSchema = databaseEnvironmentSchema
         message: 'The placeholder API key cannot be used in production.',
         path: ['INTERNAL_API_KEY'],
       });
+    }
+
+    if (value.NODE_ENV !== 'development' && !value.WEB_AUTH_ORIGIN.startsWith('https://')) {
+      context.addIssue({ code: 'custom', message: 'HTTPS is required.', path: ['WEB_AUTH_ORIGIN'] });
     }
   });
 
@@ -53,6 +96,7 @@ export type Environment = DatabaseEnvironment & {
   port: number;
   internalApiKey: string;
   readinessTimeoutMs: number;
+  webAuth: WebAuthConfiguration;
 };
 
 const parseEnvironment = <T>(schema: z.ZodType<T>, values: Record<string, string | undefined>): T => {
@@ -90,5 +134,11 @@ export const loadEnvironment = (values: Record<string, string | undefined>): Env
     internalApiKey: data.INTERNAL_API_KEY,
     logLevel: data.LOG_LEVEL,
     readinessTimeoutMs: data.READINESS_TIMEOUT_MS,
+    webAuth: {
+      password_hash: data.WEB_AUTH_PASSWORD_HASH,
+      origin: data.WEB_AUTH_ORIGIN,
+      session_ttl_seconds: data.WEB_AUTH_SESSION_TTL_SECONDS,
+      secure_cookie: data.WEB_AUTH_ORIGIN.startsWith('https://'),
+    },
   };
 };

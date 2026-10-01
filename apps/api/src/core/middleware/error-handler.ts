@@ -27,6 +27,12 @@ const httpErrorBody = (statusCode: number): { code: string; message: string } =>
       return { code: 'NOT_FOUND', message: 'Resource not found' };
     case 409:
       return { code: 'CONFLICT', message: 'Request conflict' };
+    case 413:
+      return { code: 'PAYLOAD_TOO_LARGE', message: 'Request body too large' };
+    case 415:
+      return { code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Unsupported media type' };
+    case 429:
+      return { code: 'RATE_LIMITED', message: 'Too many requests' };
     case 500:
       return { code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' };
     case 503:

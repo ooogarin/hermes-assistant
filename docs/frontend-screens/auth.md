@@ -1,6 +1,6 @@
 # Personal Login Screen
 
-> Status: Proposed design, 2026-10-01. API/session contracts: [Personal Web Authentication Design](../auth-design.md). Runtime login and route protection are not implemented yet. Three image concepts have been presented in the design conversation; the selected visual is still open.
+> Status: Frontend design, 2026-10-01. The backend API/session contracts in [Personal Web Authentication Design](../auth-design.md) are implemented. Frontend login and protected routing are not implemented yet. Three image concepts have been presented in the design conversation; the selected visual is still open.
 
 ## Scope and screen map
 

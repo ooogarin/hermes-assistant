@@ -1,6 +1,7 @@
 import { expect, mock, test } from 'bun:test';
 import { AppError } from '../src/core/errors/app-error';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
+import { testWebAuth } from './fixtures/auth';
 import type {
   CreateJunkRequest,
   JunkItem,
@@ -48,10 +49,7 @@ const { createApp } = await import('../src/app');
 const createJunkApp = (overrides: Partial<JunkService> = {}) => {
   activeJunkService = createJunkServiceStub(overrides);
 
-  return createApp({
-    internalApiKey: 'test-api-key',
-    isDatabaseReady: async () => true,
-  });
+  return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
 };
 
 test('creates a junk item through the authenticated API', async () => {

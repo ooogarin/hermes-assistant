@@ -1,21 +1,27 @@
 import { Hono } from 'hono';
 import { requestId } from 'hono/request-id';
+import { createLoginLimiter } from './core/auth/login-limiter';
+import { createSessionStore } from './core/auth/session-store';
 import { failureResponse, successResponse } from './core/http/response';
 import { createAuthMiddleware } from './core/middleware/auth';
 import { errorHandler } from './core/middleware/error-handler';
 import { requestContextMiddleware } from './core/middleware/request-context';
+import { createAuthRoutes } from './modules/auth/auth.route';
 import { createFinanceRoutes } from './modules/finance/finance.route';
 import { createGrammarRoutes } from './modules/grammar/grammar.route';
 import { createJunkRoutes } from './modules/junk/junk.route';
 import { createNotesRoutes } from './modules/notes/notes.route';
 import { createReadingRoutes } from './modules/reading/reading.route';
 import { createWritingRoutes } from './modules/writing/writing.route';
+import type { AuthDependencies, AuthResources, WebAuthConfiguration } from './core/auth/auth.types';
 import type { AppEnv } from './core/http/app-env';
 
 export type CreateAppOptions = {
   internalApiKey: string;
   isDatabaseReady: () => Promise<boolean>;
   readinessTimeoutMs?: number;
+  webAuth: WebAuthConfiguration;
+  authDependencies?: AuthDependencies;
 };
 
 const checkDatabaseReadiness = async (check: () => Promise<boolean>, timeoutMs: number): Promise<boolean> => {
@@ -33,12 +39,24 @@ const checkDatabaseReadiness = async (check: () => Promise<boolean>, timeoutMs: 
   }
 };
 
-export const createApp = ({ internalApiKey, isDatabaseReady, readinessTimeoutMs = 2_000 }: CreateAppOptions) => {
+export const createApp = ({
+  internalApiKey,
+  isDatabaseReady,
+  readinessTimeoutMs = 2_000,
+  webAuth,
+  authDependencies = {},
+}: CreateAppOptions) => {
   const app = new Hono<AppEnv>();
+  const resources: AuthResources = {
+    configuration: webAuth,
+    sessions: createSessionStore(webAuth.session_ttl_seconds, authDependencies.now),
+    limiter: createLoginLimiter(authDependencies.now),
+    verifyPassword: authDependencies.verifyPassword ?? ((password, hash) => Bun.password.verify(password, hash)),
+  };
 
   app.use('*', requestId());
   app.use('*', requestContextMiddleware);
-  app.use('/api/*', createAuthMiddleware(internalApiKey));
+  app.use('/api/*', createAuthMiddleware(internalApiKey, resources));
 
   app.onError(errorHandler);
   app.notFound((context) => {
@@ -75,6 +93,7 @@ export const createApp = ({ internalApiKey, isDatabaseReady, readinessTimeoutMs 
     return successResponse({ context, data: { status: 'ok' } });
   });
 
+  app.route('/api/v1/auth', createAuthRoutes(resources));
   app.route('/api/v1/notes', createNotesRoutes());
   app.route('/api/v1/junk', createJunkRoutes());
   app.route('/api/v1/finance', createFinanceRoutes());

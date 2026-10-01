@@ -16,7 +16,7 @@ Hermes is a Bun workspace. `apps/api` is a modular monolith with one Bun applica
 | Logging and code quality | LogTape and Biome |
 | Web frontend | React, Vite, and Tailwind CSS |
 
-ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. Personal web authentication now has a [proposed design](auth-design.md); implementation is still pending.
+ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. The [personal web authentication backend](auth-design.md) is implemented; frontend integration and deployment verification remain pending.
 
 ## Key decisions
 
@@ -54,7 +54,7 @@ docs/
 ```text
 HTTP request
   → request ID and logging middleware
-  → API-key authentication
+  → Agent API-key or browser-session authentication (exact login/logout exemptions)
   → route → validation → handler → service → repository → PostgreSQL
   → API response / global error handler
 ```
@@ -69,7 +69,9 @@ No Telegram adapter, webhook, or scheduler runs inside this API.
 
 For current local report development, browser requests use relative `/api` URLs. The Vite development server forwards them to the API and adds `Authorization: Bearer <INTERNAL_API_KEY>` from its server-side environment. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client.
 
-Before publishing the personal frontend, implement [Personal Web Authentication Design](auth-design.md): one static browser password hash in ENV, opaque HttpOnly cookie sessions held in one API process, and centralized session middleware alongside the existing Agent bearer authentication. No user table, RBAC, or auth migration is required. Browser write requests require an exact allowed Origin. Remove Vite bearer injection as part of that implementation so it cannot bypass browser login. Same-origin HTTPS hosting and one API instance are proposed deployment assumptions; the current runtime remains unsuitable for public frontend access until this boundary is implemented and verified.
+[Personal Web Authentication Design](auth-design.md) defines the implemented API boundary: one static browser password hash in ENV, opaque HttpOnly cookie sessions held in one API process, and centralized session middleware alongside existing Agent bearer authentication. No user table, RBAC, or auth migration is required. Cookie-authenticated browser writes require an exact allowed Origin. Session state is lost on restart/redeploy. API startup validates required web-auth settings; database-only migrations do not require them.
+
+Before publishing the personal frontend, add its login/session/logout UI and remove Vite bearer injection together so browser login cannot be bypassed. The implementation targets same-origin HTTPS hosting and one API instance; the current frontend remains unsuitable for public access until that integration and proxy verification are complete.
 
 Liveness does not depend on PostgreSQL; readiness may use a lightweight database check.
 
@@ -82,7 +84,9 @@ Liveness does not depend on PostgreSQL; readiness may use a lightweight database
 - Validate every body, query, path parameter, and relevant header with Zod.
 - Request bodies, query parameters, path parameters, and response JSON use `snake_case`, including nested objects, collection metadata, and error fields.
 - Use ISO 8601 dates/timestamps and UUID strings for public identifiers unless a feature design explicitly defines a user-facing code or another identifier.
-- Authenticate application routes with `Authorization: Bearer <INTERNAL_API_KEY>`. `GET /health` and `GET /health/ready` are public.
+- Authenticate application routes with `Authorization: Bearer <INTERNAL_API_KEY>` for the Agent or a valid browser session cookie. A supplied invalid bearer credential cannot fall back to a cookie. `GET /health` and `GET /health/ready` are public.
+- `POST /api/v1/auth/login` and `POST /api/v1/auth/logout` are exact authentication exemptions with mandatory browser Origin checks. `GET /api/v1/auth/session` requires a browser session; an Agent key alone does not satisfy it. Full contracts are in [auth-design.md](auth-design.md).
+- Set `Cache-Control: private, no-store` on every `/api/*` response, including errors.
 
 Successful responses use:
 
@@ -109,7 +113,7 @@ Collections may include a `meta` object. Errors use a stable safe envelope:
 }
 ```
 
-Use `200` for successful reads/updates, `201` for creation, `204` for no response body, `400` for invalid input, `401`/`403` for authentication/authorization failures, `404` for not found, `409` for conflicts, and `500`/`503` for unexpected or unavailable dependencies. Public errors must not expose SQL, stack traces, secrets, or dependency internals.
+Use `200` for successful reads/updates, `201` for creation, `204` for no response body, `400` for invalid input, `401`/`403` for authentication/authorization failures, `404` for not found, `409` for conflicts, `413` for oversized requests, `415` for unsupported media types, `429` for rate limits, and `500`/`503` for unexpected or unavailable dependencies. Public errors must not expose SQL, stack traces, secrets, or dependency internals.
 
 ## Module boundary
 
@@ -132,7 +136,7 @@ For a workflow that needs a transaction, the service obtains a reserved connecti
 ## Security boundary
 
 - Treat every request, including one from the Hermes Agent, as untrusted input.
-- Authenticate application routes with centralized API-key middleware; only explicit health endpoints are exempt.
-- The planned personal browser boundary is defined in [auth-design.md](auth-design.md). It adds cookie sessions, exact method/path exemptions for login/logout, browser-only session inspection, and Origin checks without changing the existing Agent credential or domain layer boundaries. These exceptions are not active in the current runtime.
+- Authenticate application routes with centralized bearer/session middleware. Only explicit health endpoints and the exact login/logout method/path pairs are exempt from prior authentication.
+- The personal browser boundary is defined in [auth-design.md](auth-design.md). Cookie writes, login, and logout require an exact configured Origin; session inspection requires a cookie. Password verification has attempt/concurrency limits. The existing Agent credential and domain layer boundaries remain unchanged.
 - Keep public errors safe and stable; internal detail belongs in logs only. The public envelope and status mapping are defined in the HTTP boundary above.
 - Validation, parameterized SQL, and logging rules are defined in [coding-conventions.md](coding-conventions.md).

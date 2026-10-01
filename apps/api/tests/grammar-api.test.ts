@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'bun:test';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
+import { testWebAuth } from './fixtures/auth';
 import type {
   CreateGrammarSessionRequest,
   EvaluateGrammarSessionRequest,
@@ -116,10 +117,7 @@ const { createApp } = await import('../src/app');
 const createGrammarApp = (overrides: Partial<GrammarService> = {}) => {
   activeGrammarService = createGrammarServiceStub(overrides);
 
-  return createApp({
-    internalApiKey: 'test-api-key',
-    isDatabaseReady: async () => true,
-  });
+  return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
 };
 
 test('reads and updates grammar settings', async () => {

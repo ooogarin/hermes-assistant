@@ -8,6 +8,7 @@ import {
   migrateDatabase,
   rollbackLatestMigration,
 } from '../src/core/database/migration-runner';
+import { testWebAuth } from './fixtures/auth';
 import { createTestDatabaseClient, hasTestDatabaseUrl, resetTestDatabase } from './helpers/database';
 import type { DatabaseClient, DatabaseTransaction } from '../src/core/database/database.types';
 import type { Migration } from '../src/core/database/migration.types';
@@ -53,6 +54,7 @@ describe.skipIf(!hasTestDatabaseUrl)('PostgreSQL integration', () => {
 
   test('reports readiness through the HTTP application', async () => {
     const app = createApp({
+      webAuth: testWebAuth,
       internalApiKey: 'test-api-key',
       isDatabaseReady: () => isDatabaseReady(getDatabase()),
     });

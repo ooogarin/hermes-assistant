@@ -1,6 +1,6 @@
 # Personal Web Authentication Design
 
-> Status: Technical design finalized for backend implementation, 2026-10-01. Runtime authentication is still the existing internal API-key middleware. This document defines the implementation target; it does not make the current frontend ready for public deployment. Login visual selection and frontend implementation remain a separate stage.
+> Status: Technical design and backend implemented, 2026-10-01. Browser session middleware, login/session/logout endpoints, ENV validation, and login limits are available. Login visual selection, frontend integration, and removal of Vite bearer injection remain a separate stage; the frontend is not ready for public deployment yet.
 
 ## Purpose and scope
 
@@ -27,14 +27,20 @@ The implementation targets one HTTPS origin and one API process. The exact host/
 | --- | --- | --- |
 | `WEB_AUTH_PASSWORD_HASH` | Hash of the one static browser password | Required valid Argon2id PHC hash; never a frontend variable |
 | `WEB_AUTH_ORIGIN` | Exact browser origin allowed to send writes | Required URL containing only scheme, host, and optional port; HTTPS in staging/production; reject credentials, paths, queries, and fragments |
-| `WEB_AUTH_SESSION_TTL_SECONDS` | Absolute session lifetime | Integer from 300 through 604800; proposed default 604800 (7 days) |
+| `WEB_AUTH_SESSION_TTL_SECONDS` | Absolute session lifetime | Integer from 300 through 604800; default 604800 (7 days) |
 | `INTERNAL_API_KEY` | Existing Agent bearer credential | Existing validation remains; independent of the browser password |
 
 Keep these values server-side. No auth secrets belong in `VITE_*`, the frontend bundle, browser storage, URLs, logs, or response JSON. The actual password never needs to be stored in ENV: the hash represents the static credential. Provision a unique random password/passphrase of at least 20 characters, up to the login field limit of 512 characters.
 
-Use native `Bun.password.hash(password, { algorithm: 'argon2id' })` during credential provisioning and asynchronous `Bun.password.verify(password, hash)` during login. Generate/provision the password through a local prompt or secret manager, keeping it out of shell arguments/history and captured tool output. Quote PHC hash values correctly when storing them, because they contain literal `$` characters. Validate the hash at startup and fail with the invalid configuration key only, without printing its value. Bun supplies these password APIs directly. [Bun password documentation](https://bun.sh/docs/runtime/hashing#bunpassword).
+Use native `Bun.password.hash(password, { algorithm: 'argon2id' })` during credential provisioning and asynchronous `Bun.password.verify(password, hash)` during login. Generate/provision the password through a local prompt or secret manager, keeping it out of shell arguments/history and captured tool output. In Bun dotenv files, escape every literal `$` as `\$`, including inside quoted values; quoting alone does not disable variable substitution. A real process environment variable supplied through a secret manager uses the plain PHC hash without dotenv backslashes. Startup validates the hash using a fixed, non-empty verification probe and reports invalid configuration keys only. Supported Argon2id v19 parameters are 19456–65536 KiB memory, 2–4 iterations, and parallelism 1–4; Bun's default hash parameters fit these bounds. The bounds reject malformed/weak configuration and limit verification resource usage. Bun supplies these password APIs directly. [Bun password documentation](https://bun.sh/docs/runtime/hashing#bunpassword).
 
-There is no runtime auth-off switch. Once implemented, browser login applies in development too. Database-only migration configuration does not need web-auth variables.
+Dotenv structure only (replace the salt and digest with those from your generated hash):
+
+```dotenv
+WEB_AUTH_PASSWORD_HASH='\$argon2id\$v=19\$m=65536,t=2,p=1\$<salt>\$<digest>'
+```
+
+There is no runtime auth-off switch. API startup requires browser auth configuration in development too. Database-only migration configuration does not need web-auth variables. The existing FE development proxy still injects the Agent key until the frontend stage is implemented, so ordinary local FE domain requests currently use Agent authentication.
 
 ### In-memory session record
 
@@ -72,7 +78,7 @@ type WebSessionStore = Map<string, WebSession>;
 
 `Lax` supports opening Hermes links from Telegram while the API still enforces write-origin checks. The server's expiration check is authoritative; browser `Max-Age` alone is insufficient. Use Hono's existing cookie helper to read, set, and delete cookies. The host-prefixed cookie requires HTTPS, path `/`, and no domain attribute. [Hono cookie helper](https://hono.dev/docs/helpers/cookie).
 
-For local HTTP development only, use `hermes_session` with `Secure=false` and the same remaining attributes. Local `WEB_AUTH_ORIGIN` is the frontend origin, normally `http://127.0.0.1:5173`. Cookie naming/security depends on validated runtime configuration, never an untrusted request header. Deletion must use the same name and path; include the appropriate secure flag.
+For local HTTP development only, use `hermes_session` with `Secure=false` and the same remaining attributes. Local `WEB_AUTH_ORIGIN` is the frontend origin, normally `http://127.0.0.1:5173`; HTTP is accepted only for `localhost`, `127.0.0.1`, or `[::1]` in development. HTTPS origins use the secure cookie in every environment. Cookie naming/security depends on the validated configured origin, never an untrusted request header. Deletion must use the same name and path and includes the appropriate secure flag, HttpOnly, and SameSite attributes.
 
 ## API contracts
 
@@ -172,7 +178,7 @@ The Origin comparison includes scheme, host, and port. Reject missing, `null`, m
 | `apps/api/src/modules/auth/auth.route.ts` | Mount three endpoints with relevant middleware and validators |
 | `apps/api/src/modules/auth/auth.types.ts` | Request, session, service, and dependency types; no user type |
 | `apps/api/src/app.ts` / `index.ts` | Create/inject one store and limiter, pass validated config, mount auth routes |
-| `.env.example` | Document auth settings once the implementation exists; no real credential values |
+| `.env.example` | Documents required auth settings with a rejected placeholder hash; no real credential values |
 
 There is no auth repository or migration because this feature does not access PostgreSQL. Auth operations stop at the service and the in-memory infrastructure. Existing domain requests preserve their complete database-layer boundary.
 
@@ -251,10 +257,10 @@ Detailed page behavior is in [Login screen specification](frontend-screens/auth.
 
 ## Implementation and verification
 
-1. Implement ENV validation, session store, and login limits with injected dependencies/clock; no new package or SQL migration.
-2. Implement auth routes and safe cookie/error handling, then extend centralized authentication and Origin checks. Preserve Agent contracts.
-3. Remove Vite bearer injection and implement auth API/context, protected layout, login, and logout.
-4. Verify the built frontend against the selected login mockup at desktop and mobile widths. Exercise the deployed same-origin proxy before publishing it.
+1. **Implemented:** ENV validation, bounded session store, and login limits with injected dependencies/clock; no new package or SQL migration.
+2. **Implemented:** auth routes, safe cookie/error handling, centralized bearer/session authentication, and Origin checks. Existing Agent contracts remain supported.
+3. **Pending frontend stage:** remove Vite bearer injection and implement auth API/context, protected layout, login, and logout together.
+4. **Pending frontend/deployment stage:** verify the built frontend against the selected login mockup at desktop/mobile widths and exercise the deployed same-origin proxy before publishing it.
 
 Meaningful automated coverage:
 
@@ -268,7 +274,7 @@ Meaningful automated coverage:
 | FE | Session bootstrap, direct-link return, safe redirect validation, no protected-query mount before check, wrong-password feedback, network retry, one transition on concurrent `401`, logout failure, disabled duplicate submit |
 | Deployment | Vite/production proxy forwards cookie without key injection, `/api` never returns SPA HTML, unauthenticated data access fails, API errors remain uncached, bundle contains no secrets |
 
-Run repository `bun run verify` and the frontend production build during implementation. Auth route/store tests can run without PostgreSQL using existing dependency-injection patterns.
+Run repository `bun run verify` for the backend stage and the frontend production build when integrating the frontend. Auth route/store tests run without PostgreSQL using injected dependencies. Native Argon2 verification is covered both in Hono request tests and a listening Bun server test that exercises login, protected access, logout, and rejected replay. Existing domain API tests now supply a test browser-auth configuration while continuing to exercise bearer authentication.
 
 ## Decisions to confirm
 
