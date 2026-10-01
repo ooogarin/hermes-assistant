@@ -83,5 +83,6 @@ The integration test helper resets its database schema before each test and acce
 
 - [Agent instructions](AGENTS.md)
 - [Engineering documentation](docs/README.md)
+- [Personal web authentication design (implementation pending)](docs/auth-design.md)
 - [Hermes Agent integration](docs/hermes-agent.md)
 - [Feature designs](docs/feature-docs/)

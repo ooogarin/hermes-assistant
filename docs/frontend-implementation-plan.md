@@ -62,7 +62,7 @@ Before implementing Finance, add a Finance screen specification using the templa
 - Browser-side financial totals, grading, learning evaluation, or other authoritative calculations.
 - Client-side filtering of a limited API result set presented as complete server-side filtering.
 - Browser-direct LLM calls or exposure of the internal API key.
-- Production deployment before user authentication or a backend-for-frontend boundary is designed.
+- Production deployment before the [personal web authentication boundary](auth-design.md) is implemented and verified.
 - Screens or controls backed only by mock records when their collection API is missing.
 
 ## 4. Technical direction
@@ -154,7 +154,7 @@ Deliverable: screen documentation that is sufficient to implement without invent
 2. Add the selected icon library.
 3. Add frontend test configuration.
 4. Establish feature and shared-code directories.
-5. Keep the current Vite proxy and verify that the internal API key remains server-side only.
+5. Keep the current Vite proxy for local development and verify that the internal API key remains server-side only. The planned [personal auth implementation](auth-design.md) removes bearer injection and forwards browser cookies instead.
 
 Proposed route tree:
 
@@ -302,7 +302,7 @@ Implement the following only after their missing contracts are designed and avai
 | Save General English response to Notes | Save/preview payload and confirmation contract missing |
 | Advanced Notes filters and sorting | Type, source, date-range, and sort API support missing |
 | Advanced Junk filters and sorting | Date-range and sort API support missing |
-| Production frontend access | User authentication or backend-for-frontend design missing |
+| Production frontend access | [Personal auth design](auth-design.md) proposed; API sessions/middleware, login/logout, removal of proxy bearer injection, and deployment verification still pending |
 | Ringkasan destination | Product content and data contract missing |
 
 ## 7. Testing and verification
@@ -355,7 +355,7 @@ Compare implemented screens with their visual references at minimum widths of ap
 | FE-09 | Reading known-code workflow |
 | FE-10 | Writing known-code workflow |
 | FE-11 | Grammar known-code workflow |
-| Later | Collection screens, General English, Ringkasan, and production authentication after backend design |
+| Later | Collection screens, General English, Ringkasan, and production authentication following the [personal auth design](auth-design.md) |
 
 Each work item should be independently reviewable, preserve unrelated changes, include proportionate tests, and update affected documentation when a behavior or contract decision changes.
 

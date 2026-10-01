@@ -22,6 +22,8 @@ The accepted visual direction is calm, spacious, and typography-led:
 
 ## 3. Application shell
 
+The planned [personal login screen](frontend-screens/auth.md) sits outside this shell. Once authentication is implemented, session validation gates shell/feature mounting, and a `Keluar` action appears in the sidebar footer and mobile drawer. Authentication is currently a design target; see [auth-design.md](auth-design.md) for the API enforcement boundary.
+
 Desktop uses a persistent left sidebar. It contains product-level destinations only; list, detail, settings, and report pages remain within each destination rather than becoming additional global navigation items.
 
 ```text

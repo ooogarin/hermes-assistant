@@ -16,7 +16,7 @@ Hermes is a Bun workspace. `apps/api` is a modular monolith with one Bun applica
 | Logging and code quality | LogTape and Biome |
 | Web frontend | React, Vite, and Tailwind CSS |
 
-ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, production frontend authentication, and MCP are deferred until a concrete need exists.
+ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. Personal web authentication now has a [proposed design](auth-design.md); implementation is still pending.
 
 ## Key decisions
 
@@ -67,7 +67,9 @@ Telegram topic → Hermes gateway → Hermes skill → authenticated REST reques
 
 No Telegram adapter, webhook, or scheduler runs inside this API.
 
-For local report development, browser requests use relative `/api` URLs. The Vite development server forwards them to the API and adds `Authorization: Bearer <INTERNAL_API_KEY>` from its server-side environment. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client. A production-facing frontend requires its own authentication or BFF design before deployment.
+For current local report development, browser requests use relative `/api` URLs. The Vite development server forwards them to the API and adds `Authorization: Bearer <INTERNAL_API_KEY>` from its server-side environment. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client.
+
+Before publishing the personal frontend, implement [Personal Web Authentication Design](auth-design.md): one static browser password hash in ENV, opaque HttpOnly cookie sessions held in one API process, and centralized session middleware alongside the existing Agent bearer authentication. No user table, RBAC, or auth migration is required. Browser write requests require an exact allowed Origin. Remove Vite bearer injection as part of that implementation so it cannot bypass browser login. Same-origin HTTPS hosting and one API instance are proposed deployment assumptions; the current runtime remains unsuitable for public frontend access until this boundary is implemented and verified.
 
 Liveness does not depend on PostgreSQL; readiness may use a lightweight database check.
 
@@ -131,5 +133,6 @@ For a workflow that needs a transaction, the service obtains a reserved connecti
 
 - Treat every request, including one from the Hermes Agent, as untrusted input.
 - Authenticate application routes with centralized API-key middleware; only explicit health endpoints are exempt.
+- The planned personal browser boundary is defined in [auth-design.md](auth-design.md). It adds cookie sessions, exact method/path exemptions for login/logout, browser-only session inspection, and Origin checks without changing the existing Agent credential or domain layer boundaries. These exceptions are not active in the current runtime.
 - Keep public errors safe and stable; internal detail belongs in logs only. The public envelope and status mapping are defined in the HTTP boundary above.
 - Validation, parameterized SQL, and logging rules are defined in [coding-conventions.md](coding-conventions.md).
