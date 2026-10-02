@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
-import { requireSession } from '../../modules/auth/auth.service';
-import { readSessionCookie } from '../auth/session-cookie';
+import { requireWebJwt } from '../../modules/auth/auth.service';
+import { readAuthCookie } from '../auth/auth-cookie';
 import { failureResponse } from '../http/response';
 import { createWebOriginMiddleware } from './web-origin';
 import type { MiddlewareHandler } from 'hono';
@@ -40,9 +40,9 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
       }
 
       const authorization = context.req.header('Authorization');
-      const isBrowserSessionEndpoint = path === '/api/v1/auth/session';
+      const isBrowserStatusEndpoint = path === '/api/v1/auth/status';
 
-      const usesAgentAuthorization = authorization !== undefined && !isBrowserSessionEndpoint;
+      const usesAgentAuthorization = authorization !== undefined && !isBrowserStatusEndpoint;
 
       if (usesAgentAuthorization) {
         const parsed = authorizationSchema.safeParse(authorization);
@@ -63,7 +63,7 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
         return;
       }
 
-      requireSession(resources, { token: readSessionCookie(context, resources.configuration) });
+      await requireWebJwt(resources, { token: readAuthCookie(context, resources.configuration) });
 
       if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
         await originMiddleware(context, next);

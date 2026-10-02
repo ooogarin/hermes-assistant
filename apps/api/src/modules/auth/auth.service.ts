@@ -1,10 +1,11 @@
+import { issueWebJwt, verifyWebJwt } from '../../core/auth/web-jwt';
 import { AppError } from '../../core/errors/app-error';
-import type { AuthResources, WebSession } from '../../core/auth/auth.types';
-import type { LoginRequest, LoginResponse, SessionRequest, SessionResponse } from './auth.types';
+import type { AuthResources, IssuedWebJwt } from '../../core/auth/auth.types';
+import type { AuthStatusResponse, JwtRequest, LoginRequest, LoginResponse } from './auth.types';
 
-const toSessionResponse = (session: WebSession): SessionResponse => ({
+const toAuthStatusResponse = (expiresAt: number): AuthStatusResponse => ({
   authenticated: true,
-  expires_at: new Date(session.expires_at).toISOString(),
+  expires_at: new Date(expiresAt).toISOString(),
 });
 
 export const login = async (resources: AuthResources, input: LoginRequest): Promise<LoginResponse> => {
@@ -20,26 +21,23 @@ export const login = async (resources: AuthResources, input: LoginRequest): Prom
     throw new AppError({ code: 'INVALID_CREDENTIALS', message: 'Invalid credentials', statusCode: 401 });
   }
 
-  const issued = resources.sessions.create();
+  let issued: IssuedWebJwt;
 
-  resources.sessions.revoke(input.previous_token);
+  try {
+    issued = await issueWebJwt(resources.configuration.jwt_secret, resources.now);
+  } catch {
+    throw new AppError({ code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable', statusCode: 503 });
+  }
 
-  return { token: issued.token, data: toSessionResponse(issued.session) };
+  return { token: issued.token, data: toAuthStatusResponse(issued.expires_at) };
 };
 
-export const requireSession = (resources: AuthResources, input: SessionRequest): WebSession => {
-  const session = resources.sessions.find(input.token);
+export const requireWebJwt = async (resources: AuthResources, input: JwtRequest): Promise<AuthStatusResponse> => {
+  const verified = await verifyWebJwt(input.token, resources.configuration.jwt_secret, resources.now);
 
-  if (session === undefined) {
+  if (verified === undefined) {
     throw new AppError({ code: 'UNAUTHENTICATED', message: 'Authentication required', statusCode: 401 });
   }
 
-  return session;
-};
-
-export const getSession = (resources: AuthResources, input: SessionRequest): SessionResponse =>
-  toSessionResponse(requireSession(resources, input));
-
-export const logout = (resources: AuthResources, input: SessionRequest): void => {
-  resources.sessions.revoke(input.token);
+  return toAuthStatusResponse(verified.expires_at);
 };

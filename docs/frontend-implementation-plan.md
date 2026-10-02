@@ -302,7 +302,7 @@ Implement the following only after their missing contracts are designed and avai
 | Save General English response to Notes | Save/preview payload and confirmation contract missing |
 | Advanced Notes filters and sorting | Type, source, date-range, and sort API support missing |
 | Advanced Junk filters and sorting | Date-range and sort API support missing |
-| Production frontend access | [Auth backend](auth-design.md) implemented; FE login/session/logout, removal of proxy bearer injection, and deployment verification still pending |
+| Production frontend access | [Auth backend](auth-design.md) implemented; FE login/status/logout, removal of proxy bearer injection, and deployment verification still pending |
 | Ringkasan destination | Product content and data contract missing |
 
 ## 7. Testing and verification

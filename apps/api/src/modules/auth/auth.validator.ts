@@ -5,7 +5,7 @@ export const loginBodySchema = z.strictObject(
   { error: 'Invalid login fields' },
 );
 
-export const sessionResponseSchema = z.strictObject({
+export const authStatusResponseSchema = z.strictObject({
   authenticated: z.literal(true),
   expires_at: z.iso.datetime(),
 });

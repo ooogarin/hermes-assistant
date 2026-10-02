@@ -2,13 +2,13 @@ import { expect, test } from 'bun:test';
 import { z } from 'zod';
 import { createApp } from '../src/app';
 import { successResponse } from '../src/core/http/response';
-import { sessionResponseSchema } from '../src/modules/auth/auth.validator';
+import { authStatusResponseSchema } from '../src/modules/auth/auth.validator';
 import { testWebAuth, testWebPassword } from './fixtures/auth';
 import type { CreateAppOptions } from '../src/app';
 
 const baseUrl = 'https://hermes.example.com';
 const initialTime = Date.parse('2026-10-01T12:00:00.000Z');
-const successEnvelopeSchema = z.strictObject({ success: z.literal(true), data: sessionResponseSchema });
+const successEnvelopeSchema = z.strictObject({ success: z.literal(true), data: authStatusResponseSchema });
 const errorEnvelopeSchema = z.strictObject({
   success: z.literal(false),
   error: z.strictObject({ code: z.string(), message: z.string(), details: z.unknown().nullable() }),
@@ -46,11 +46,14 @@ const sendLogin = (
 
 const cookieFrom = (response: Response): string => {
   const cookie = response.headers.get('Set-Cookie')?.split(';')[0];
-  if (cookie === undefined) throw new Error('Expected session cookie');
+  if (cookie === undefined) {
+    throw new Error('Expected auth cookie');
+  }
+
   return cookie;
 };
 
-test('authenticates with native Argon2 verification and returns only safe session metadata', async () => {
+test('authenticates with native Argon2 verification and returns only safe JWT metadata', async () => {
   const app = createAuthApp({ authDependencies: { verifyPassword: undefined } });
   const failed = await sendLogin(app, { password: 'wrong-test-password' });
   expect(failed.status).toBe(401);
@@ -61,19 +64,20 @@ test('authenticates with native Argon2 verification and returns only safe sessio
   expect(response.status).toBe(200);
   expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   const payload = successEnvelopeSchema.parse(await response.json());
-  expect(sessionResponseSchema.parse(payload.data)).toEqual({
+  expect(authStatusResponseSchema.parse(payload.data)).toEqual({
     authenticated: true,
-    expires_at: '2026-10-08T12:00:00.000Z',
+    expires_at: '2026-10-02T12:00:00.000Z',
   });
   const cookie = response.headers.get('Set-Cookie');
-  expect(cookie).toMatch(/^__Host-hermes_session=[A-Za-z0-9_-]{43};/);
-  for (const attribute of ['HttpOnly', 'Secure', 'SameSite=Lax', 'Path=/', 'Max-Age=604800']) {
+  expect(cookie).toMatch(/^__Host-hermes_auth=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+;/);
+  for (const attribute of ['HttpOnly', 'Secure', 'SameSite=Lax', 'Path=/', 'Max-Age=86400']) {
     expect(cookie).toContain(attribute);
   }
   expect(cookie).not.toContain('Domain=');
   expect(JSON.stringify(payload)).not.toContain(cookieFrom(response).split('=')[1]);
   expect(JSON.stringify(payload)).not.toContain(testWebPassword);
   expect(JSON.stringify(payload)).not.toContain(testWebAuth.password_hash);
+  expect(JSON.stringify(payload)).not.toContain(testWebAuth.jwt_secret);
 });
 
 test('preserves password whitespace instead of silently normalizing it', async () => {
@@ -90,18 +94,18 @@ test('uses an unprefixed cookie for local HTTP and deletes it with the same attr
   const app = createAuthApp({ webAuth: configuration });
   const response = await sendLogin(app, undefined, { Origin: configuration.origin });
   expect(response.status).toBe(200);
-  expect(cookieFrom(response)).toMatch(/^hermes_session=/);
+  expect(cookieFrom(response)).toMatch(/^hermes_auth=/);
   expect(response.headers.get('Set-Cookie')).not.toContain('Secure');
   const logout = await app.request(`${baseUrl}/api/v1/auth/logout`, {
     method: 'POST',
     headers: { Cookie: cookieFrom(response), Origin: configuration.origin },
   });
   expect(logout.status).toBe(204);
-  expect(logout.headers.get('Set-Cookie')).toContain('hermes_session=; Max-Age=0; Path=/');
+  expect(logout.headers.get('Set-Cookie')).toContain('hermes_auth=; Max-Age=0; Path=/');
   expect(logout.headers.get('Set-Cookie')).not.toContain('Secure');
 });
 
-test('requires valid browser sessions on domain reads and writes', async () => {
+test('requires a valid browser JWT on domain reads and writes', async () => {
   const app = createAuthApp();
   for (const method of ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']) {
     const anonymous = await app.request(`${baseUrl}/api/v1/protected`, { method });
@@ -119,25 +123,25 @@ test('requires valid browser sessions on domain reads and writes', async () => {
   }
 });
 
-test('session inspection requires a cookie and does not extend expiry', async () => {
+test('auth status requires a cookie and does not extend JWT expiry', async () => {
   let now = initialTime;
   const app = createAuthApp({ authDependencies: { now: () => now } });
-  const bearerOnly = await app.request(`${baseUrl}/api/v1/auth/session`, {
+  const bearerOnly = await app.request(`${baseUrl}/api/v1/auth/status`, {
     headers: { Authorization: 'Bearer test-api-key' },
   });
   expect(bearerOnly.status).toBe(401);
   const cookie = cookieFrom(await sendLogin(app));
   now += 60_000;
-  const response = await app.request(`${baseUrl}/api/v1/auth/session`, { headers: { Cookie: cookie } });
+  const response = await app.request(`${baseUrl}/api/v1/auth/status`, { headers: { Cookie: cookie } });
   expect(response.status).toBe(200);
-  expect(successEnvelopeSchema.parse(await response.json()).data.expires_at).toBe('2026-10-08T12:00:00.000Z');
+  expect(successEnvelopeSchema.parse(await response.json()).data.expires_at).toBe('2026-10-02T12:00:00.000Z');
   expect(response.headers.get('Set-Cookie')).toBeNull();
-  now = initialTime + 604_800_000;
-  expect((await app.request(`${baseUrl}/api/v1/auth/session`, { headers: { Cookie: cookie } })).status).toBe(401);
+  now = initialTime + 86_400_000;
+  expect((await app.request(`${baseUrl}/api/v1/auth/status`, { headers: { Cookie: cookie } })).status).toBe(401);
   expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: cookie } })).status).toBe(401);
 });
 
-test('logout revokes copied tokens and is idempotent when absent or expired', async () => {
+test('logout clears the cookie and is idempotent without server-side revocation', async () => {
   const app = createAuthApp();
   const cookie = cookieFrom(await sendLogin(app));
   const logout = await app.request(`${baseUrl}/api/v1/auth/logout`, {
@@ -148,11 +152,13 @@ test('logout revokes copied tokens and is idempotent when absent or expired', as
   expect(await logout.text()).toBe('');
   expect(logout.headers.get('Cache-Control')).toBe('private, no-store');
   const clearedCookie = logout.headers.get('Set-Cookie');
-  for (const attribute of ['__Host-hermes_session=', 'Max-Age=0', 'Path=/', 'HttpOnly', 'Secure', 'SameSite=Lax']) {
+  for (const attribute of ['__Host-hermes_auth=', 'Max-Age=0', 'Path=/', 'HttpOnly', 'Secure', 'SameSite=Lax']) {
     expect(clearedCookie).toContain(attribute);
   }
-  expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: cookie } })).status).toBe(401);
-  for (const rawCookie of [cookie, '__Host-hermes_session=%ZZ', '']) {
+  expect((await app.request(`${baseUrl}/api/v1/protected`)).status).toBe(401);
+  expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: cookie } })).status).toBe(200);
+
+  for (const rawCookie of [cookie, '__Host-hermes_auth=%ZZ', '']) {
     const repeated = await app.request(`${baseUrl}/api/v1/auth/logout`, {
       method: 'POST',
       headers: { Cookie: rawCookie, Origin: testWebAuth.origin },
@@ -161,14 +167,14 @@ test('logout revokes copied tokens and is idempotent when absent or expired', as
   }
 });
 
-test('a successful re-login replaces the old token but a wrong password preserves the session', async () => {
+test('re-login issues a new JWT while earlier JWTs remain valid until expiry', async () => {
   const app = createAuthApp();
   const oldCookie = cookieFrom(await sendLogin(app));
   expect((await sendLogin(app, { password: 'wrong' }, { Cookie: oldCookie })).status).toBe(401);
   expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: oldCookie } })).status).toBe(200);
   const newCookie = cookieFrom(await sendLogin(app, undefined, { Cookie: oldCookie }));
   expect(newCookie).not.toBe(oldCookie);
-  expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: oldCookie } })).status).toBe(401);
+  expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: oldCookie } })).status).toBe(200);
   expect((await app.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: newCookie } })).status).toBe(200);
 });
 
@@ -204,7 +210,7 @@ test('Agent bearer access still works without Origin while invalid bearer cannot
   for (const method of ['GET', 'POST', 'PATCH', 'DELETE']) {
     const response = await app.request(`${baseUrl}/api/v1/protected`, {
       method,
-      headers: { Authorization: 'Bearer test-api-key', Cookie: '__Host-hermes_session=invalid' },
+      headers: { Authorization: 'Bearer test-api-key', Cookie: '__Host-hermes_auth=invalid' },
     });
     expect(response.status).toBe(200);
   }
@@ -227,7 +233,7 @@ test('public exemptions are limited to the exact login/logout method and path', 
   for (const [path, method] of [
     ['/auth/login', 'GET'],
     ['/auth/logout', 'GET'],
-    ['/auth/session', 'POST'],
+    ['/auth/status', 'POST'],
     ['/auth/unknown', 'POST'],
     ['/auth/login/', 'POST'],
   ]) {
@@ -236,22 +242,26 @@ test('public exemptions are limited to the exact login/logout method and path', 
   for (const path of ['/health', '/health/ready']) expect((await app.request(`${baseUrl}${path}`)).status).toBe(200);
 });
 
-test('rejects malformed and unknown cookies safely and keeps app session state isolated', async () => {
+test('rejects malformed JWT cookies and accepts valid JWTs after an API restart', async () => {
   const app = createAuthApp();
   for (const rawCookie of [
-    '__Host-hermes_session=%ZZ',
-    '__Host-hermes_session="bad"',
-    `__Host-hermes_session=${'x'.repeat(43)}`,
-    'hermes_session=invalid',
+    '__Host-hermes_auth=%ZZ',
+    '__Host-hermes_auth="bad"',
+    `__Host-hermes_auth=${'x'.repeat(43)}`,
+    'hermes_auth=invalid',
+    '__Host-hermes_session=old-token',
     'unrelated=value',
   ]) {
-    const response = await app.request(`${baseUrl}/api/v1/auth/session`, { headers: { Cookie: rawCookie } });
+    const response = await app.request(`${baseUrl}/api/v1/auth/status`, { headers: { Cookie: rawCookie } });
     expect(response.status).toBe(401);
     expect((await readErrorEnvelope(response)).error.code).toBe('UNAUTHENTICATED');
   }
   const cookie = cookieFrom(await sendLogin(app));
   const restarted = createAuthApp();
-  expect((await restarted.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: cookie } })).status).toBe(401);
+  expect((await restarted.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: cookie } })).status).toBe(200);
+
+  const rotated = createAuthApp({ webAuth: { ...testWebAuth, jwt_secret: 'f'.repeat(64) } });
+  expect((await rotated.request(`${baseUrl}/api/v1/protected`, { headers: { Cookie: cookie } })).status).toBe(401);
 });
 
 test('validates strict login fields and malformed JSON before invoking password verification', async () => {
@@ -375,7 +385,7 @@ test('uncaches successful, unauthorized, forbidden, and unknown API responses', 
   const app = createAuthApp();
   const cookie = cookieFrom(await sendLogin(app));
   for (const [path, method, headers] of [
-    ['/api/v1/auth/session', 'GET', { Cookie: cookie }],
+    ['/api/v1/auth/status', 'GET', { Cookie: cookie }],
     ['/api/v1/protected', 'GET', {}],
     ['/api/v1/protected', 'POST', { Cookie: cookie }],
     ['/api/v1/unknown', 'GET', { Cookie: cookie }],
@@ -397,7 +407,7 @@ test('keeps authenticated API responses uncached even when a handler sets a cach
   expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 });
 
-test('handles login, authenticated access, and token revocation through a listening Bun server', async () => {
+test('handles login, authenticated access, and logout through a listening Bun server', async () => {
   const configuration = { ...testWebAuth, origin: 'http://127.0.0.1:5173', secure_cookie: false };
   const app = createAuthApp({ webAuth: configuration, authDependencies: { verifyPassword: undefined } });
   const server = Bun.serve({ hostname: '127.0.0.1', port: 0, fetch: app.fetch });
@@ -420,7 +430,7 @@ test('handles login, authenticated access, and token revocation through a listen
     });
     expect(logout.status).toBe(204);
     const replay = await fetch(new URL('/api/v1/protected', server.url), { headers: { Cookie: cookie } });
-    expect(replay.status).toBe(401);
+    expect(replay.status).toBe(200);
     await replay.arrayBuffer();
   } finally {
     await server.stop(true);

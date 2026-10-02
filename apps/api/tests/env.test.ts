@@ -11,6 +11,7 @@ const validEnvironment = {
   INTERNAL_API_KEY: validApiKey,
   WEB_AUTH_PASSWORD_HASH: testWebAuth.password_hash,
   WEB_AUTH_ORIGIN: testWebAuth.origin,
+  WEB_AUTH_JWT_SECRET: testWebAuth.jwt_secret,
 };
 
 test('loads validated environment with defaults', () => {
@@ -85,7 +86,13 @@ test('accepts a loopback HTTP origin only in development', () => {
 });
 
 test('rejects missing required settings without exposing configured values', () => {
-  for (const key of ['DATABASE_URL', 'INTERNAL_API_KEY', 'WEB_AUTH_PASSWORD_HASH', 'WEB_AUTH_ORIGIN']) {
+  for (const key of [
+    'DATABASE_URL',
+    'INTERNAL_API_KEY',
+    'WEB_AUTH_PASSWORD_HASH',
+    'WEB_AUTH_ORIGIN',
+    'WEB_AUTH_JWT_SECRET',
+  ]) {
     try {
       loadEnvironment({ ...validEnvironment, [key]: undefined });
       throw new Error('Expected invalid configuration');
@@ -94,6 +101,7 @@ test('rejects missing required settings without exposing configured values', () 
       expect((error as EnvironmentConfigurationError).invalidKeys).toContain(key);
       expect((error as Error).message).not.toContain(validApiKey);
       expect((error as Error).message).not.toContain(testWebAuth.password_hash);
+      expect((error as Error).message).not.toContain(testWebAuth.jwt_secret);
     }
   }
 });
@@ -130,14 +138,9 @@ test('requires an exact browser origin with no path, credentials, query, or frag
   }
 });
 
-test('supports a bounded configurable session lifetime', () => {
-  expect(
-    loadEnvironment({ ...validEnvironment, WEB_AUTH_SESSION_TTL_SECONDS: '300' }).webAuth.session_ttl_seconds,
-  ).toBe(300);
-  for (const ttl of ['', '0', '299', '604801', '1.5', 'not a number']) {
-    expect(() => loadEnvironment({ ...validEnvironment, WEB_AUTH_SESSION_TTL_SECONDS: ttl })).toThrow(
-      'WEB_AUTH_SESSION_TTL_SECONDS',
-    );
+test('requires a 32-byte JWT signing secret encoded as lowercase hex', () => {
+  for (const secret of ['', 'short', 'g'.repeat(64), 'A'.repeat(64), 'a'.repeat(63), 'a'.repeat(65)]) {
+    expect(() => loadEnvironment({ ...validEnvironment, WEB_AUTH_JWT_SECRET: secret })).toThrow('WEB_AUTH_JWT_SECRET');
   }
 });
 

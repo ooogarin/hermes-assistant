@@ -1,24 +1,13 @@
 export type WebAuthConfiguration = {
   password_hash: string;
   origin: string;
-  session_ttl_seconds: number;
+  jwt_secret: string;
   secure_cookie: boolean;
 };
 
-export type WebSession = {
-  issued_at: number;
-  expires_at: number;
-};
-
-export type IssuedWebSession = {
+export type IssuedWebJwt = {
   token: string;
-  session: WebSession;
-};
-
-export type WebSessionStore = {
-  create: () => IssuedWebSession;
-  find: (token: string | undefined) => WebSession | undefined;
-  revoke: (token: string | undefined) => void;
+  expires_at: number;
 };
 
 export type LoginLimiter = {
@@ -29,8 +18,8 @@ export type LoginLimiter = {
 
 export type AuthResources = {
   configuration: WebAuthConfiguration;
-  sessions: WebSessionStore;
   limiter: LoginLimiter;
+  now: () => number;
   verifyPassword: (password: string, hash: string) => Promise<boolean>;
 };
 
