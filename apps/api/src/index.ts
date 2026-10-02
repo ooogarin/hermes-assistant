@@ -50,11 +50,13 @@ const forceShutdown = async (): Promise<void> => {
 const shutdown = async (signal: 'SIGINT' | 'SIGTERM') => {
   if (isShuttingDown) {
     await forceShutdown();
+
     return;
   }
 
   isShuttingDown = true;
   appLogger.info('Shutting down application [signal={signal}]', { signal });
+
   const timeout = setTimeout(() => void forceShutdown(), shutdownTimeoutMs);
 
   try {

@@ -11,34 +11,50 @@ export const createSessionStore = (ttlSeconds: number, now: () => number = Date.
 
   const removeExpired = (currentTime: number): void => {
     for (const [key, session] of sessions) {
-      if (session.expires_at <= currentTime) sessions.delete(key);
+      if (session.expires_at <= currentTime) {
+        sessions.delete(key);
+      }
     }
   };
 
   return {
     create: () => {
       const currentTime = now();
+
       removeExpired(currentTime);
 
       if (sessions.size >= maximumSessions) {
         const oldestKey = sessions.keys().next().value;
-        if (oldestKey !== undefined) sessions.delete(oldestKey);
+
+        if (oldestKey !== undefined) {
+          sessions.delete(oldestKey);
+        }
       }
 
       const token = randomBytes(32).toString('base64url');
       const session = { issued_at: currentTime, expires_at: currentTime + ttlSeconds * 1_000 };
+
       sessions.set(digestToken(token), session);
+
       return { token, session: { ...session } };
     },
     find: (token) => {
       const parsedToken = sessionTokenSchema.safeParse(token);
-      if (!parsedToken.success) return undefined;
+
+      if (!parsedToken.success) {
+        return undefined;
+      }
 
       const key = digestToken(parsedToken.data);
       const session = sessions.get(key);
-      if (session === undefined) return undefined;
+
+      if (session === undefined) {
+        return undefined;
+      }
+
       if (session.expires_at <= now()) {
         sessions.delete(key);
+
         return undefined;
       }
 
@@ -46,7 +62,10 @@ export const createSessionStore = (ttlSeconds: number, now: () => number = Date.
     },
     revoke: (token) => {
       const parsedToken = sessionTokenSchema.safeParse(token);
-      if (parsedToken.success) sessions.delete(digestToken(parsedToken.data));
+
+      if (parsedToken.success) {
+        sessions.delete(digestToken(parsedToken.data));
+      }
     },
   };
 };

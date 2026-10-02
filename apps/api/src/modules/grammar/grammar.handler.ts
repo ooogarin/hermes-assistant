@@ -8,26 +8,13 @@ import {
   questionReferenceSchema,
   saveAnswerSchema,
   sessionCodeSchema,
-  updateSettingsSchema,
 } from './grammar.validator';
 import type { Context } from 'hono';
 import type { AppEnv } from '../../core/http/app-env';
 
-export const getSettings = async (context: Context<AppEnv>) => {
-  const result = await grammarService.getSettings();
-
-  return successResponse({ context, data: result });
-};
-
-export const updateSettings = async (context: Context<AppEnv>) => {
-  const input = getBody(context, updateSettingsSchema);
-  const result = await grammarService.updateSettings(input);
-
-  return successResponse({ context, data: result });
-};
-
 export const createSession = async (context: Context<AppEnv>) => {
   const input = getBody(context, createSessionSchema);
+
   const result = await grammarService.createSession(input);
 
   return successResponse({ context, data: result, statusCode: 201 });
@@ -35,6 +22,7 @@ export const createSession = async (context: Context<AppEnv>) => {
 
 export const listSessions = async (context: Context<AppEnv>) => {
   const query = getQuery(context, listSessionsSchema);
+
   const result = await grammarService.listSessions(query);
 
   return successResponse({ context, data: result });
@@ -42,6 +30,7 @@ export const listSessions = async (context: Context<AppEnv>) => {
 
 export const getSession = async (context: Context<AppEnv>) => {
   const params = getParam(context, sessionCodeSchema);
+
   const result = await grammarService.getSession(params.code);
 
   return successResponse({ context, data: result });
@@ -58,6 +47,7 @@ export const removeSession = async (context: Context<AppEnv>) => {
 export const saveAnswer = async (context: Context<AppEnv>) => {
   const params = getParam(context, questionReferenceSchema);
   const input = getBody(context, saveAnswerSchema);
+
   const result = await grammarService.saveAnswer(params.code, params.question_number, input);
 
   return successResponse({ context, data: result });
@@ -65,6 +55,7 @@ export const saveAnswer = async (context: Context<AppEnv>) => {
 
 export const getExplanation = async (context: Context<AppEnv>) => {
   const params = getParam(context, questionReferenceSchema);
+
   const result = await grammarService.getExplanation(params.code, params.question_number);
 
   return successResponse({ context, data: result });
@@ -73,6 +64,7 @@ export const getExplanation = async (context: Context<AppEnv>) => {
 export const evaluateSession = async (context: Context<AppEnv>) => {
   const params = getParam(context, sessionCodeSchema);
   const input = getBody(context, evaluateSessionSchema);
+
   const result = await grammarService.evaluateSession(params.code, input);
 
   return successResponse({ context, data: result });
@@ -80,6 +72,7 @@ export const evaluateSession = async (context: Context<AppEnv>) => {
 
 export const getReport = async (context: Context<AppEnv>) => {
   const params = getParam(context, sessionCodeSchema);
+
   const result = await grammarService.getReport(params.code);
 
   return successResponse({ context, data: result });

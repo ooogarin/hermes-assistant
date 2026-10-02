@@ -5,7 +5,6 @@ import type {
   materialCodeSchema,
   saveAnswersSchema,
   updateMaterialSchema,
-  updateSettingsSchema,
 } from './reading.validator';
 
 // ====================================================================================================
@@ -19,21 +18,11 @@ export type ReadingSource = 'cron' | 'request';
 export type CreateReadingMaterialRequest = z.infer<typeof createMaterialSchema>;
 export type ListReadingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
 export type SaveReadingAnswersRequest = z.infer<typeof saveAnswersSchema>;
-export type UpdateReadingSettingsRequest = z.infer<typeof updateSettingsSchema>;
 export type ReadingMaterialParams = z.infer<typeof materialCodeSchema>;
 
 // ====================================================================================================
 // Service operations
 // ====================================================================================================
-
-export type ReadingSettings = {
-  default_level: string;
-  default_word_count: number;
-  default_question_count: number;
-  min_word_count: number;
-  max_word_count: number;
-  updated_at: string;
-};
 
 export type ReadingQuestion = {
   question_number: number;
@@ -78,8 +67,6 @@ export type ReadingMaterialListItem = {
 export type ReadingMaterialList = { items: ReadingMaterialListItem[] };
 
 export type ReadingService = {
-  getSettings: () => Promise<ReadingSettings>;
-  updateSettings: (input: UpdateReadingSettingsRequest) => Promise<ReadingSettings>;
   createMaterial: (input: CreateReadingMaterialRequest) => Promise<ReadingMaterial>;
   listMaterials: (input: ListReadingMaterialsRequest) => Promise<ReadingMaterialList>;
   getMaterial: (code: string) => Promise<ReadingMaterial>;
@@ -114,14 +101,6 @@ export type SaveReadingAnswersPayload = {
   answers: Array<{ question_number: number; user_answer: string }>;
 };
 
-export type UpdateReadingSettingsPayload = {
-  default_level?: string;
-  default_word_count?: number;
-  default_question_count?: number;
-  min_word_count?: number;
-  max_word_count?: number;
-};
-
 // ====================================================================================================
 // Repository responses
 // ====================================================================================================
@@ -132,14 +111,6 @@ export type IdRow = {
 
 export type SequenceRow = {
   sequence: number;
-};
-export type ReadingSettingsRow = {
-  default_level: string;
-  default_word_count: number;
-  default_question_count: number;
-  min_word_count: number;
-  max_word_count: number;
-  updated_at: Date | string;
 };
 export type ReadingMaterialRow = {
   id: number;

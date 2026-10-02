@@ -31,19 +31,26 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
     try {
       const path = context.req.path;
       const method = context.req.method;
-      if (method === 'POST' && (path === '/api/v1/auth/login' || path === '/api/v1/auth/logout')) {
+      const isAuthCommand = method === 'POST' && (path === '/api/v1/auth/login' || path === '/api/v1/auth/logout');
+
+      if (isAuthCommand) {
         await next();
+
         return;
       }
 
       const authorization = context.req.header('Authorization');
       const isBrowserSessionEndpoint = path === '/api/v1/auth/session';
 
-      if (authorization !== undefined && !isBrowserSessionEndpoint) {
+      const usesAgentAuthorization = authorization !== undefined && !isBrowserSessionEndpoint;
+
+      if (usesAgentAuthorization) {
         const parsed = authorizationSchema.safeParse(authorization);
         const token = parsed.success ? parsed.data.slice('Bearer '.length) : undefined;
 
-        if (token === undefined || !hasMatchingToken(token, apiKey)) {
+        const isInvalidToken = token === undefined || !hasMatchingToken(token, apiKey);
+
+        if (isInvalidToken) {
           return failureResponse({
             context,
             error: { code: 'UNAUTHENTICATED', message: 'Authentication required', details: null },
@@ -52,14 +59,18 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
         }
 
         await next();
+
         return;
       }
 
       requireSession(resources, { token: readSessionCookie(context, resources.configuration) });
+
       if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
         await originMiddleware(context, next);
+
         return;
       }
+
       await next();
     } finally {
       context.header('Cache-Control', 'private, no-store');

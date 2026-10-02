@@ -21,47 +21,37 @@ import type {
   GrammarSessionListItem,
   GrammarSessionListRow,
   GrammarSessionRow,
-  GrammarSettings,
   ListGrammarSessionsQuery,
   ListGrammarSessionsRequest,
   SaveGrammarAnswerPayload,
   SaveGrammarAnswerRequest,
-  UpdateGrammarSettingsPayload,
-  UpdateGrammarSettingsRequest,
 } from './grammar.types';
-
-export const getSettings = async (): Promise<GrammarSettings> => {
-  return toGrammarSettings(await grammarRepository.getSettings());
-};
-
-export const updateSettings = async (input: UpdateGrammarSettingsRequest): Promise<GrammarSettings> => {
-  const payload: UpdateGrammarSettingsPayload = {
-    default_level: input.default_level,
-    daily_question_count: input.daily_question_count,
-  };
-
-  return toGrammarSettings(await grammarRepository.updateSettings(payload));
-};
 
 export const createSession = async (input: CreateGrammarSessionRequest): Promise<GrammarSession> => {
   let trx: DatabaseReservedConnection | undefined;
 
   try {
     const date = getJakartaDateCodeParts(new Date());
+
     trx = await startTransaction();
 
-    const sequenceRow = await grammarRepository.getNextSequence(trx, date.key, date.segment);
+    const sequenceRow = await grammarRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
+
     const code = formatPublicCode('GR', date.segment, sequenceRow.sequence + 1);
     const payload = toCreateGrammarSessionPayload(input);
-    const sessionId = await grammarRepository.insertSession(trx, code, payload);
-    await grammarRepository.insertQuestions(trx, sessionId.id, payload.questions);
-    const sessionRow = await grammarRepository.getSessionForUpdate(trx, code);
+
+    const sessionId = await grammarRepository.insertOne(code, payload, trx);
+
+    await grammarRepository.insertAllQuestions(sessionId.id, payload.questions, trx);
+
+    const sessionRow = await grammarRepository.getOneByCodeForUpdate(code, trx);
 
     if (sessionRow === null) {
       throw new Error('Grammar session creation did not return a session.');
     }
 
-    const questionRows = await grammarRepository.getQuestionsInTransaction(trx, sessionRow.id);
+    const questionRows = await grammarRepository.getAllQuestionsBySessionId(sessionRow.id, trx);
+
     const session = toGrammarSession(sessionRow, questionRows);
     const trxToCommit = trx;
     trx = undefined;
@@ -91,22 +81,21 @@ export const listSessions = async (input: ListGrammarSessionsRequest): Promise<G
     limit: input.limit,
     sort: input.sort,
   };
-  const [rows, count] = await Promise.all([
-    grammarRepository.listSessions(query),
-    grammarRepository.countSessions(query),
-  ]);
+
+  const [rows, count] = await Promise.all([grammarRepository.getAll(query), grammarRepository.countAll(query)]);
 
   return toGrammarSessionList(rows, count.total, input.page, input.limit);
 };
 
 export const getSession = async (code: string): Promise<GrammarSession> => {
-  const sessionRow = await grammarRepository.findSessionRow(code);
+  const sessionRow = await grammarRepository.getOneByCode(code);
 
   if (sessionRow === null) {
     throw sessionNotFound();
   }
 
-  const questionRows = await grammarRepository.getQuestions(sessionRow.id);
+  const questionRows = await grammarRepository.getAllQuestionsBySessionId(sessionRow.id);
+
   return toGrammarSession(sessionRow, questionRows);
 };
 
@@ -116,7 +105,7 @@ export const removeSession = async (code: string): Promise<void> => {
   try {
     trx = await startTransaction();
 
-    const deleted = await grammarRepository.softDeleteSession(trx, code);
+    const deleted = await grammarRepository.softDeleteOneByCode(code, trx);
 
     if (!deleted) {
       throw sessionNotFound();
@@ -148,19 +137,24 @@ export const saveAnswer = async (
   try {
     trx = await startTransaction();
 
-    const sessionRow = await getSessionForUpdate(trx, code);
-    const questionRows = await grammarRepository.getQuestionsInTransaction(trx, sessionRow.id);
+    const sessionRow = await getSessionForUpdate(code, trx);
+    const questionRows = await grammarRepository.getAllQuestionsBySessionId(sessionRow.id, trx);
+
     const session = toGrammarSession(sessionRow, questionRows);
 
     if (session.status !== 'active') {
       throw inactiveSession();
     }
 
-    if (session.mode === 'practice' && input.result === undefined) {
+    const requiresPracticeEvaluation = session.mode === 'practice' && input.result === undefined;
+
+    if (requiresPracticeEvaluation) {
       throw practiceEvaluationRequired();
     }
 
-    if (session.mode === 'exam' && input.result !== undefined) {
+    const hasPrematureExamEvaluation = session.mode === 'exam' && input.result !== undefined;
+
+    if (hasPrematureExamEvaluation) {
       throw examEvaluationDeferred();
     }
 
@@ -169,13 +163,15 @@ export const saveAnswer = async (
       result: input.result,
       feedback: input.feedback,
     };
-    const saved = await grammarRepository.upsertAnswer(trx, code, question_number, payload);
+
+    const saved = await grammarRepository.upsertOneAnswerByCodeAndQuestionNumber(code, question_number, payload, trx);
 
     if (!saved) {
       throw questionNotFound();
     }
 
-    const updatedQuestions = await grammarRepository.getQuestionsInTransaction(trx, sessionRow.id);
+    const updatedQuestions = await grammarRepository.getAllQuestionsBySessionId(sessionRow.id, trx);
+
     const updatedSession = toGrammarSession(sessionRow, updatedQuestions);
 
     const trxToCommit = trx;
@@ -197,7 +193,7 @@ export const saveAnswer = async (
 };
 
 export const getExplanation = async (code: string, question_number: number): Promise<GrammarExplanation> => {
-  const explanationRow = await grammarRepository.getExplanation(code, question_number);
+  const explanationRow = await grammarRepository.getOneExplanationByCodeAndQuestionNumber(code, question_number);
 
   if (explanationRow === null) {
     throw questionNotFound();
@@ -212,8 +208,9 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
   try {
     trx = await startTransaction();
 
-    const sessionRow = await getSessionForUpdate(trx, code);
-    const questionRows = await grammarRepository.getQuestionsInTransaction(trx, sessionRow.id);
+    const sessionRow = await getSessionForUpdate(code, trx);
+    const questionRows = await grammarRepository.getAllQuestionsBySessionId(sessionRow.id, trx);
+
     const session = toGrammarSession(sessionRow, questionRows);
 
     if (session.mode !== 'exam') {
@@ -225,6 +222,7 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
     }
 
     validateEvaluation(session, input);
+
     const payload: EvaluateGrammarSessionPayload = {
       answers: input.answers.map((answer) => ({
         question_number: answer.question_number,
@@ -232,10 +230,15 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
         feedback: answer.feedback ?? null,
       })),
     };
-    await grammarRepository.saveEvaluation(trx, code, payload);
+
+    await grammarRepository.updateAllAnswerEvaluationsByCode(code, payload, trx);
+
     const score = input.answers.filter((answer) => answer.result === 'correct').length;
-    await grammarRepository.completeSession(trx, code, score, session.question_count);
-    const reportRows = await grammarRepository.getReportInTransaction(trx, code);
+
+    await grammarRepository.updateOneCompletionByCode(code, score, session.question_count, trx);
+
+    const reportRows = await grammarRepository.getAllReportRowsByCode(code, trx);
+
     const report = toGrammarReport(reportRows);
     const trxToCommit = trx;
     trx = undefined;
@@ -256,13 +259,14 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
 };
 
 export const getReport = async (code: string): Promise<GrammarReport> => {
-  const sessionRow = await grammarRepository.findSessionRow(code);
+  const sessionRow = await grammarRepository.getOneByCode(code);
 
   if (sessionRow === null) {
     throw sessionNotFound();
   }
 
-  const reportRows = await grammarRepository.getReport(code);
+  const reportRows = await grammarRepository.getAllReportRowsByCode(code);
+
   return toGrammarReport(reportRows);
 };
 
@@ -290,20 +294,24 @@ const validateEvaluation = (session: GrammarSession, input: EvaluateGrammarSessi
   const questionNumbers = new Set(input.answers.map((answer) => answer.question_number));
   const expectedQuestionNumbers = new Set(session.questions.map((question) => question.question_number));
 
-  if (
-    questionNumbers.size !== session.question_count ||
-    [...expectedQuestionNumbers].some((question_number) => !questionNumbers.has(question_number))
-  ) {
+  const hasWrongQuestionCount = questionNumbers.size !== session.question_count;
+  const hasMissingQuestionNumbers = [...expectedQuestionNumbers].some(
+    (question_number) => !questionNumbers.has(question_number),
+  );
+
+  if (hasWrongQuestionCount || hasMissingQuestionNumbers) {
     throw incompleteEvaluation();
   }
 
-  if (session.questions.some((question) => question.answer === null)) {
+  const hasUnansweredQuestions = session.questions.some((question) => question.answer === null);
+
+  if (hasUnansweredQuestions) {
     throw unansweredQuestions();
   }
 };
 
-const getSessionForUpdate = async (trx: DatabaseReservedConnection, code: string): Promise<GrammarSessionRow> => {
-  const session = await grammarRepository.getSessionForUpdate(trx, code);
+const getSessionForUpdate = async (code: string, trx: DatabaseReservedConnection): Promise<GrammarSessionRow> => {
+  const session = await grammarRepository.getOneByCodeForUpdate(code, trx);
 
   if (session === null) {
     throw sessionNotFound();
@@ -311,16 +319,6 @@ const getSessionForUpdate = async (trx: DatabaseReservedConnection, code: string
 
   return session;
 };
-
-const toGrammarSettings = (row: {
-  default_level: string;
-  daily_question_count: number;
-  updated_at: Date | string;
-}): GrammarSettings => ({
-  default_level: row.default_level,
-  daily_question_count: row.daily_question_count,
-  updated_at: toIsoTimestamp(row.updated_at),
-});
 
 const toGrammarQuestion = (row: GrammarQuestionRow): GrammarQuestion => ({
   question_number: row.question_number,

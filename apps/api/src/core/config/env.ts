@@ -16,16 +16,25 @@ const passwordHashSchema = z
   .refine((value) => {
     const parameters =
       /^\$argon2id\$v=19\$m=(\d{1,6}),t=(\d),p=(\d)\$[A-Za-z0-9+/]{8,128}\$[A-Za-z0-9+/]{16,128}$/.exec(value);
-    if (parameters === null) return false;
+
+    if (parameters === null) {
+      return false;
+    }
+
     const memory = Number(parameters[1]);
     const iterations = Number(parameters[2]);
     const parallelism = Number(parameters[3]);
-    if (memory < 19_456 || memory > 65_536 || iterations < 2 || iterations > 4 || parallelism < 1 || parallelism > 4) {
+    const isMemoryOutOfRange = memory < 19_456 || memory > 65_536;
+    const areIterationsOutOfRange = iterations < 2 || iterations > 4;
+    const isParallelismOutOfRange = parallelism < 1 || parallelism > 4;
+
+    if (isMemoryOutOfRange || areIterationsOutOfRange || isParallelismOutOfRange) {
       return false;
     }
 
     try {
       Bun.password.verifySync('hermes-auth-configuration-check', value);
+
       return true;
     } catch {
       return false;
@@ -35,7 +44,12 @@ const passwordHashSchema = z
 const webOriginSchema = z.url().refine((value) => {
   try {
     const url = new URL(value);
-    if (url.origin !== value || url.username !== '' || url.password !== '') return false;
+    const hasInvalidOrigin = url.origin !== value || url.username !== '' || url.password !== '';
+
+    if (hasInvalidOrigin) {
+      return false;
+    }
+
     return (
       url.protocol === 'https:' ||
       (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
@@ -62,7 +76,10 @@ const environmentSchema = databaseEnvironmentSchema
     WEB_AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(604_800).default(604_800),
   })
   .superRefine((value, context) => {
-    if (value.NODE_ENV === 'production' && value.INTERNAL_API_KEY === placeholderInternalApiKey) {
+    const usesProductionPlaceholder =
+      value.NODE_ENV === 'production' && value.INTERNAL_API_KEY === placeholderInternalApiKey;
+
+    if (usesProductionPlaceholder) {
       context.addIssue({
         code: 'custom',
         message: 'The placeholder API key cannot be used in production.',
@@ -70,7 +87,9 @@ const environmentSchema = databaseEnvironmentSchema
       });
     }
 
-    if (value.NODE_ENV !== 'development' && !value.WEB_AUTH_ORIGIN.startsWith('https://')) {
+    const requiresHttpsOrigin = value.NODE_ENV !== 'development' && !value.WEB_AUTH_ORIGIN.startsWith('https://');
+
+    if (requiresHttpsOrigin) {
       context.addIssue({ code: 'custom', message: 'HTTPS is required.', path: ['WEB_AUTH_ORIGIN'] });
     }
   });

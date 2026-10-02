@@ -7,15 +7,14 @@ import {
   materialCodeSchema,
   saveAnswersSchema,
   updateMaterialSchema,
-  updateSettingsSchema,
 } from './reading.validator';
+import { createReadingSettingRoutes } from './reading-setting/reading-setting.route';
 import type { AppEnv } from '../../core/http/app-env';
 
 export const createReadingRoutes = () => {
   const route = new Hono<AppEnv>();
 
-  route.get('/settings', readingHandler.getSettings);
-  route.patch('/settings', appValidator('json', updateSettingsSchema), readingHandler.updateSettings);
+  route.route('/settings', createReadingSettingRoutes());
   route.post('/materials', appValidator('json', createMaterialSchema), readingHandler.createMaterial);
   route.get('/materials', appValidator('query', listMaterialsSchema), readingHandler.listMaterials);
   route.patch(

@@ -9,6 +9,7 @@ const toSessionResponse = (session: WebSession): SessionResponse => ({
 
 export const login = async (resources: AuthResources, input: LoginRequest): Promise<LoginResponse> => {
   let matches: boolean;
+
   try {
     matches = await resources.verifyPassword(input.password, resources.configuration.password_hash);
   } catch {
@@ -20,12 +21,15 @@ export const login = async (resources: AuthResources, input: LoginRequest): Prom
   }
 
   const issued = resources.sessions.create();
+
   resources.sessions.revoke(input.previous_token);
+
   return { token: issued.token, data: toSessionResponse(issued.session) };
 };
 
 export const requireSession = (resources: AuthResources, input: SessionRequest): WebSession => {
   const session = resources.sessions.find(input.token);
+
   if (session === undefined) {
     throw new AppError({ code: 'UNAUTHENTICATED', message: 'Authentication required', statusCode: 401 });
   }

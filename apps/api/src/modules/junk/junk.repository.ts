@@ -10,13 +10,14 @@ import type {
 
 const junkCodeLockNamespace = 271_828_182;
 
-export const getNextSequence = async (
-  trx: DatabaseReservedConnection,
+export const getLastSequenceByDateForUpdate = async (
   dateKey: number,
   dateSegment: string,
+  trx: DatabaseReservedConnection,
 ): Promise<JunkSequenceRow> => {
   await trx`
-    SELECT pg_advisory_xact_lock(${junkCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
+    SELECT
+      pg_advisory_xact_lock(${junkCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
 
   const [row] = await trx<JunkSequenceRow[]>`
@@ -25,6 +26,7 @@ export const getNextSequence = async (
     FROM junk_items
     WHERE code LIKE ${`JK-${dateSegment}-%`}
   `;
+
   if (row === undefined) {
     throw new Error('Junk sequence query did not return a row.');
   }
@@ -32,10 +34,10 @@ export const getNextSequence = async (
   return row;
 };
 
-export const insert = async (
-  trx: DatabaseReservedConnection,
+export const insertOne = async (
   code: string,
   input: CreateJunkPayload,
+  trx: DatabaseReservedConnection,
 ): Promise<JunkItemRow> => {
   const [row] = await trx<JunkItemRow[]>`
     INSERT INTO junk_items (
@@ -47,7 +49,8 @@ export const insert = async (
       source_url,
       source_name,
       tags
-    ) VALUES (
+    )
+    VALUES (
       ${code},
       ${input.title},
       ${input.category},
@@ -78,8 +81,10 @@ export const insert = async (
   return row;
 };
 
-export const findByCode = async (code: string): Promise<JunkItemRow | null> => {
-  const [row] = await getDatabaseClient()<JunkItemRow[]>`
+export const getOneByCode = async (code: string): Promise<JunkItemRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<JunkItemRow[]>`
     SELECT
       code,
       title,
@@ -109,6 +114,7 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   const source = input.source ?? null;
   const from = input.from ?? null;
   const to = input.to ?? null;
+
   const rows = await database<JunkItemRow[]>`
     SELECT
       code,
@@ -151,8 +157,9 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   return rows;
 };
 
-export const updateByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {
+export const updateOneByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {
   const database = getDatabaseClient();
+
   const [row] = await database<JunkItemRow[]>`
     UPDATE junk_items
     SET
@@ -182,15 +189,18 @@ export const updateByCode = async (code: string, input: UpdateJunkPayload): Prom
   return row === undefined ? null : row;
 };
 
-export const softDeleteByCode = async (code: string): Promise<{ code: string } | null> => {
-  const [row] = await getDatabaseClient()<{ code: string }[]>`
+export const softDeleteOneByCode = async (code: string): Promise<{ code: string } | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<{ code: string }[]>`
     UPDATE junk_items
     SET
       deleted_at = NOW(),
       updated_at = NOW()
     WHERE code = ${code}
       AND deleted_at IS NULL
-    RETURNING code
+    RETURNING
+      code
   `;
 
   return row ?? null;

@@ -6,7 +6,6 @@ import type {
   listMaterialsSchema,
   materialCodeSchema,
   submissionParamsSchema,
-  updateSettingsSchema,
 } from './writing.validator';
 
 // ====================================================================================================
@@ -16,7 +15,6 @@ import type {
 export type CreateWritingMaterialRequest = z.infer<typeof createMaterialSchema>;
 export type CreateWritingSubmissionRequest = z.infer<typeof createSubmissionSchema>;
 export type ListWritingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
-export type UpdateWritingSettingsRequest = z.infer<typeof updateSettingsSchema>;
 export type WritingMaterialParams = z.infer<typeof materialCodeSchema>;
 export type WritingSubmissionParams = z.infer<typeof submissionParamsSchema>;
 export type WritingSource = 'cron' | 'request';
@@ -25,14 +23,6 @@ export type WritingAnalysis = z.infer<typeof analysisSchema>;
 // ====================================================================================================
 // Service operations
 // ====================================================================================================
-
-export type WritingSettings = {
-  default_level: string;
-  default_word_count: number;
-  min_word_count: number;
-  max_word_count: number;
-  updated_at: string;
-};
 
 export type WritingMaterial = {
   code: string;
@@ -79,8 +69,6 @@ export type WritingPaginationMeta = {
   total_pages: number;
 };
 export type WritingService = {
-  getSettings: () => Promise<WritingSettings>;
-  updateSettings: (input: UpdateWritingSettingsRequest) => Promise<WritingSettings>;
   createMaterial: (input: CreateWritingMaterialRequest) => Promise<WritingMaterial>;
   listMaterials: (input: ListWritingMaterialsRequest) => Promise<WritingMaterialList>;
   getMaterial: (code: string) => Promise<WritingMaterial>;
@@ -124,24 +112,9 @@ export type ListWritingMaterialsQuery = {
   sort: 'newest' | 'oldest';
 };
 
-export type UpdateWritingSettingsPayload = {
-  default_level?: string;
-  default_word_count?: number;
-  min_word_count?: number;
-  max_word_count?: number;
-};
-
 // ====================================================================================================
 // Repository responses
 // ====================================================================================================
-
-export type WritingSettingsRow = {
-  default_level: string;
-  default_word_count: number;
-  min_word_count: number;
-  max_word_count: number;
-  updated_at: Date | string;
-};
 
 export type WritingSequenceRow = {
   sequence: number;

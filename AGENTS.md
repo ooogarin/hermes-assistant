@@ -17,6 +17,7 @@ If documents conflict, the newest explicit user decision wins. Update the affect
 - Validate every external input with Zod.
 - Never expose or log secrets, SQL internals, database details, or client-visible stack traces.
 - Preserve unrelated user changes and avoid unrelated refactors.
+- Always write simple, readable code: separate logical steps with blank lines, use braced control-flow blocks, and give intermediate operations and long conditions clear variable names. Follow the readability rules in `docs/coding-conventions.md`.
 
 ## Change workflow
 

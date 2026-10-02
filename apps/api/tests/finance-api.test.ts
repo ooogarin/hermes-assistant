@@ -1,21 +1,24 @@
+import type { FinanceCategoryService } from '../src/modules/finance/finance-category/finance-category.types';
+
+type FinanceApiService = FinanceService & FinanceCategoryService;
+
 import { expect, mock, test } from 'bun:test';
 import { AppError } from '../src/core/errors/app-error';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
 import { testWebAuth } from './fixtures/auth';
 import type {
-  Category,
   CreateTransactionsRequest,
   DailySummaryRequest,
   FinanceDailySummary,
   FinanceService,
   FinanceSummary,
   FinanceTransaction,
-  ListCategoriesRequest,
   ListTransactionsRequest,
   SummaryRequest,
   TransactionReferenceRequest,
   UpdateTransactionRequest,
 } from '../src/modules/finance/finance.types';
+import type { Category, ListCategoriesRequest } from '../src/modules/finance/finance-category/finance-category.types';
 
 const category: Category = {
   code: 'food_drink',
@@ -58,7 +61,7 @@ const dailySummary: FinanceDailySummary[] = [
   },
 ];
 
-const createFinanceServiceStub = (overrides: Partial<FinanceService> = {}): FinanceService => ({
+const createFinanceServiceStub = (overrides: Partial<FinanceApiService> = {}): FinanceApiService => ({
   createTransactions: async () => [trx],
   getTransaction: async () => trx,
   listTransactions: async () => [trx],
@@ -75,6 +78,10 @@ const createFinanceServiceStub = (overrides: Partial<FinanceService> = {}): Fina
 
 let activeFinanceService = createFinanceServiceStub();
 
+mock.module('../src/modules/finance/finance-category/finance-category.service', () => ({
+  listCategories: (input: ListCategoriesRequest) => activeFinanceService.listCategories(input),
+}));
+
 mock.module('../src/modules/finance/finance.service', () => ({
   createTransactions: (input: CreateTransactionsRequest) => activeFinanceService.createTransactions(input),
   getTransaction: (input: TransactionReferenceRequest) => activeFinanceService.getTransaction(input),
@@ -82,14 +89,13 @@ mock.module('../src/modules/finance/finance.service', () => ({
   updateTransaction: (reference: TransactionReferenceRequest, input: UpdateTransactionRequest) =>
     activeFinanceService.updateTransaction(reference, input),
   removeTransaction: (input: TransactionReferenceRequest) => activeFinanceService.removeTransaction(input),
-  listCategories: (input: ListCategoriesRequest) => activeFinanceService.listCategories(input),
   getSummary: (input: SummaryRequest) => activeFinanceService.getSummary(input),
   getDailySummary: (input: DailySummaryRequest) => activeFinanceService.getDailySummary(input),
 }));
 
 const { createApp } = await import('../src/app');
 
-const createFinanceApp = (overrides: Partial<FinanceService> = {}) => {
+const createFinanceApp = (overrides: Partial<FinanceApiService> = {}) => {
   activeFinanceService = createFinanceServiceStub(overrides);
 
   return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });

@@ -1,5 +1,5 @@
 import { getDatabaseClient } from '../../core/database/client';
-import type { DatabaseExecutor, DatabaseReservedConnection } from '../../core/database/database.types';
+import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
   CreateReadingMaterialPayload,
   IdRow,
@@ -8,73 +8,21 @@ import type {
   ReadingMaterialListRow,
   ReadingMaterialRow,
   ReadingQuestionWithAnswerRow,
-  ReadingSettingsRow,
   ReadingStatus,
   SaveReadingAnswersPayload,
   SequenceRow,
-  UpdateReadingSettingsPayload,
 } from './reading.types';
 
 const readingCodeLockNamespace = 141_421_356;
 
-export const getSettings = async (): Promise<ReadingSettingsRow> => {
-  const [row] = await getDatabaseClient()<ReadingSettingsRow[]>`
-    SELECT
-      default_level,
-      default_word_count,
-      default_question_count,
-      min_word_count,
-      max_word_count,
-      updated_at
-    FROM reading_settings
-    ORDER BY id ASC
-    LIMIT 1
-  `;
-
-  if (row === undefined) {
-    throw new Error('Reading settings are missing.');
-  }
-
-  return row;
-};
-
-export const updateSettings = async (input: UpdateReadingSettingsPayload): Promise<ReadingSettingsRow> => {
-  const [row] = await getDatabaseClient()<ReadingSettingsRow[]>`
-    UPDATE reading_settings
-    SET
-      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''} ELSE default_level END,
-      default_word_count = CASE
-        WHEN ${input.default_word_count !== undefined} THEN ${input.default_word_count ?? 0}
-        ELSE default_word_count
-      END,
-      min_word_count = CASE WHEN ${input.min_word_count !== undefined} THEN ${input.min_word_count ?? 0} ELSE min_word_count END,
-      max_word_count = CASE WHEN ${input.max_word_count !== undefined} THEN ${input.max_word_count ?? 0} ELSE max_word_count END,
-      default_question_count = COALESCE(${input.default_question_count ?? null}::INTEGER, default_question_count),
-      updated_at = NOW()
-    WHERE id = (SELECT id FROM reading_settings ORDER BY id ASC LIMIT 1)
-    RETURNING
-      default_level,
-      default_word_count,
-      default_question_count,
-      min_word_count,
-      max_word_count,
-      updated_at
-  `;
-
-  if (row === undefined) {
-    throw new Error('Reading settings are missing.');
-  }
-
-  return row;
-};
-
-export const getNextSequence = async (
-  trx: DatabaseReservedConnection,
+export const getLastSequenceByDateForUpdate = async (
   dateKey: number,
   dateSegment: string,
+  trx: DatabaseReservedConnection,
 ): Promise<SequenceRow> => {
   await trx`
-    SELECT pg_advisory_xact_lock(${readingCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
+    SELECT
+      pg_advisory_xact_lock(${readingCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
 
   const [row] = await trx<SequenceRow[]>`
@@ -91,12 +39,12 @@ export const getNextSequence = async (
   return row;
 };
 
-export const insertMaterial = async (
-  trx: DatabaseReservedConnection,
+export const insertOne = async (
   code: string,
   input: CreateReadingMaterialPayload,
   word_count: number,
   is_override: boolean,
+  trx: DatabaseReservedConnection,
 ): Promise<IdRow> => {
   const [material] = await trx<IdRow[]>`
     INSERT INTO reading_materials (
@@ -136,10 +84,10 @@ export const insertMaterial = async (
   return material;
 };
 
-export const insertQuestions = async (
-  trx: DatabaseReservedConnection,
+export const insertAllQuestions = async (
   materialId: number,
   questions: CreateReadingMaterialPayload['questions'],
+  trx: DatabaseReservedConnection,
 ): Promise<void> => {
   const questionNumbers = questions.map((question) => question.question_number);
   const questionTexts = questions.map((question) => question.question_text);
@@ -161,14 +109,20 @@ export const insertQuestions = async (
       ${trx.array(questionNumbers, 'INTEGER')},
       ${trx.array(questionTexts, 'TEXT')},
       ${trx.array(expectedAnswers, 'TEXT')}
-    ) AS payload(question_number, question_text, expected_answer)
+    ) AS payload(
+      question_number,
+      question_text,
+      expected_answer
+    )
   `;
 };
 
-const getQuestionsWithExecutor = async (
-  database: DatabaseExecutor,
+export const getAllQuestionsByMaterialId = async (
   materialId: number,
+  trx?: DatabaseReservedConnection,
 ): Promise<ReadingQuestionWithAnswerRow[]> => {
+  const database = trx ?? getDatabaseClient();
+
   return database<ReadingQuestionWithAnswerRow[]>`
     SELECT
       q.question_number,
@@ -178,14 +132,17 @@ const getQuestionsWithExecutor = async (
     LEFT JOIN reading_submissions s ON s.material_id = q.material_id AND s.deleted_at IS NULL
     LEFT JOIN reading_answers a ON a.submission_id = s.id AND a.question_id = q.id AND a.deleted_at IS NULL
     WHERE q.material_id = ${materialId} AND q.deleted_at IS NULL
-    ORDER BY q.question_number ASC
+    ORDER BY
+      q.question_number ASC
   `;
 };
 
-const findMaterialRowWithExecutor = async (
-  database: DatabaseExecutor,
+export const getOneByCode = async (
   code: string,
+  trx?: DatabaseReservedConnection,
 ): Promise<ReadingMaterialRow | null> => {
+  const database = trx ?? getDatabaseClient();
+
   const [material] = await database<ReadingMaterialRow[]>`
     SELECT
       id,
@@ -206,27 +163,25 @@ const findMaterialRowWithExecutor = async (
     FROM reading_materials
     WHERE code = ${code} AND deleted_at IS NULL
   `;
+
   return material ?? null;
 };
 
-export const findByCode = async (code: string): Promise<ReadingMaterialRow | null> => {
-  return findMaterialRowWithExecutor(getDatabaseClient(), code);
-};
-
-export const findByCodeInTransaction = async (
-  trx: DatabaseReservedConnection,
-  code: string,
-): Promise<ReadingMaterialRow | null> => {
-  return findMaterialRowWithExecutor(trx, code);
-};
-
-export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<ReadingMaterialListRow[]> => {
+export const getAll = async (input: ListReadingMaterialsQuery): Promise<ReadingMaterialListRow[]> => {
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
   const levels = input.levels ?? null;
+
   return database<ReadingMaterialListRow[]>`
-    SELECT code, title, LEFT(REGEXP_REPLACE(content_text, $$\\s+$$, ' ', 'g'), 200) AS content_excerpt,
-      genre, level, tags, reading_status, created_at
+    SELECT
+      code,
+      title,
+      LEFT(REGEXP_REPLACE(content_text, $$\\s+$$, ' ', 'g'), 200) AS content_excerpt,
+      genre,
+      level,
+      tags,
+      reading_status,
+      created_at
     FROM reading_materials
     WHERE deleted_at IS NULL
       AND (${searchPattern}::TEXT IS NULL OR title ILIKE ${searchPattern} OR genre ILIKE ${searchPattern}
@@ -243,51 +198,74 @@ export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<R
   `;
 };
 
-export const updateReadingStatus = async (code: string, status: ReadingStatus): Promise<IdRow | null> => {
-  const [row] = await getDatabaseClient()<IdRow[]>`
-    UPDATE reading_materials SET reading_status = ${status}, updated_at = NOW()
-    WHERE code = ${code} AND deleted_at IS NULL RETURNING id
+export const updateOneStatusByCode = async (code: string, status: ReadingStatus): Promise<IdRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<IdRow[]>`
+    UPDATE reading_materials
+    SET
+      reading_status = ${status},
+      updated_at = NOW()
+    WHERE code = ${code}
+      AND deleted_at IS NULL
+    RETURNING
+      id
   `;
+
   return row ?? null;
 };
 
-export const lockMaterial = async (trx: DatabaseReservedConnection, code: string): Promise<IdRow | null> => {
+export const getOneIdByCodeForUpdate = async (code: string, trx: DatabaseReservedConnection): Promise<IdRow | null> => {
   // Serialize edits to the same answer group and keep ownership validation inside the transaction.
   const [row] = await trx<IdRow[]>`
-    SELECT id FROM reading_materials WHERE code = ${code} AND deleted_at IS NULL FOR UPDATE
+    SELECT
+      id
+    FROM reading_materials
+    WHERE code = ${code}
+      AND deleted_at IS NULL
+    FOR UPDATE
   `;
+
   return row ?? null;
 };
 
-export const getQuestions = async (materialId: number): Promise<ReadingQuestionWithAnswerRow[]> => {
-  return getQuestionsWithExecutor(getDatabaseClient(), materialId);
-};
-
-export const getQuestionsInTransaction = async (
-  trx: DatabaseReservedConnection,
+export const upsertOneSubmissionByMaterialId = async (
   materialId: number,
-): Promise<ReadingQuestionWithAnswerRow[]> => {
-  return getQuestionsWithExecutor(trx, materialId);
-};
-
-export const upsertSubmission = async (trx: DatabaseReservedConnection, materialId: number): Promise<IdRow> => {
+  trx: DatabaseReservedConnection,
+): Promise<IdRow> => {
   const [row] = await trx<IdRow[]>`
-    INSERT INTO reading_submissions (material_id) VALUES (${materialId})
-    ON CONFLICT (material_id) WHERE deleted_at IS NULL DO UPDATE SET updated_at = NOW()
-    RETURNING id
+    INSERT INTO reading_submissions (
+      material_id
+    )
+    VALUES (
+      ${materialId}
+    )
+    ON CONFLICT (material_id) WHERE deleted_at IS NULL DO UPDATE
+    SET
+      updated_at = NOW()
+    RETURNING
+      id
   `;
-  if (row === undefined) throw new Error('Reading answer group was not returned.');
+
+  if (row === undefined) {
+    throw new Error('Reading answer group was not returned.');
+  }
+
   return row;
 };
 
-export const clearAnswers = async (
-  trx: DatabaseReservedConnection,
+export const softDeleteAllAnswersByMaterialIdAndQuestionNumbers = async (
   materialId: number,
   questionNumbers: number[],
+  trx: DatabaseReservedConnection,
 ): Promise<void> => {
   await trx`
-    UPDATE reading_answers a SET deleted_at = NOW(), updated_at = NOW()
-    FROM reading_questions q, reading_submissions s
+    UPDATE reading_answers a
+    SET
+      deleted_at = NOW(),
+      updated_at = NOW()
+    FROM reading_questions q,
+      reading_submissions s
     WHERE a.question_id = q.id AND a.submission_id = s.id
       AND q.material_id = ${materialId} AND s.material_id = ${materialId}
       AND q.question_number = ANY(${trx.array(questionNumbers, 'INTEGER')})
@@ -295,15 +273,22 @@ export const clearAnswers = async (
   `;
 };
 
-export const upsertAnswers = async (
-  trx: DatabaseReservedConnection,
+export const upsertAllAnswersByMaterialId = async (
   materialId: number,
   submissionId: number,
   input: SaveReadingAnswersPayload,
+  trx: DatabaseReservedConnection,
 ): Promise<void> => {
   await trx`
-    INSERT INTO reading_answers (submission_id, question_id, user_answer)
-    SELECT ${submissionId}, q.id, payload.user_answer
+    INSERT INTO reading_answers (
+      submission_id,
+      question_id,
+      user_answer
+    )
+    SELECT
+      ${submissionId},
+      q.id,
+      payload.user_answer
     FROM reading_questions q
     JOIN UNNEST(
       ${trx.array(
@@ -314,15 +299,23 @@ export const upsertAnswers = async (
         input.answers.map((answer) => answer.user_answer),
         'TEXT',
       )}
-    ) AS payload(question_number, user_answer) ON payload.question_number = q.question_number
+    ) AS payload(
+      question_number,
+      user_answer
+    ) ON payload.question_number = q.question_number
     WHERE q.material_id = ${materialId} AND q.deleted_at IS NULL
     ON CONFLICT (submission_id, question_id) DO UPDATE
-    SET user_answer = EXCLUDED.user_answer, deleted_at = NULL, updated_at = NOW()
+    SET
+      user_answer = EXCLUDED.user_answer,
+      deleted_at = NULL,
+      updated_at = NOW()
   `;
 };
 
-export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedAnswerRow[]> => {
-  return getDatabaseClient()<ReadingExpectedAnswerRow[]>`
+export const getAllExpectedAnswersByCode = async (code: string): Promise<ReadingExpectedAnswerRow[]> => {
+  const database = getDatabaseClient();
+
+  return database<ReadingExpectedAnswerRow[]>`
     SELECT
       q.question_number,
       q.question_text,
@@ -330,6 +323,7 @@ export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedA
     FROM reading_questions q
     JOIN reading_materials m ON m.id = q.material_id
     WHERE m.code = ${code} AND m.deleted_at IS NULL AND q.deleted_at IS NULL
-    ORDER BY q.question_number ASC
+    ORDER BY
+      q.question_number ASC
   `;
 };

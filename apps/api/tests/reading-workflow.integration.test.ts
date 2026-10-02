@@ -6,7 +6,8 @@ import { loadMigrations, migrateDatabase } from '../src/core/database/migration-
 import { testWebAuth } from './fixtures/auth';
 import { createTestDatabaseClient, hasTestDatabaseUrl, resetTestDatabase } from './helpers/database';
 import type { DatabaseClient } from '../src/core/database/database.types';
-import type { ReadingMaterial, ReadingMaterialList, ReadingSettings } from '../src/modules/reading/reading.types';
+import type { ReadingMaterial, ReadingMaterialList } from '../src/modules/reading/reading.types';
+import type { ReadingSettings } from '../src/modules/reading/reading-setting/reading-setting.types';
 
 const materialInput = {
   title: 'Remote work habits',

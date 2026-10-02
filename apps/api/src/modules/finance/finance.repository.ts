@@ -1,7 +1,6 @@
 import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CategoryRow,
   DailyNumberRow,
   FinanceDailySummaryQuery,
   FinanceDailySummaryRow,
@@ -14,42 +13,14 @@ import type {
   TransactionType,
 } from './finance.types';
 
-export const getActiveCategories = async (type?: TransactionType): Promise<CategoryRow[]> => {
-  const rows = await getDatabaseClient()<CategoryRow[]>`
+export const getLastDailyNumberByDateForUpdate = async (
+  date: string,
+  trx: DatabaseReservedConnection,
+): Promise<DailyNumberRow> => {
+  await trx`
     SELECT
-      id,
-      code,
-      name,
-      description,
-      type
-    FROM categories
-    WHERE is_active = TRUE
-      AND (${type ?? null}::transaction_type IS NULL OR type = ${type ?? null}::transaction_type)
-    ORDER BY name ASC, code ASC
+      pg_advisory_xact_lock(hashtext(${date}))
   `;
-
-  return rows;
-};
-
-export const getActiveCategoriesByCodes = async (codes: string[], type: TransactionType): Promise<CategoryRow[]> => {
-  const database = getDatabaseClient();
-
-  return database<CategoryRow[]>`
-    SELECT
-      id,
-      code,
-      name,
-      description,
-      type
-    FROM categories
-    WHERE is_active = TRUE
-      AND type = ${type}::transaction_type
-      AND code = ANY(${database.array(codes, 'TEXT')})
-  `;
-};
-
-export const getNextDailyNumber = async (trx: DatabaseReservedConnection, date: string): Promise<DailyNumberRow> => {
-  await trx`SELECT pg_advisory_xact_lock(hashtext(${date}))`;
 
   const [row] = await trx<DailyNumberRow[]>`
     SELECT
@@ -65,13 +36,13 @@ export const getNextDailyNumber = async (trx: DatabaseReservedConnection, date: 
   return row;
 };
 
-export const insertBatch = async (
-  trx: DatabaseReservedConnection,
+export const insertAll = async (
   batchId: string,
   date: string,
   type: TransactionType,
   raw_text: string,
   payloads: FinanceTransactionInsertPayload[],
+  trx: DatabaseReservedConnection,
 ): Promise<FinanceTransactionRow[]> => {
   const amounts = payloads.map((payload) => payload.amount);
   const categoryIds = payloads.map((payload) => payload.category_id);
@@ -79,6 +50,7 @@ export const insertBatch = async (
   const names = payloads.map((payload) => payload.name);
   const locations = payloads.map((payload) => payload.location);
   const notes = payloads.map((payload) => payload.note);
+
   const rows = await trx<FinanceTransactionRow[]>`
     WITH inserted AS (
       INSERT INTO transactions (
@@ -111,7 +83,14 @@ export const insertBatch = async (
         ${trx.array(names, 'TEXT')},
         ${trx.array(locations, 'TEXT')},
         ${trx.array(notes, 'TEXT')}
-      ) AS payload(amount, category_id, daily_number, name, location, note)
+      ) AS payload(
+        amount,
+        category_id,
+        daily_number,
+        name,
+        location,
+        note
+      )
       RETURNING
         id,
         daily_number,
@@ -131,11 +110,15 @@ export const insertBatch = async (
         id,
         (
           (
-            SELECT COUNT(*)
+            SELECT
+              COUNT(*)
             FROM transactions
             WHERE date = ${date}::DATE
               AND deleted_at IS NULL
-          ) + ROW_NUMBER() OVER (ORDER BY id)
+          ) + ROW_NUMBER() OVER (
+            ORDER BY
+              id
+          )
         )::INTEGER AS display_number
       FROM inserted
     )
@@ -159,18 +142,38 @@ export const insertBatch = async (
     FROM inserted
     JOIN numbered ON numbered.id = inserted.id
     JOIN categories ON categories.id = inserted.category_id
-    ORDER BY inserted.id ASC
+    ORDER BY
+      inserted.id ASC
   `;
 
   return rows;
 };
 
-export const findByReference = async (date: string, daily_number: number): Promise<FinanceTransactionRow | null> => {
-  const [row] = await getDatabaseClient()<FinanceTransactionRow[]>`
+export const getOneByDateAndDailyNumber = async (
+  date: string,
+  daily_number: number,
+): Promise<FinanceTransactionRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<FinanceTransactionRow[]>`
     WITH numbered AS (
       SELECT
-        transactions.*,
-        ROW_NUMBER() OVER (ORDER BY id)::INTEGER AS display_number
+        transactions.id,
+        transactions.daily_number,
+        transactions.type,
+        transactions.amount,
+        transactions.name,
+        transactions.location,
+        transactions.note,
+        transactions.date,
+        transactions.raw_text,
+        transactions.category_id,
+        transactions.created_at,
+        transactions.updated_at,
+        ROW_NUMBER() OVER (
+          ORDER BY
+            id
+        )::INTEGER AS display_number
       FROM transactions
       WHERE date = ${date}::DATE
         AND deleted_at IS NULL
@@ -201,11 +204,16 @@ export const findByReference = async (date: string, daily_number: number): Promi
 };
 
 export const getAllByDate = async (date: string): Promise<FinanceTransactionRow[]> => {
-  const rows = await getDatabaseClient()<FinanceTransactionRow[]>`
+  const database = getDatabaseClient();
+
+  const rows = await database<FinanceTransactionRow[]>`
     SELECT
       transactions.id,
       transactions.daily_number,
-      ROW_NUMBER() OVER (ORDER BY transactions.id)::INTEGER AS display_number,
+      ROW_NUMBER() OVER (
+        ORDER BY
+          transactions.id
+      )::INTEGER AS display_number,
       transactions.type,
       transactions.amount,
       transactions.name,
@@ -223,18 +231,20 @@ export const getAllByDate = async (date: string): Promise<FinanceTransactionRow[
     JOIN categories ON categories.id = transactions.category_id
     WHERE transactions.date = ${date}::DATE
       AND transactions.deleted_at IS NULL
-    ORDER BY transactions.id ASC
+    ORDER BY
+      transactions.id ASC
   `;
 
   return rows;
 };
 
-export const updateByReference = async (
+export const updateOneByDateAndDailyNumber = async (
   date: string,
   daily_number: number,
   input: FinanceTransactionUpdatePayload,
 ): Promise<FinanceTransactionRow | null> => {
   const database = getDatabaseClient();
+
   const [row] = await database<FinanceTransactionRow[]>`
     WITH updated AS (
       UPDATE transactions
@@ -264,7 +274,10 @@ export const updateByReference = async (
     ), numbered AS (
       SELECT
         id,
-        ROW_NUMBER() OVER (ORDER BY id)::INTEGER AS display_number
+        ROW_NUMBER() OVER (
+          ORDER BY
+            id
+        )::INTEGER AS display_number
       FROM transactions
       WHERE date = ${date}::DATE
         AND deleted_at IS NULL
@@ -294,8 +307,13 @@ export const updateByReference = async (
   return row === undefined ? null : row;
 };
 
-export const softDeleteByReference = async (date: string, daily_number: number): Promise<{ id: number } | null> => {
-  const [row] = await getDatabaseClient()<{ id: number }[]>`
+export const softDeleteOneByDateAndDailyNumber = async (
+  date: string,
+  daily_number: number,
+): Promise<{ id: number } | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<{ id: number }[]>`
     UPDATE transactions
     SET
       deleted_at = NOW(),
@@ -303,18 +321,21 @@ export const softDeleteByReference = async (date: string, daily_number: number):
     WHERE date = ${date}::DATE
       AND daily_number = ${daily_number}
       AND deleted_at IS NULL
-    RETURNING id
+    RETURNING
+      id
   `;
 
   return row ?? null;
 };
 
-export const getSummaryTotals = async (
+export const getOneSummaryByDateRange = async (
   from: string,
   to: string,
   mode: SummaryMode,
 ): Promise<FinanceSummaryTotalsRow> => {
-  const [row] = await getDatabaseClient()<FinanceSummaryTotalsRow[]>`
+  const database = getDatabaseClient();
+
+  const [row] = await database<FinanceSummaryTotalsRow[]>`
     SELECT
       COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS expense_total,
       COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) AS income_total
@@ -331,12 +352,14 @@ export const getSummaryTotals = async (
   return row;
 };
 
-export const getSummaryByCategory = async (
+export const getAllCategorySummariesByDateRange = async (
   from: string,
   to: string,
   mode: SummaryMode,
 ): Promise<FinanceSummaryCategoryRow[]> => {
-  return getDatabaseClient()<FinanceSummaryCategoryRow[]>`
+  const database = getDatabaseClient();
+
+  return database<FinanceSummaryCategoryRow[]>`
     SELECT
       categories.code AS category_code,
       categories.name AS category_name,
@@ -348,13 +371,20 @@ export const getSummaryByCategory = async (
     WHERE transactions.date BETWEEN ${from}::DATE AND ${to}::DATE
       AND transactions.deleted_at IS NULL
       AND (${mode} = 'net' OR transactions.type::TEXT = ${mode})
-    GROUP BY categories.id
-    ORDER BY total DESC, categories.name ASC
+    GROUP BY
+      categories.id
+    ORDER BY
+      total DESC,
+      categories.name ASC
   `;
 };
 
-export const getDailySummary = async (input: FinanceDailySummaryQuery): Promise<FinanceDailySummaryRow[]> => {
-  return getDatabaseClient()<FinanceDailySummaryRow[]>`
+export const getAllDailySummariesByDateRange = async (
+  input: FinanceDailySummaryQuery,
+): Promise<FinanceDailySummaryRow[]> => {
+  const database = getDatabaseClient();
+
+  return database<FinanceDailySummaryRow[]>`
     SELECT
       date,
       COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS expense_total,
@@ -364,7 +394,9 @@ export const getDailySummary = async (input: FinanceDailySummaryQuery): Promise<
     FROM transactions
     WHERE date BETWEEN ${input.from}::DATE AND ${input.to}::DATE
       AND deleted_at IS NULL
-    GROUP BY date
-    ORDER BY date ASC
+    GROUP BY
+      date
+    ORDER BY
+      date ASC
   `;
 };

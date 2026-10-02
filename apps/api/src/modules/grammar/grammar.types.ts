@@ -6,7 +6,6 @@ import type {
   questionReferenceSchema,
   saveAnswerSchema,
   sessionCodeSchema,
-  updateSettingsSchema,
 } from './grammar.validator';
 
 // ====================================================================================================
@@ -22,19 +21,12 @@ export type CreateGrammarSessionRequest = z.infer<typeof createSessionSchema>;
 export type SaveGrammarAnswerRequest = z.infer<typeof saveAnswerSchema>;
 export type EvaluateGrammarSessionRequest = z.infer<typeof evaluateSessionSchema>;
 export type ListGrammarSessionsRequest = z.infer<typeof listSessionsSchema>;
-export type UpdateGrammarSettingsRequest = z.infer<typeof updateSettingsSchema>;
 export type GrammarSessionParams = z.infer<typeof sessionCodeSchema>;
 export type GrammarQuestionParams = z.infer<typeof questionReferenceSchema>;
 
 // ====================================================================================================
 // Service operations
 // ====================================================================================================
-
-export type GrammarSettings = {
-  default_level: string;
-  daily_question_count: number;
-  updated_at: string;
-};
 
 export type GrammarQuestion = {
   question_number: number;
@@ -118,8 +110,6 @@ export type GrammarReport = {
 };
 
 export type GrammarService = {
-  getSettings: () => Promise<GrammarSettings>;
-  updateSettings: (input: UpdateGrammarSettingsRequest) => Promise<GrammarSettings>;
   createSession: (input: CreateGrammarSessionRequest) => Promise<GrammarSession>;
   listSessions: (input: ListGrammarSessionsRequest) => Promise<GrammarSessionList>;
   getSession: (code: string) => Promise<GrammarSession>;
@@ -162,11 +152,6 @@ export type EvaluateGrammarSessionPayload = {
     result: GrammarAnswerResult;
     feedback: string | null;
   }>;
-};
-
-export type UpdateGrammarSettingsPayload = {
-  default_level?: string;
-  daily_question_count?: number;
 };
 
 export type ListGrammarSessionsQuery = {
@@ -223,12 +208,6 @@ export type GrammarSessionListRow = {
 
 export type GrammarCountRow = {
   total: number | string;
-};
-
-export type GrammarSettingsRow = {
-  default_level: string;
-  daily_question_count: number;
-  updated_at: Date | string;
 };
 
 export type GrammarQuestionRow = {

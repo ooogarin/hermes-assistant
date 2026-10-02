@@ -1,5 +1,5 @@
 import { getDatabaseClient } from '../../core/database/client';
-import type { DatabaseExecutor, DatabaseReservedConnection } from '../../core/database/database.types';
+import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
   CreateGrammarSessionPayload,
   EvaluateGrammarSessionPayload,
@@ -9,65 +9,22 @@ import type {
   GrammarReportRow,
   GrammarSessionListRow,
   GrammarSessionRow,
-  GrammarSettingsRow,
   IdRow,
   ListGrammarSessionsQuery,
   SaveGrammarAnswerPayload,
   SequenceRow,
-  UpdateGrammarSettingsPayload,
 } from './grammar.types';
 
 const grammarCodeLockNamespace = 161_803_398;
 
-export const getSettings = async (): Promise<GrammarSettingsRow> => {
-  const [row] = await getDatabaseClient()<GrammarSettingsRow[]>`
-    SELECT
-      default_level,
-      daily_question_count,
-      updated_at
-    FROM grammar_settings
-    ORDER BY id ASC
-    LIMIT 1
-  `;
-
-  if (row === undefined) {
-    throw new Error('Grammar settings are missing.');
-  }
-
-  return row;
-};
-
-export const updateSettings = async (input: UpdateGrammarSettingsPayload): Promise<GrammarSettingsRow> => {
-  const [row] = await getDatabaseClient()<GrammarSettingsRow[]>`
-    UPDATE grammar_settings
-    SET
-      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''} ELSE default_level END,
-      daily_question_count = CASE
-        WHEN ${input.daily_question_count !== undefined} THEN ${input.daily_question_count ?? 0}
-        ELSE daily_question_count
-      END,
-      updated_at = NOW()
-    WHERE id = (SELECT id FROM grammar_settings ORDER BY id ASC LIMIT 1)
-    RETURNING
-      default_level,
-      daily_question_count,
-      updated_at
-  `;
-
-  if (row === undefined) {
-    throw new Error('Grammar settings are missing.');
-  }
-
-  return row;
-};
-
-export const getNextSequence = async (
-  trx: DatabaseReservedConnection,
+export const getLastSequenceByDateForUpdate = async (
   dateKey: number,
   dateSegment: string,
+  trx: DatabaseReservedConnection,
 ): Promise<SequenceRow> => {
   await trx`
-    SELECT pg_advisory_xact_lock(${grammarCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
+    SELECT
+      pg_advisory_xact_lock(${grammarCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
 
   const [row] = await trx<SequenceRow[]>`
@@ -84,13 +41,19 @@ export const getNextSequence = async (
   return row;
 };
 
-export const insertSession = async (
-  trx: DatabaseReservedConnection,
+export const insertOne = async (
   code: string,
   input: CreateGrammarSessionPayload,
+  trx: DatabaseReservedConnection,
 ): Promise<IdRow> => {
   const [session] = await trx<IdRow[]>`
-    INSERT INTO grammar_sessions (code, mode, source, level, question_count)
+    INSERT INTO grammar_sessions (
+      code,
+      mode,
+      source,
+      level,
+      question_count
+    )
     VALUES (
       ${code},
       ${input.mode}::grammar_mode,
@@ -98,7 +61,8 @@ export const insertSession = async (
       ${input.level},
       ${input.questions.length}
     )
-    RETURNING id
+    RETURNING
+      id
   `;
 
   if (session === undefined) {
@@ -108,10 +72,10 @@ export const insertSession = async (
   return session;
 };
 
-export const insertQuestions = async (
-  trx: DatabaseReservedConnection,
+export const insertAllQuestions = async (
   sessionId: number,
   questions: CreateGrammarSessionPayload['questions'],
+  trx: DatabaseReservedConnection,
 ): Promise<void> => {
   const questionNumbers = questions.map((question) => question.question_number);
   const questionTypes = questions.map((question) => question.question_type);
@@ -166,8 +130,10 @@ export const insertQuestions = async (
   `;
 };
 
-export const findSessionRow = async (code: string): Promise<GrammarSessionRow | null> => {
-  const [row] = await getDatabaseClient()<GrammarSessionRow[]>`
+export const getOneByCode = async (code: string): Promise<GrammarSessionRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<GrammarSessionRow[]>`
     SELECT
       id,
       code,
@@ -188,7 +154,7 @@ export const findSessionRow = async (code: string): Promise<GrammarSessionRow | 
   return row ?? null;
 };
 
-export const listSessions = async (input: ListGrammarSessionsQuery): Promise<GrammarSessionListRow[]> => {
+export const getAll = async (input: ListGrammarSessionsQuery): Promise<GrammarSessionListRow[]> => {
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
   const offset = (input.page - 1) * input.limit;
@@ -210,7 +176,8 @@ export const listSessions = async (input: ListGrammarSessionsQuery): Promise<Gra
         focus.grammar_area,
         focus.grammar_point,
         (
-          SELECT COUNT(*)::INTEGER
+          SELECT
+            COUNT(*)::INTEGER
           FROM grammar_answers
           JOIN grammar_questions ON grammar_questions.id = grammar_answers.question_id
           WHERE grammar_questions.session_id = grammar_sessions.id
@@ -225,7 +192,8 @@ export const listSessions = async (input: ListGrammarSessionsQuery): Promise<Gra
         FROM grammar_questions
         WHERE grammar_questions.session_id = grammar_sessions.id
           AND grammar_questions.deleted_at IS NULL
-        ORDER BY grammar_questions.question_number ASC
+        ORDER BY
+          grammar_questions.question_number ASC
         LIMIT 1
       ) AS focus ON TRUE
       WHERE grammar_sessions.deleted_at IS NULL
@@ -248,7 +216,8 @@ export const listSessions = async (input: ListGrammarSessionsQuery): Promise<Gra
     WHERE (${searchPattern}::TEXT IS NULL
       OR code ILIKE ${searchPattern}
       OR EXISTS (
-        SELECT 1
+        SELECT
+          1
         FROM grammar_questions
         WHERE grammar_questions.session_id = session_summary.id
           AND grammar_questions.deleted_at IS NULL
@@ -271,17 +240,20 @@ export const listSessions = async (input: ListGrammarSessionsQuery): Promise<Gra
   `;
 };
 
-export const countSessions = async (input: ListGrammarSessionsQuery): Promise<GrammarCountRow> => {
+export const countAll = async (input: ListGrammarSessionsQuery): Promise<GrammarCountRow> => {
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
+
   const [row] = await database<GrammarCountRow[]>`
-    SELECT COUNT(*)::INTEGER AS total
+    SELECT
+      COUNT(*)::INTEGER AS total
     FROM grammar_sessions
     WHERE grammar_sessions.deleted_at IS NULL
       AND (${searchPattern}::TEXT IS NULL
         OR grammar_sessions.code ILIKE ${searchPattern}
         OR EXISTS (
-          SELECT 1
+          SELECT
+            1
           FROM grammar_questions
           WHERE grammar_questions.session_id = grammar_sessions.id
             AND grammar_questions.deleted_at IS NULL
@@ -303,10 +275,12 @@ export const countSessions = async (input: ListGrammarSessionsQuery): Promise<Gr
   return row;
 };
 
-const getQuestionsWithExecutor = async (
-  database: DatabaseExecutor,
+export const getAllQuestionsBySessionId = async (
   sessionId: number,
+  trx?: DatabaseReservedConnection,
 ): Promise<GrammarQuestionRow[]> => {
+  const database = trx ?? getDatabaseClient();
+
   return database<GrammarQuestionRow[]>`
     SELECT
       grammar_questions.id,
@@ -325,24 +299,14 @@ const getQuestionsWithExecutor = async (
     LEFT JOIN grammar_answers ON grammar_answers.question_id = grammar_questions.id AND grammar_answers.deleted_at IS NULL
     WHERE grammar_questions.session_id = ${sessionId}
       AND grammar_questions.deleted_at IS NULL
-    ORDER BY grammar_questions.question_number ASC
+    ORDER BY
+      grammar_questions.question_number ASC
   `;
 };
 
-export const getQuestions = async (sessionId: number): Promise<GrammarQuestionRow[]> => {
-  return getQuestionsWithExecutor(getDatabaseClient(), sessionId);
-};
-
-export const getQuestionsInTransaction = async (
-  trx: DatabaseReservedConnection,
-  sessionId: number,
-): Promise<GrammarQuestionRow[]> => {
-  return getQuestionsWithExecutor(trx, sessionId);
-};
-
-export const getSessionForUpdate = async (
-  trx: DatabaseReservedConnection,
+export const getOneByCodeForUpdate = async (
   code: string,
+  trx: DatabaseReservedConnection,
 ): Promise<GrammarSessionRow | null> => {
   // Serialize status checks with answer/evaluation writes so a completed session cannot be mutated afterward.
   const [row] = await trx<GrammarSessionRow[]>`
@@ -371,11 +335,11 @@ export const getSessionForUpdate = async (
   return row;
 };
 
-export const upsertAnswer = async (
-  trx: DatabaseReservedConnection,
+export const upsertOneAnswerByCodeAndQuestionNumber = async (
   code: string,
   question_number: number,
   input: SaveGrammarAnswerPayload,
+  trx: DatabaseReservedConnection,
 ): Promise<IdRow | null> => {
   const [row] = await trx<IdRow[]>`
     INSERT INTO grammar_answers (
@@ -409,14 +373,20 @@ export const upsertAnswer = async (
       evaluated_at = EXCLUDED.evaluated_at,
       updated_at = NOW(),
       deleted_at = NULL
-    RETURNING id
+    RETURNING
+      id
   `;
 
   return row ?? null;
 };
 
-export const getExplanation = async (code: string, question_number: number): Promise<GrammarExplanationRow | null> => {
-  const [row] = await getDatabaseClient()<GrammarExplanationRow[]>`
+export const getOneExplanationByCodeAndQuestionNumber = async (
+  code: string,
+  question_number: number,
+): Promise<GrammarExplanationRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<GrammarExplanationRow[]>`
     SELECT
       grammar_questions.question_number,
       grammar_questions.question_text,
@@ -434,14 +404,15 @@ export const getExplanation = async (code: string, question_number: number): Pro
   return row ?? null;
 };
 
-export const saveEvaluation = async (
-  trx: DatabaseReservedConnection,
+export const updateAllAnswerEvaluationsByCode = async (
   code: string,
   input: EvaluateGrammarSessionPayload,
+  trx: DatabaseReservedConnection,
 ): Promise<void> => {
   const questionNumbers = input.answers.map((answer) => answer.question_number);
   const results = input.answers.map((answer) => answer.result);
   const feedback = input.answers.map((answer) => answer.feedback);
+
   await trx`
     UPDATE grammar_answers
     SET
@@ -455,7 +426,11 @@ export const saveEvaluation = async (
       ${trx.array(questionNumbers, 'INTEGER')},
       ${trx.array(results, 'TEXT')},
       ${trx.array(feedback, 'TEXT')}
-    ) AS payload(question_number, result, feedback) ON payload.question_number = grammar_questions.question_number
+    ) AS payload(
+      question_number,
+      result,
+      feedback
+    ) ON payload.question_number = grammar_questions.question_number
     WHERE grammar_answers.question_id = grammar_questions.id
       AND grammar_sessions.code = ${code}
       AND grammar_sessions.deleted_at IS NULL
@@ -465,11 +440,11 @@ export const saveEvaluation = async (
   `;
 };
 
-export const completeSession = async (
-  trx: DatabaseReservedConnection,
+export const updateOneCompletionByCode = async (
   code: string,
   score: number,
   max_score: number,
+  trx: DatabaseReservedConnection,
 ): Promise<void> => {
   await trx`
     UPDATE grammar_sessions
@@ -485,7 +460,12 @@ export const completeSession = async (
   `;
 };
 
-const getReportWithExecutor = async (database: DatabaseExecutor, code: string): Promise<GrammarReportRow[]> => {
+export const getAllReportRowsByCode = async (
+  code: string,
+  trx?: DatabaseReservedConnection,
+): Promise<GrammarReportRow[]> => {
+  const database = trx ?? getDatabaseClient();
+
   return database<GrammarReportRow[]>`
     SELECT
       grammar_sessions.code,
@@ -501,23 +481,15 @@ const getReportWithExecutor = async (database: DatabaseExecutor, code: string): 
     LEFT JOIN grammar_answers ON grammar_answers.question_id = grammar_questions.id AND grammar_answers.deleted_at IS NULL
     WHERE grammar_sessions.code = ${code}
       AND grammar_sessions.deleted_at IS NULL
-    GROUP BY grammar_sessions.id, grammar_questions.grammar_area
-    ORDER BY grammar_questions.grammar_area ASC
+    GROUP BY
+      grammar_sessions.id,
+      grammar_questions.grammar_area
+    ORDER BY
+      grammar_questions.grammar_area ASC
   `;
 };
 
-export const getReport = async (code: string): Promise<GrammarReportRow[]> => {
-  return getReportWithExecutor(getDatabaseClient(), code);
-};
-
-export const getReportInTransaction = async (
-  trx: DatabaseReservedConnection,
-  code: string,
-): Promise<GrammarReportRow[]> => {
-  return getReportWithExecutor(trx, code);
-};
-
-export const softDeleteSession = async (trx: DatabaseReservedConnection, code: string): Promise<IdRow | null> => {
+export const softDeleteOneByCode = async (code: string, trx: DatabaseReservedConnection): Promise<IdRow | null> => {
   const [session] = await trx<IdRow[]>`
     UPDATE grammar_sessions
     SET
@@ -525,7 +497,8 @@ export const softDeleteSession = async (trx: DatabaseReservedConnection, code: s
       updated_at = NOW()
     WHERE code = ${code}
       AND deleted_at IS NULL
-    RETURNING id
+    RETURNING
+      id
   `;
 
   if (session === undefined) {
@@ -545,7 +518,12 @@ export const softDeleteSession = async (trx: DatabaseReservedConnection, code: s
     SET
       deleted_at = NOW(),
       updated_at = NOW()
-    WHERE question_id IN (SELECT id FROM grammar_questions WHERE session_id = ${session.id})
+    WHERE question_id IN (
+      SELECT
+        id
+      FROM grammar_questions
+      WHERE session_id = ${session.id}
+    )
       AND deleted_at IS NULL
   `;
 

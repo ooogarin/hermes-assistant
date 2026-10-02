@@ -5,6 +5,7 @@ import { formatPublicCode } from '../../shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../../shared/date/date';
 import { countWords } from '../../shared/text/word-count';
 import * as readingRepository from './reading.repository';
+import * as readingSettingService from './reading-setting/reading-setting.service';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
   CreateReadingMaterialPayload,
@@ -17,40 +18,13 @@ import type {
   ReadingMaterialRow,
   ReadingQuestion,
   ReadingQuestionWithAnswerRow,
-  ReadingSettings,
-  ReadingSettingsRow,
   SaveReadingAnswersRequest,
   UpdateReadingMaterialRequest,
-  UpdateReadingSettingsPayload,
-  UpdateReadingSettingsRequest,
 } from './reading.types';
 
-export const getSettings = async (): Promise<ReadingSettings> => {
-  return toReadingSettings(await readingRepository.getSettings());
-};
-
-export const updateSettings = async (input: UpdateReadingSettingsRequest): Promise<ReadingSettings> => {
-  const currentSettings = await getSettings();
-  const min_word_count = input.min_word_count ?? currentSettings.min_word_count;
-  const max_word_count = input.max_word_count ?? currentSettings.max_word_count;
-  const default_word_count = input.default_word_count ?? currentSettings.default_word_count;
-  if (min_word_count > max_word_count || default_word_count < min_word_count || default_word_count > max_word_count) {
-    throw invalidSettings();
-  }
-
-  const payload: UpdateReadingSettingsPayload = {
-    default_level: input.default_level,
-    default_word_count: input.default_word_count,
-    default_question_count: input.default_question_count,
-    min_word_count: input.min_word_count,
-    max_word_count: input.max_word_count,
-  };
-
-  return toReadingSettings(await readingRepository.updateSettings(payload));
-};
-
 export const createMaterial = async (input: CreateReadingMaterialRequest): Promise<ReadingMaterial> => {
-  const settings = await getSettings();
+  const settings = await readingSettingService.getSettings();
+
   const payload: CreateReadingMaterialPayload = {
     title: input.title,
     content_text: input.content_text,
@@ -62,6 +36,7 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
     target_question_count: input.target_question_count ?? settings.default_question_count,
     questions: input.questions.map((question, index) => ({ ...question, question_number: index + 1 })),
   };
+
   if (payload.questions.length !== payload.target_question_count) {
     throw new AppError({
       code: 'READING_QUESTION_COUNT_MISMATCH',
@@ -69,6 +44,7 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
       message: 'Question content must match the effective question count',
     });
   }
+
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -76,28 +52,32 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
 
     trx = await startTransaction();
 
-    const sequenceRow = await readingRepository.getNextSequence(trx, date.key, date.segment);
+    const sequenceRow = await readingRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
+
     const code = formatPublicCode('RD', date.segment, sequenceRow.sequence + 1);
     const is_override =
       payload.level !== settings.default_level ||
       payload.target_word_count !== settings.default_word_count ||
       payload.target_question_count !== settings.default_question_count;
 
-    const materialId = await readingRepository.insertMaterial(
-      trx,
+    const materialId = await readingRepository.insertOne(
       code,
       payload,
       countWords(input.content_text),
       is_override,
+      trx,
     );
-    await readingRepository.insertQuestions(trx, materialId.id, payload.questions);
-    const materialRow = await readingRepository.findByCodeInTransaction(trx, code);
+
+    await readingRepository.insertAllQuestions(materialId.id, payload.questions, trx);
+
+    const materialRow = await readingRepository.getOneByCode(code, trx);
 
     if (materialRow === null) {
       throw new Error('Reading material creation did not return a material.');
     }
 
-    const questions = await readingRepository.getQuestionsInTransaction(trx, materialRow.id);
+    const questions = await readingRepository.getAllQuestionsByMaterialId(materialRow.id, trx);
+
     const material = toReadingMaterial(materialRow, questions);
     const trxToCommit = trx;
     trx = undefined;
@@ -118,44 +98,61 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
 };
 
 export const listMaterials = async (input: ListReadingMaterialsRequest): Promise<ReadingMaterialList> => {
-  const rows = await readingRepository.listMaterials(input);
+  const rows = await readingRepository.getAll(input);
+
   return { items: rows.map((row) => ({ ...row, created_at: toIsoTimestamp(row.created_at) })) };
 };
 
 export const updateMaterial = async (code: string, input: UpdateReadingMaterialRequest): Promise<ReadingMaterial> => {
-  if ((await readingRepository.updateReadingStatus(code, input.reading_status)) === null) throw materialNotFound();
+  const updated = await readingRepository.updateOneStatusByCode(code, input.reading_status);
+
+  if (updated === null) {
+    throw materialNotFound();
+  }
+
   return getMaterial(code);
 };
 
 export const getMaterial = async (code: string): Promise<ReadingMaterial> => {
-  const materialRow = await readingRepository.findByCode(code);
+  const materialRow = await readingRepository.getOneByCode(code);
 
   if (materialRow === null) {
     throw materialNotFound();
   }
 
-  const questions = await readingRepository.getQuestions(materialRow.id);
+  const questions = await readingRepository.getAllQuestionsByMaterialId(materialRow.id);
+
   return toReadingMaterial(materialRow, questions);
 };
 
 export const saveAnswers = async (code: string, input: SaveReadingAnswersRequest): Promise<ReadingMaterial> => {
   let trx: DatabaseReservedConnection | undefined;
+
   try {
     trx = await startTransaction();
-    const row = await readingRepository.lockMaterial(trx, code);
-    if (row === null) throw materialNotFound();
-    const questions = await readingRepository.getQuestionsInTransaction(trx, row.id);
-    const numbers = new Set(input.answers.map((answer) => answer.question_number));
-    if (
-      numbers.size !== input.answers.length ||
-      input.answers.some((answer) => !questions.some((question) => question.question_number === answer.question_number))
-    ) {
+
+    const row = await readingRepository.getOneIdByCodeForUpdate(code, trx);
+
+    if (row === null) {
+      throw materialNotFound();
+    }
+
+    const questions = await readingRepository.getAllQuestionsByMaterialId(row.id, trx);
+
+    const questionNumbers = new Set(questions.map((question) => question.question_number));
+    const answerNumbers = new Set(input.answers.map((answer) => answer.question_number));
+
+    const hasDuplicateQuestionNumbers = answerNumbers.size !== input.answers.length;
+    const hasUnknownQuestionNumbers = input.answers.some((answer) => !questionNumbers.has(answer.question_number));
+
+    if (hasDuplicateQuestionNumbers || hasUnknownQuestionNumbers) {
       throw new AppError({
         code: 'INVALID_READING_ANSWERS',
         statusCode: 400,
         message: 'Answers must reference unique questions belonging to this material',
       });
     }
+
     const answers = input.answers.flatMap((answer) =>
       answer.user_answer === null
         ? []
@@ -166,27 +163,44 @@ export const saveAnswers = async (code: string, input: SaveReadingAnswersRequest
             },
           ],
     );
+
     if (answers.length > 0) {
-      const submission = await readingRepository.upsertSubmission(trx, row.id);
-      await readingRepository.upsertAnswers(trx, row.id, submission.id, { answers });
+      const submission = await readingRepository.upsertOneSubmissionByMaterialId(row.id, trx);
+
+      await readingRepository.upsertAllAnswersByMaterialId(row.id, submission.id, { answers }, trx);
     }
+
     const cleared = input.answers
       .filter((answer) => answer.user_answer === null)
       .map((answer) => answer.question_number);
-    if (cleared.length > 0) await readingRepository.clearAnswers(trx, row.id, cleared);
-    const materialRow = await readingRepository.findByCodeInTransaction(trx, code);
-    if (materialRow === null) throw materialNotFound();
-    const material = toReadingMaterial(materialRow, await readingRepository.getQuestionsInTransaction(trx, row.id));
+
+    if (cleared.length > 0) {
+      await readingRepository.softDeleteAllAnswersByMaterialIdAndQuestionNumbers(row.id, cleared, trx);
+    }
+
+    const materialRow = await readingRepository.getOneByCode(code, trx);
+
+    if (materialRow === null) {
+      throw materialNotFound();
+    }
+
+    const updatedQuestions = await readingRepository.getAllQuestionsByMaterialId(row.id, trx);
+
+    const material = toReadingMaterial(materialRow, updatedQuestions);
     const trxToCommit = trx;
     trx = undefined;
+
     await commitTransaction(trxToCommit);
+
     return material;
   } catch (error) {
     if (trx !== undefined) {
       const trxToRollback = trx;
       trx = undefined;
+
       await rollbackTransaction(trxToRollback).catch(() => undefined);
     }
+
     throw error;
   }
 };
@@ -194,22 +208,14 @@ export const saveAnswers = async (code: string, input: SaveReadingAnswersRequest
 export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedAnswer[]> => {
   await getMaterial(code);
 
-  const rows = await readingRepository.getExpectedAnswers(code);
+  const rows = await readingRepository.getAllExpectedAnswersByCode(code);
+
   return rows.map(toReadingExpectedAnswer);
 };
 
 // ====================================================================================================
 // Helper functions
 // ====================================================================================================
-
-const toReadingSettings = (row: ReadingSettingsRow): ReadingSettings => ({
-  default_level: row.default_level,
-  default_word_count: row.default_word_count,
-  default_question_count: row.default_question_count,
-  min_word_count: row.min_word_count,
-  max_word_count: row.max_word_count,
-  updated_at: toIsoTimestamp(row.updated_at),
-});
 
 const toReadingQuestion = (row: ReadingQuestionWithAnswerRow): ReadingQuestion => ({
   question_number: row.question_number,
@@ -240,14 +246,6 @@ const toReadingExpectedAnswer = (row: ReadingExpectedAnswerRow): ReadingExpected
   question_text: row.question_text,
   expected_answer: row.expected_answer,
 });
-
-const invalidSettings = (): AppError => {
-  return new AppError({
-    code: 'INVALID_READING_SETTINGS',
-    statusCode: 400,
-    message: 'Default word count must be within the configured range',
-  });
-};
 
 const materialNotFound = (): AppError => {
   return notFoundError('READING_MATERIAL_NOT_FOUND', 'Reading material not found');

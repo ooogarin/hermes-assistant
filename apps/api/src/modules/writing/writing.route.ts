@@ -7,15 +7,14 @@ import {
   listMaterialsSchema,
   materialCodeSchema,
   submissionParamsSchema,
-  updateSettingsSchema,
 } from './writing.validator';
+import { createWritingSettingRoutes } from './writing-setting/writing-setting.route';
 import type { AppEnv } from '../../core/http/app-env';
 
 export const createWritingRoutes = () => {
   const route = new Hono<AppEnv>();
 
-  route.get('/settings', writingHandler.getSettings);
-  route.patch('/settings', appValidator('json', updateSettingsSchema), writingHandler.updateSettings);
+  route.route('/settings', createWritingSettingRoutes());
   route.post('/materials', appValidator('json', createMaterialSchema), writingHandler.createMaterial);
   route.get('/materials', appValidator('query', listMaterialsSchema), writingHandler.listMaterials);
   route.get('/materials/:code', appValidator('param', materialCodeSchema), writingHandler.getMaterial);

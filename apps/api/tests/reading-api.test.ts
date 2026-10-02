@@ -7,11 +7,16 @@ import type {
   ReadingMaterial,
   ReadingMaterialList,
   ReadingService,
-  ReadingSettings,
   SaveReadingAnswersRequest,
   UpdateReadingMaterialRequest,
-  UpdateReadingSettingsRequest,
 } from '../src/modules/reading/reading.types';
+import type {
+  ReadingSettingService,
+  ReadingSettings,
+  UpdateReadingSettingsRequest,
+} from '../src/modules/reading/reading-setting/reading-setting.types';
+
+type ReadingApiService = ReadingService & ReadingSettingService;
 
 const settings: ReadingSettings = {
   default_level: 'A1',
@@ -65,7 +70,7 @@ const materialList: ReadingMaterialList = {
   ],
 };
 
-const createReadingServiceStub = (overrides: Partial<ReadingService> = {}): ReadingService => ({
+const createReadingServiceStub = (overrides: Partial<ReadingApiService> = {}): ReadingApiService => ({
   getSettings: async () => settings,
   updateSettings: async () => settings,
   createMaterial: async () => material,
@@ -79,11 +84,15 @@ const createReadingServiceStub = (overrides: Partial<ReadingService> = {}): Read
 
 let activeReadingService = createReadingServiceStub();
 
-mock.module('../src/modules/reading/reading.service', () => ({
+mock.module('../src/modules/reading/reading-setting/reading-setting.service', () => ({
   getSettings: () => activeReadingService.getSettings(),
   updateSettings: (input: UpdateReadingSettingsRequest) => activeReadingService.updateSettings(input),
+}));
+
+mock.module('../src/modules/reading/reading.service', () => ({
   createMaterial: (input: CreateReadingMaterialRequest) => activeReadingService.createMaterial(input),
-  listMaterials: (input: Parameters<ReadingService['listMaterials']>[0]) => activeReadingService.listMaterials(input),
+  listMaterials: (input: Parameters<ReadingApiService['listMaterials']>[0]) =>
+    activeReadingService.listMaterials(input),
   getMaterial: (code: string) => activeReadingService.getMaterial(code),
   updateMaterial: (code: string, input: UpdateReadingMaterialRequest) =>
     activeReadingService.updateMaterial(code, input),
@@ -93,7 +102,7 @@ mock.module('../src/modules/reading/reading.service', () => ({
 
 const { createApp } = await import('../src/app');
 
-const createReadingApp = (overrides: Partial<ReadingService> = {}) => {
+const createReadingApp = (overrides: Partial<ReadingApiService> = {}) => {
   activeReadingService = createReadingServiceStub(overrides);
 
   return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
@@ -127,7 +136,7 @@ test('reads and updates reading settings', async () => {
 });
 
 test('lists reading materials with validated read-status filters and no pagination', async () => {
-  let listInput: Parameters<ReadingService['listMaterials']>[0] | undefined;
+  let listInput: Parameters<ReadingApiService['listMaterials']>[0] | undefined;
   const response = await createReadingApp({
     listMaterials: async (input) => {
       listInput = input;

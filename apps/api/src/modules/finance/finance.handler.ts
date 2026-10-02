@@ -4,7 +4,6 @@ import * as financeService from './finance.service';
 import {
   createTransactionsSchema,
   dailySummaryQuerySchema,
-  listCategoriesSchema,
   listTransactionsSchema,
   summaryQuerySchema,
   transactionReferenceSchema,
@@ -16,6 +15,7 @@ import type { TransactionReferenceRequest } from './finance.types';
 
 export const createTransactions = async (context: Context<AppEnv>) => {
   const input = getBody(context, createTransactionsSchema);
+
   const result = await financeService.createTransactions(input);
 
   return successResponse({ context, data: { items: result }, statusCode: 201 });
@@ -23,6 +23,7 @@ export const createTransactions = async (context: Context<AppEnv>) => {
 
 export const getTransaction = async (context: Context<AppEnv>) => {
   const request = getTransactionReference(context);
+
   const result = await financeService.getTransaction(request);
 
   return successResponse({ context, data: result });
@@ -30,6 +31,7 @@ export const getTransaction = async (context: Context<AppEnv>) => {
 
 export const listTransactions = async (context: Context<AppEnv>) => {
   const query = getQuery(context, listTransactionsSchema);
+
   const result = await financeService.listTransactions(query);
 
   return successResponse({ context, data: { items: result } });
@@ -38,6 +40,7 @@ export const listTransactions = async (context: Context<AppEnv>) => {
 export const updateTransaction = async (context: Context<AppEnv>) => {
   const request = getTransactionReference(context);
   const input = getBody(context, updateTransactionSchema);
+
   const result = await financeService.updateTransaction(request, input);
 
   return successResponse({ context, data: result });
@@ -51,15 +54,9 @@ export const removeTransaction = async (context: Context<AppEnv>) => {
   return context.body(null, 204);
 };
 
-export const listCategories = async (context: Context<AppEnv>) => {
-  const query = getQuery(context, listCategoriesSchema);
-  const result = await financeService.listCategories(query);
-
-  return successResponse({ context, data: { items: result } });
-};
-
 export const getSummary = async (context: Context<AppEnv>) => {
   const query = getQuery(context, summaryQuerySchema);
+
   const result = await financeService.getSummary(query);
 
   return successResponse({ context, data: result });
@@ -67,6 +64,7 @@ export const getSummary = async (context: Context<AppEnv>) => {
 
 export const getDailySummary = async (context: Context<AppEnv>) => {
   const query = getQuery(context, dailySummaryQuerySchema);
+
   const result = await financeService.getDailySummary(query);
 
   return successResponse({ context, data: { items: result } });

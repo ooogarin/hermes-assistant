@@ -15,19 +15,24 @@ export const login = async (context: Context<AppEnv>) => {
   };
 
   const result = await authService.login(resources, input);
+
   setSessionCookie(context, resources.configuration, result.token);
+
   return successResponse({ context, data: result.data });
 };
 
 export const getSession = (context: Context<AppEnv>) => {
   const resources = context.get('auth_resources');
   const result = authService.getSession(resources, { token: readSessionCookie(context, resources.configuration) });
+
   return successResponse({ context, data: result });
 };
 
 export const logout = (context: Context<AppEnv>) => {
   const resources = context.get('auth_resources');
+
   authService.logout(resources, { token: readSessionCookie(context, resources.configuration) });
   clearSessionCookie(context, resources.configuration);
+
   return context.body(null, 204);
 };

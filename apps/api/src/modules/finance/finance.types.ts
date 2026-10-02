@@ -2,12 +2,12 @@ import type { z } from 'zod';
 import type {
   createTransactionsSchema,
   dailySummaryQuerySchema,
-  listCategoriesSchema,
   listTransactionsSchema,
   summaryQuerySchema,
   transactionReferenceSchema,
   updateTransactionSchema,
 } from './finance.validator';
+import type { Category } from './finance-category/finance-category.types';
 
 // ====================================================================================================
 // Request contracts
@@ -20,7 +20,6 @@ export type CreateTransactionsRequest = z.infer<typeof createTransactionsSchema>
 export type UpdateTransactionRequest = z.infer<typeof updateTransactionSchema>;
 export type TransactionReferenceParams = z.infer<typeof transactionReferenceSchema>;
 export type ListTransactionsRequest = z.infer<typeof listTransactionsSchema>;
-export type ListCategoriesRequest = z.infer<typeof listCategoriesSchema>;
 export type SummaryRequest = z.infer<typeof summaryQuerySchema>;
 export type DailySummaryRequest = z.infer<typeof dailySummaryQuerySchema>;
 
@@ -32,13 +31,6 @@ export type TransactionReferenceRequest = {
 // ====================================================================================================
 // Service operations
 // ====================================================================================================
-
-export type Category = {
-  code: string;
-  name: string;
-  description: string;
-  type: TransactionType;
-};
 
 export type FinanceTransaction = {
   daily_number: number;
@@ -86,7 +78,6 @@ export type FinanceService = {
     input: UpdateTransactionRequest,
   ) => Promise<FinanceTransaction>;
   removeTransaction: (input: TransactionReferenceRequest) => Promise<void>;
-  listCategories: (input: ListCategoriesRequest) => Promise<Category[]>;
   getSummary: (input: SummaryRequest) => Promise<FinanceSummary>;
   getDailySummary: (input: DailySummaryRequest) => Promise<FinanceDailySummary[]>;
 };
@@ -124,14 +115,6 @@ export type FinanceDailySummaryQuery = {
 // ====================================================================================================
 // Repository responses
 // ====================================================================================================
-
-export type CategoryRow = {
-  id: number;
-  code: string;
-  name: string;
-  description: string;
-  type: TransactionType;
-};
 
 export type FinanceTransactionRow = {
   id: number;

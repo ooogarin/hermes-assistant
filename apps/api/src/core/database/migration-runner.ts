@@ -26,21 +26,27 @@ const ensureMigrationTable = async (database: DatabaseConnection): Promise<void>
 
 const hasMigrationTable = async (database: DatabaseConnection): Promise<boolean> => {
   const [row] = await database<MigrationTableRow[]>`
-    SELECT to_regclass('_migrations') IS NOT NULL AS exists
+    SELECT
+      to_regclass('_migrations') IS NOT NULL AS exists
   `;
 
   return row?.exists === true;
 };
 
 const appliedMigrationNames = async (database: DatabaseConnection): Promise<string[]> => {
-  if (!(await hasMigrationTable(database))) {
+  const migrationTableExists = await hasMigrationTable(database);
+
+  if (!migrationTableExists) {
     return [];
   }
 
   const rows = await database<MigrationRow[]>`
-    SELECT name
+    SELECT
+      name
     FROM _migrations
-    ORDER BY applied_at ASC, name ASC
+    ORDER BY
+      applied_at ASC,
+      name ASC
   `;
 
   return rows.map((row) => row.name);
@@ -70,24 +76,38 @@ const withMigrationLock = async <T>(
   operation: (connection: Bun.ReservedSQL) => Promise<T>,
 ): Promise<T> => {
   const connection = await database.reserve();
+
   let lockAcquired = false;
 
   try {
-    await connection`SELECT pg_advisory_lock(${migrationLockId}::BIGINT)`;
+    await connection`
+      SELECT
+        pg_advisory_lock(${migrationLockId}::BIGINT)
+    `;
     lockAcquired = true;
+
     let operationCompleted = false;
 
     try {
       const result = await operation(connection);
+
       operationCompleted = true;
-      await connection`SELECT pg_advisory_unlock(${migrationLockId}::BIGINT)`;
+      await connection`
+        SELECT
+          pg_advisory_unlock(${migrationLockId}::BIGINT)
+      `;
       lockAcquired = false;
 
       return result;
     } catch (error) {
-      if (lockAcquired && !operationCompleted) {
+      const needsLockCleanup = lockAcquired && !operationCompleted;
+
+      if (needsLockCleanup) {
         try {
-          await connection`SELECT pg_advisory_unlock(${migrationLockId}::BIGINT)`;
+          await connection`
+            SELECT
+              pg_advisory_unlock(${migrationLockId}::BIGINT)
+          `;
         } catch {
           // Preserve the migration operation error when lock cleanup also fails.
         }
@@ -102,6 +122,7 @@ const withMigrationLock = async <T>(
 
 export const loadMigrations = async (migrationDirectory: string): Promise<Migration[]> => {
   const entries = await readdir(migrationDirectory, { withFileTypes: true });
+
   const migrationFileNames = entries
     .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
     .map((entry) => entry.name)
@@ -123,6 +144,7 @@ export const loadMigrations = async (migrationDirectory: string): Promise<Migrat
       sequences.add(sequence);
 
       const filePath = resolve(migrationDirectory, fileName);
+
       const migrationModule: unknown = await import(pathToFileURL(filePath).href);
 
       if (!isMigrationDefinition(migrationModule)) {
@@ -143,6 +165,7 @@ export const getMigrationStatus = async (
   migrations: readonly Migration[],
 ): Promise<MigrationStatus[]> => {
   const appliedNames = await appliedMigrationNames(database);
+
   const appliedNameSet = new Set(appliedNames);
   const availableNameSet = new Set(migrations.map((migration) => migration.name));
 
@@ -165,14 +188,23 @@ export const migrateDatabase = async (
     await ensureMigrationTable(connection);
 
     const appliedNames = await appliedMigrationNames(connection);
+
     assertAppliedMigrationsExist(migrations, appliedNames);
+
     const appliedNameSet = new Set(appliedNames);
     const pendingMigrations = migrations.filter((migration) => !appliedNameSet.has(migration.name));
 
     for (const migration of pendingMigrations) {
       await connection.begin(async (trx) => {
         await migration.up(trx);
-        await trx`INSERT INTO _migrations (name) VALUES (${migration.name})`;
+        await trx`
+          INSERT INTO _migrations (
+            name
+          )
+          VALUES (
+            ${migration.name}
+          )
+        `;
       });
     }
 

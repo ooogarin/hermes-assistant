@@ -124,14 +124,27 @@ src/modules/<module>/
 ├── <module>.validator.ts
 ├── <module>.service.ts
 ├── <module>.repository.ts
-└── <module>.types.ts
+├── <module>.types.ts
+└── <module>-<submodule>/
+    ├── <module>-<submodule>.route.ts
+    ├── <module>-<submodule>.handler.ts
+    ├── <module>-<submodule>.validator.ts
+    ├── <module>-<submodule>.service.ts
+    ├── <module>-<submodule>.repository.ts
+    └── <module>-<submodule>.types.ts
 ```
 
-Small modules may combine files when responsibilities remain clear. HTTP DTOs, domain types, and database rows may have different shapes, but every data field crossing or used by the API/service boundary uses `snake_case`. The shared HTTP response boundary recursively preserves that convention and guards against accidental non-snake response keys. The application should not leak database rows directly.
+Keep independently maintained subfeatures in nested folders with their own layers and types. Settings live in `reading/reading-setting/`, `writing/writing-setting/`, and `grammar/grammar-setting/`; Finance categories live in `finance/finance-category/`. Parent routes mount the child routes at the existing `/settings` or `/categories` path. Parent services use child services for defaults or category resolution, never child repositories. Questions, answers, and submissions that participate in the parent's workflows can stay with that workflow; a separate table alone does not require a separate module.
+
+HTTP DTOs, domain types, and database rows may have different shapes, but every data field crossing or used by the API/service boundary uses `snake_case`. The shared HTTP response boundary recursively preserves that convention and guards against accidental non-snake response keys. The application should not leak database rows directly.
 
 Routes apply the shared `appValidator` wrapper around `@hono/zod-validator` before a handler runs. Handlers export named operations directly, read parsed input through `getBody`, `getParam`, or `getQuery` (which delegate to Hono's `request.valid(...)`), compose explicit `*Request` contracts from it and any request scope, then format the HTTP response with the core HTTP response helpers. Services export named operations directly and never receive a Hono context. Services own domain and response composition; repository methods return database rows or primitive write results only and do not build domain objects, API responses, public codes, or question numbering. A repository method has one result responsibility, so list and count queries are separate methods and are combined by the service when needed.
 
 For a workflow that needs a transaction, the service obtains a reserved connection through the shared database helper, passes that one connection to every participating repository write, then commits it. On failure before commit, the service rolls it back. If commit itself fails, the helper attempts a rollback without replacing the original commit error. The helper always releases the connection after commit or rollback.
+
+`getDatabaseClient()` retrieves the already configured shared pool rather than creating a new client. PostgreSQL commits each standalone statement independently. `trx: DatabaseReservedConnection` is the single reserved connection returned by `startTransaction()` after `BEGIN`. Pass it to every query that belongs to the transaction, including reads that must see preceding uncommitted writes and locking reads. Using the pool in the middle of that workflow would execute outside its transaction.
+
+Every repository chooses the connection signature from actual callers. Methods used only outside a transaction have no connection parameter and retrieve the pool internally. Methods used only inside a transaction require `trx: DatabaseReservedConnection` as their last parameter and execute through it directly. Only methods used both ways accept an optional final `trx` and use `const database = trx ?? getDatabaseClient()`. Reading shares `getOneByCode` and `getAllQuestionsByMaterialId`; Grammar shares `getAllQuestionsBySessionId` and `getAllReportRowsByCode`. Settings repositories use the pool directly. For example, `getOneByCode(code)` uses the pool and `getOneByCode(code, trx)` participates in the service's transaction. Keep one SQL implementation per operation, without executor helpers or `InTransaction` wrappers. Services supply the same `trx` for dependent operations and locking calls through commit or rollback.
 
 ## Security boundary
 

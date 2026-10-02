@@ -5,14 +5,19 @@ import { writingAnalysis } from './fixtures/writing';
 import type {
   CreateWritingMaterialRequest,
   CreateWritingSubmissionRequest,
-  UpdateWritingSettingsRequest,
   WritingCorrectedText,
   WritingMaterial,
   WritingMaterialList,
   WritingService,
-  WritingSettings,
   WritingSubmission,
 } from '../src/modules/writing/writing.types';
+import type {
+  UpdateWritingSettingsRequest,
+  WritingSettingService,
+  WritingSettings,
+} from '../src/modules/writing/writing-setting/writing-setting.types';
+
+type WritingApiService = WritingService & WritingSettingService;
 
 const settings: WritingSettings = {
   default_level: 'A1',
@@ -68,7 +73,7 @@ const materialList: WritingMaterialList = {
   meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
 };
 
-const createWritingServiceStub = (overrides: Partial<WritingService> = {}): WritingService => ({
+const createWritingServiceStub = (overrides: Partial<WritingApiService> = {}): WritingApiService => ({
   getSettings: async () => settings,
   updateSettings: async () => settings,
   createMaterial: async () => material,
@@ -82,11 +87,15 @@ const createWritingServiceStub = (overrides: Partial<WritingService> = {}): Writ
 
 let activeWritingService = createWritingServiceStub();
 
-mock.module('../src/modules/writing/writing.service', () => ({
+mock.module('../src/modules/writing/writing-setting/writing-setting.service', () => ({
   getSettings: () => activeWritingService.getSettings(),
   updateSettings: (input: UpdateWritingSettingsRequest) => activeWritingService.updateSettings(input),
+}));
+
+mock.module('../src/modules/writing/writing.service', () => ({
   createMaterial: (input: CreateWritingMaterialRequest) => activeWritingService.createMaterial(input),
-  listMaterials: (input: Parameters<WritingService['listMaterials']>[0]) => activeWritingService.listMaterials(input),
+  listMaterials: (input: Parameters<WritingApiService['listMaterials']>[0]) =>
+    activeWritingService.listMaterials(input),
   getMaterial: (code: string) => activeWritingService.getMaterial(code),
   createSubmission: (code: string, input: CreateWritingSubmissionRequest) =>
     activeWritingService.createSubmission(code, input),
@@ -98,7 +107,7 @@ mock.module('../src/modules/writing/writing.service', () => ({
 
 const { createApp } = await import('../src/app');
 
-const createWritingApp = (overrides: Partial<WritingService> = {}) => {
+const createWritingApp = (overrides: Partial<WritingApiService> = {}) => {
   activeWritingService = createWritingServiceStub(overrides);
 
   return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
@@ -132,7 +141,7 @@ test('reads and updates writing settings', async () => {
 });
 
 test('lists writing materials with validated filters and pagination', async () => {
-  let listInput: Parameters<WritingService['listMaterials']>[0] | undefined;
+  let listInput: Parameters<WritingApiService['listMaterials']>[0] | undefined;
   const response = await createWritingApp({
     listMaterials: async (input) => {
       listInput = input;
@@ -156,7 +165,7 @@ test('lists writing materials with validated filters and pagination', async () =
 });
 
 test('normalizes the legacy writing level filter and rejects ambiguous level filters', async () => {
-  let listInput: Parameters<WritingService['listMaterials']>[0] | undefined;
+  let listInput: Parameters<WritingApiService['listMaterials']>[0] | undefined;
   const app = createWritingApp({
     listMaterials: async (input) => {
       listInput = input;

@@ -96,6 +96,7 @@ export const listMaterialsSchema = z
   })
   .transform(({ level, levels, ...query }) => {
     const selectedLevels = levels ?? (level === undefined ? undefined : [level]);
+
     return selectedLevels === undefined ? query : { ...query, levels: selectedLevels };
   });
 
@@ -108,12 +109,3 @@ export const createSubmissionSchema = z.object({
   estimated_level: text(32),
   analysis: analysisSchema,
 });
-
-export const updateSettingsSchema = z
-  .object({
-    default_level: text(32).optional(),
-    default_word_count: z.number().int().positive().max(20_000).optional(),
-    min_word_count: z.number().int().positive().max(20_000).optional(),
-    max_word_count: z.number().int().positive().max(20_000).optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, 'At least one field must be provided.');

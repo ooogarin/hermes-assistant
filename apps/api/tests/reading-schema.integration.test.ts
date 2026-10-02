@@ -295,9 +295,9 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
     const trx = await getDatabase().reserve();
     try {
       await trx`BEGIN`;
-      const material = await readingRepository.insertMaterial(trx, code, input, 9, false);
-      await readingRepository.insertQuestions(trx, material.id, input.questions);
-      expect(await readingRepository.findByCodeInTransaction(trx, code)).toMatchObject({
+      const material = await readingRepository.insertOne(code, input, 9, false, trx);
+      await readingRepository.insertAllQuestions(material.id, input.questions, trx);
+      expect(await readingRepository.getOneByCode(code, trx)).toMatchObject({
         title: input.title,
         content_text: input.content_text,
       });
@@ -308,12 +308,12 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
     } finally {
       trx.release();
     }
-    expect(await readingRepository.findByCode(code)).toMatchObject({
+    expect(await readingRepository.getOneByCode(code)).toMatchObject({
       title: input.title,
       content_text: input.content_text,
     });
     const query = { limit: 100, sort: 'newest' as const, q: input.title };
-    expect((await readingRepository.listMaterials(query)).map(({ code, title }) => ({ code, title }))).toEqual([
+    expect((await readingRepository.getAll(query)).map(({ code, title }) => ({ code, title }))).toEqual([
       { code, title: input.title },
     ]);
     expect(

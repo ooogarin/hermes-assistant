@@ -279,11 +279,11 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     let secondTrx: DatabaseReservedConnection | undefined = await startTransaction();
 
     try {
-      const initialSession = await grammarRepository.getSessionForUpdate(firstTrx, exam.code);
+      const initialSession = await grammarRepository.getOneByCodeForUpdate(exam.code, firstTrx);
       expect(initialSession?.status).toBe('active');
 
-      await grammarRepository.completeSession(firstTrx, exam.code, 1, 1);
-      const waitingSession = grammarRepository.getSessionForUpdate(secondTrx, exam.code);
+      await grammarRepository.updateOneCompletionByCode(exam.code, 1, 1, firstTrx);
+      const waitingSession = grammarRepository.getOneByCodeForUpdate(exam.code, secondTrx);
 
       const trxToCommit = firstTrx;
       firstTrx = undefined;

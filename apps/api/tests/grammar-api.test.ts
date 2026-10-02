@@ -9,10 +9,15 @@ import type {
   GrammarService,
   GrammarSession,
   GrammarSessionList,
-  GrammarSettings,
   SaveGrammarAnswerRequest,
-  UpdateGrammarSettingsRequest,
 } from '../src/modules/grammar/grammar.types';
+import type {
+  GrammarSettingService,
+  GrammarSettings,
+  UpdateGrammarSettingsRequest,
+} from '../src/modules/grammar/grammar-setting/grammar-setting.types';
+
+type GrammarApiService = GrammarService & GrammarSettingService;
 
 const settings: GrammarSettings = {
   default_level: 'A1',
@@ -81,7 +86,7 @@ const sessionList: GrammarSessionList = {
   meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
 };
 
-const createGrammarServiceStub = (overrides: Partial<GrammarService> = {}): GrammarService => ({
+const createGrammarServiceStub = (overrides: Partial<GrammarApiService> = {}): GrammarApiService => ({
   getSettings: async () => settings,
   updateSettings: async () => settings,
   createSession: async () => session,
@@ -97,11 +102,14 @@ const createGrammarServiceStub = (overrides: Partial<GrammarService> = {}): Gram
 
 let activeGrammarService = createGrammarServiceStub();
 
-mock.module('../src/modules/grammar/grammar.service', () => ({
+mock.module('../src/modules/grammar/grammar-setting/grammar-setting.service', () => ({
   getSettings: () => activeGrammarService.getSettings(),
   updateSettings: (input: UpdateGrammarSettingsRequest) => activeGrammarService.updateSettings(input),
+}));
+
+mock.module('../src/modules/grammar/grammar.service', () => ({
   createSession: (input: CreateGrammarSessionRequest) => activeGrammarService.createSession(input),
-  listSessions: (input: Parameters<GrammarService['listSessions']>[0]) => activeGrammarService.listSessions(input),
+  listSessions: (input: Parameters<GrammarApiService['listSessions']>[0]) => activeGrammarService.listSessions(input),
   getSession: (code: string) => activeGrammarService.getSession(code),
   removeSession: (code: string) => activeGrammarService.removeSession(code),
   saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) =>
@@ -114,7 +122,7 @@ mock.module('../src/modules/grammar/grammar.service', () => ({
 
 const { createApp } = await import('../src/app');
 
-const createGrammarApp = (overrides: Partial<GrammarService> = {}) => {
+const createGrammarApp = (overrides: Partial<GrammarApiService> = {}) => {
   activeGrammarService = createGrammarServiceStub(overrides);
 
   return createApp({ webAuth: testWebAuth, internalApiKey: 'test-api-key', isDatabaseReady: async () => true });
@@ -176,7 +184,7 @@ test('creates a grammar session without exposing correct answers or explanations
 });
 
 test('lists grammar sessions with validated filters and pagination', async () => {
-  let listInput: Parameters<GrammarService['listSessions']>[0] | undefined;
+  let listInput: Parameters<GrammarApiService['listSessions']>[0] | undefined;
   const response = await createGrammarApp({
     listSessions: async (input) => {
       listInput = input;

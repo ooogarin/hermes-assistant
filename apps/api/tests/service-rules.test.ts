@@ -16,20 +16,18 @@ import type {
   ReadingMaterialListRow,
   ReadingMaterialRow,
   ReadingQuestionWithAnswerRow,
-  ReadingSettings,
-  ReadingSettingsRow,
   SaveReadingAnswersPayload,
 } from '../src/modules/reading/reading.types';
+import type { ReadingSettings, ReadingSettingsRow } from '../src/modules/reading/reading-setting/reading-setting.types';
 import type {
   WritingCountRow,
   WritingMaterial,
   WritingMaterialListRow,
   WritingMaterialRow,
-  WritingSettings,
-  WritingSettingsRow,
   WritingSubmission,
   WritingSubmissionRow,
 } from '../src/modules/writing/writing.types';
+import type { WritingSettings, WritingSettingsRow } from '../src/modules/writing/writing-setting/writing-setting.types';
 
 const grammarQuestion: GrammarQuestion = {
   question_number: 1,
@@ -183,6 +181,7 @@ let grammarLockedSessionResult: GrammarSession = grammarSession;
 let grammarListResult: GrammarSessionListRow[] = [];
 let grammarCountResult: GrammarCountRow = { total: 0 };
 let grammarAnswerWriteCount = 0;
+let grammarReadConnections: Array<DatabaseReservedConnection | undefined> = [];
 let committedTransactionCount = 0;
 let rolledBackTransactionCount = 0;
 let noteResult: { code: string } | null = null;
@@ -193,6 +192,7 @@ let readingQuestionsResult: ReadingQuestionWithAnswerRow[] = readingQuestionRows
 let readingListResult: ReadingMaterialListRow[] = [];
 let readingSubmissionPayloadResult: SaveReadingAnswersPayload | null = null;
 let readingFindByCodeCallCount = 0;
+let readingReadConnections: Array<DatabaseReservedConnection | undefined> = [];
 let writingSettingsResult = writingSettingsRow;
 let writingSubmissionResult: WritingSubmissionRow | null = writingSubmissionRow;
 let writingListResult: WritingMaterialListRow[] = [];
@@ -239,10 +239,13 @@ mock.module('../src/core/database/client', () => ({
   },
 }));
 
+mock.module('../src/modules/finance/finance-category/finance-category.repository', () => ({
+  getAllActiveByCodesAndType: async () => financeCategories,
+}));
+
 mock.module('../src/modules/finance/finance.repository', () => ({
-  getActiveCategoriesByCodes: async () => financeCategories,
-  getSummaryTotals: async () => ({ expense_total: '12500', income_total: '50000' }),
-  getSummaryByCategory: async () => [
+  getOneSummaryByDateRange: async () => ({ expense_total: '12500', income_total: '50000' }),
+  getAllCategorySummariesByDateRange: async () => [
     {
       category_code: 'food_drink',
       category_name: 'Makanan & Minuman',
@@ -251,82 +254,101 @@ mock.module('../src/modules/finance/finance.repository', () => ({
       total: '12500',
     },
   ],
-  getDailySummary: async (_input: FinanceDailySummaryQuery) => financeDailySummaryResult,
+  getAllDailySummariesByDateRange: async (_input: FinanceDailySummaryQuery) => financeDailySummaryResult,
 }));
 
 mock.module('../src/modules/notes/notes.repository', () => ({
-  findByCode: async () => noteResult,
-  updateByCode: async () => noteResult,
-  softDeleteByCode: async () => noteResult !== null,
+  getOneByCode: async () => noteResult,
+  updateOneByCode: async () => noteResult,
+  softDeleteOneByCode: async () => noteResult !== null,
 }));
 
 mock.module('../src/modules/junk/junk.repository', () => ({
-  findByCode: async () => junkResult,
-  updateByCode: async () => junkResult,
-  softDeleteByCode: async () => junkResult !== null,
+  getOneByCode: async () => junkResult,
+  updateOneByCode: async () => junkResult,
+  softDeleteOneByCode: async () => junkResult !== null,
 }));
 
 mock.module('../src/modules/grammar/grammar.repository', () => ({
-  getNextSequence: async () => ({ sequence: 0 }),
-  insertSession: async () => ({ id: 1 }),
-  insertQuestions: async () => undefined,
-  listSessions: async () => grammarListResult,
-  countSessions: async () => grammarCountResult,
-  getSessionForUpdate: async () => toGrammarSessionRow(grammarLockedSessionResult),
-  getQuestionsInTransaction: async () => grammarLockedSessionResult.questions.map(toGrammarQuestionRow),
-  upsertAnswer: async () => {
+  getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
+  insertOne: async () => ({ id: 1 }),
+  insertAllQuestions: async () => undefined,
+  getAll: async () => grammarListResult,
+  countAll: async () => grammarCountResult,
+  getOneByCode: async () => toGrammarSessionRow(grammarLockedSessionResult),
+  getOneByCodeForUpdate: async (_code: string, trx: DatabaseReservedConnection) => {
+    grammarReadConnections.push(trx);
+
+    return toGrammarSessionRow(grammarLockedSessionResult);
+  },
+  getAllQuestionsBySessionId: async (_sessionId: number, trx?: DatabaseReservedConnection) => {
+    grammarReadConnections.push(trx);
+
+    return grammarLockedSessionResult.questions.map(toGrammarQuestionRow);
+  },
+  upsertOneAnswerByCodeAndQuestionNumber: async () => {
     grammarAnswerWriteCount += 1;
     return { id: 1 };
   },
 }));
 
+mock.module('../src/modules/reading/reading-setting/reading-setting.repository', () => ({
+  getOne: async () => readingSettingsResult,
+  updateOne: async () => readingSettingsResult,
+}));
+
 mock.module('../src/modules/reading/reading.repository', () => ({
-  getSettings: async () => readingSettingsResult,
-  updateSettings: async () => readingSettingsResult,
-  getNextSequence: async () => ({ sequence: 0 }),
-  insertMaterial: async () => ({ id: readingMaterialRow.id }),
-  insertQuestions: async () => undefined,
-  findByCode: async () => {
-    readingFindByCodeCallCount += 1;
+  getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
+  insertOne: async () => ({ id: readingMaterialRow.id }),
+  insertAllQuestions: async () => undefined,
+  getOneByCode: async (_code: string, trx?: DatabaseReservedConnection) => {
+    readingReadConnections.push(trx);
+    if (trx === undefined) readingFindByCodeCallCount += 1;
     return readingMaterialResult;
   },
-  findByCodeInTransaction: async () => readingMaterialResult,
-  getQuestions: async () => readingQuestionsResult,
-  getQuestionsInTransaction: async () => readingQuestionsResult,
-  listMaterials: async () => readingListResult,
-  lockMaterial: async () => (readingMaterialResult === null ? null : { id: 1 }),
-  upsertSubmission: async () => ({ id: 1 }),
-  clearAnswers: async () => undefined,
-  updateReadingStatus: async () => ({ id: 1 }),
-  upsertAnswers: async (
-    _trx: DatabaseReservedConnection,
+  getAllQuestionsByMaterialId: async (_materialId: number, trx?: DatabaseReservedConnection) => {
+    readingReadConnections.push(trx);
+    return readingQuestionsResult;
+  },
+  getAll: async () => readingListResult,
+  getOneIdByCodeForUpdate: async () => (readingMaterialResult === null ? null : { id: 1 }),
+  upsertOneSubmissionByMaterialId: async () => ({ id: 1 }),
+  softDeleteAllAnswersByMaterialIdAndQuestionNumbers: async () => undefined,
+  updateOneStatusByCode: async () => ({ id: 1 }),
+  upsertAllAnswersByMaterialId: async (
     _materialId: number,
     _submissionId: number,
     payload: SaveReadingAnswersPayload,
+    _trx: DatabaseReservedConnection,
   ) => {
     readingSubmissionPayloadResult = payload;
   },
 }));
 
+mock.module('../src/modules/writing/writing-setting/writing-setting.repository', () => ({
+  getOne: async () => writingSettingsResult,
+  updateOne: async () => writingSettingsResult,
+}));
+
 mock.module('../src/modules/writing/writing.repository', () => ({
-  getSettings: async () => writingSettingsResult,
-  updateSettings: async () => writingSettingsResult,
-  getNextSequence: async () => ({ sequence: 0 }),
-  insertMaterial: async () => writingMaterialRow,
-  getMaterial: async () => {
+  getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
+  insertOne: async () => writingMaterialRow,
+  getOneByCode: async () => {
     writingGetMaterialCallCount += 1;
     return writingMaterialRow;
   },
-  listMaterials: async () => writingListResult,
-  countMaterials: async () => writingCountResult,
-  getSubmission: async () => writingSubmissionResult,
+  getAll: async () => writingListResult,
+  countAll: async () => writingCountResult,
+  getOneSubmissionByCodeAndNumber: async () => writingSubmissionResult,
 }));
 
 const financeService = await import('../src/modules/finance/finance.service');
 const grammarService = await import('../src/modules/grammar/grammar.service');
 const junkService = await import('../src/modules/junk/junk.service');
 const notesService = await import('../src/modules/notes/notes.service');
+const readingSettingService = await import('../src/modules/reading/reading-setting/reading-setting.service');
 const readingService = await import('../src/modules/reading/reading.service');
+const writingSettingService = await import('../src/modules/writing/writing-setting/writing-setting.service');
 const writingService = await import('../src/modules/writing/writing.service');
 
 beforeEach(() => {
@@ -336,6 +358,7 @@ beforeEach(() => {
   grammarListResult = [];
   grammarCountResult = { total: 0 };
   grammarAnswerWriteCount = 0;
+  grammarReadConnections = [];
   committedTransactionCount = 0;
   rolledBackTransactionCount = 0;
   noteResult = null;
@@ -346,6 +369,7 @@ beforeEach(() => {
   readingListResult = [];
   readingSubmissionPayloadResult = null;
   readingFindByCodeCallCount = 0;
+  readingReadConnections = [];
   writingSettingsResult = writingSettingsRow;
   writingSubmissionResult = writingSubmissionRow;
   writingListResult = [];
@@ -443,6 +467,7 @@ test('create flows return the transaction-local result without a post-commit rea
   });
 
   expect(createdGrammarSession).toEqual(grammarSession);
+  expect(grammarReadConnections).toEqual([fakeTrx, fakeTrx]);
   expect(createdReadingMaterial).toEqual(readingMaterial);
   expect(createdWritingMaterial).toEqual(writingMaterial);
   expect(submittedReadingMaterial).toEqual(readingMaterial);
@@ -454,8 +479,23 @@ test('create flows return the transaction-local result without a post-commit rea
     ],
   });
   expect(readingFindByCodeCallCount).toBe(0);
+  expect(readingReadConnections).toEqual(Array(5).fill(fakeTrx));
   expect(writingGetMaterialCallCount).toBe(0);
   expect(committedTransactionCount).toBe(4);
+});
+
+test('grammar reads use the pool outside a transaction and the same reserved connection while saving', async () => {
+  await expect(grammarService.getSession(grammarSession.code)).resolves.toEqual(grammarSession);
+  expect(grammarReadConnections).toEqual([undefined]);
+
+  grammarReadConnections = [];
+
+  await grammarService.saveAnswer(grammarSession.code, 1, { user_answer: 'went', result: 'correct' });
+
+  expect(grammarReadConnections).toEqual([fakeTrx, fakeTrx, fakeTrx]);
+  expect(grammarAnswerWriteCount).toBe(1);
+  expect(committedTransactionCount).toBe(1);
+  expect(rolledBackTransactionCount).toBe(0);
 });
 
 test('reading and writing services compose list responses from repository rows', async () => {
@@ -682,7 +722,7 @@ test('grammar rejects an incomplete exam evaluation', async () => {
 });
 
 test('reading settings keep the default word count inside the configured range', async () => {
-  await expect(readingService.updateSettings({ min_word_count: 320 })).rejects.toMatchObject({
+  await expect(readingSettingService.updateSettings({ min_word_count: 320 })).rejects.toMatchObject({
     code: 'INVALID_READING_SETTINGS',
     statusCode: 400,
   });
@@ -701,7 +741,7 @@ test('reading rejects duplicate question numbers in optional answers', async () 
 });
 
 test('writing settings keep the default word count inside the configured range', async () => {
-  await expect(writingService.updateSettings({ max_word_count: 140 })).rejects.toMatchObject({
+  await expect(writingSettingService.updateSettings({ max_word_count: 140 })).rejects.toMatchObject({
     code: 'INVALID_WRITING_SETTINGS',
     statusCode: 400,
   });

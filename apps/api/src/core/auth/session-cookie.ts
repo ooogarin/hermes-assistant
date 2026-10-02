@@ -13,6 +13,7 @@ export const readSessionCookie = (
 ): string | undefined => {
   try {
     const parsed = sessionTokenSchema.safeParse(getCookie(context, getSessionCookieName(configuration)));
+
     return parsed.success ? parsed.data : undefined;
   } catch {
     return undefined;

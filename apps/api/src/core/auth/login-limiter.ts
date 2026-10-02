@@ -11,6 +11,7 @@ export const createLoginLimiter = (now: () => number = Date.now): LoginLimiter =
   return {
     admitAttempt: () => {
       const currentTime = now();
+
       if (currentTime >= windowStartedAt + windowMs) {
         windowStartedAt = currentTime;
         attempts = 0;
@@ -21,11 +22,16 @@ export const createLoginLimiter = (now: () => number = Date.now): LoginLimiter =
       }
 
       attempts += 1;
+
       return undefined;
     },
     acquireVerification: () => {
-      if (verifying) return false;
+      if (verifying) {
+        return false;
+      }
+
       verifying = true;
+
       return true;
     },
     releaseVerification: () => {

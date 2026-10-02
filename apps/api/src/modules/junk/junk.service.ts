@@ -23,9 +23,11 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
 
   try {
     const date = getJakartaDateCodeParts(new Date());
+
     trx = await startTransaction();
 
-    const sequenceRow = await junkRepository.getNextSequence(trx, date.key, date.segment);
+    const sequenceRow = await junkRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
+
     const code = formatPublicCode('JK', date.segment, sequenceRow.sequence + 1);
     const payload: CreateJunkPayload = {
       title: input.title,
@@ -36,7 +38,9 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
       source_name: input.source_name,
       tags: input.tags,
     };
-    const junkItemRow = await junkRepository.insert(trx, code, payload);
+
+    const junkItemRow = await junkRepository.insertOne(code, payload, trx);
+
     const trxToCommit = trx;
     trx = undefined;
 
@@ -56,7 +60,7 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
 };
 
 export const getDetail = async ({ code }: JunkReferenceRequest): Promise<JunkItem> => {
-  const junkItemRow = await junkRepository.findByCode(code);
+  const junkItemRow = await junkRepository.getOneByCode(code);
 
   if (junkItemRow === null) {
     throw junkItemNotFound();
@@ -79,26 +83,30 @@ export const list = async (input: ListJunkRequest): Promise<JunkItem[]> => {
   };
 
   const rows = await junkRepository.getAll(query);
+
   return rows.map(toJunkItem);
 };
 
 export const update = async ({ code }: JunkReferenceRequest, input: UpdateJunkRequest): Promise<JunkItem> => {
-  const current = await junkRepository.findByCode(code);
-  if (current === null) throw junkItemNotFound();
-  if (
-    ![
-      input.title === undefined ? current.title : input.title,
-      input.content_text === undefined ? current.content_text : input.content_text,
-      current.raw_text,
-      input.source_url === undefined ? current.source_url : input.source_url,
-    ].some((value) => value !== null)
-  ) {
+  const current = await junkRepository.getOneByCode(code);
+
+  if (current === null) {
+    throw junkItemNotFound();
+  }
+
+  const title = input.title === undefined ? current.title : input.title;
+  const content_text = input.content_text === undefined ? current.content_text : input.content_text;
+  const source_url = input.source_url === undefined ? current.source_url : input.source_url;
+  const hasContent = [title, content_text, current.raw_text, source_url].some((value) => value !== null);
+
+  if (!hasContent) {
     throw new AppError({
       code: 'JUNK_CONTENT_REQUIRED',
       statusCode: 400,
       message: 'Junk item needs a title, text, or URL',
     });
   }
+
   const payload: UpdateJunkPayload = {
     title: input.title,
     category: input.category,
@@ -107,7 +115,8 @@ export const update = async ({ code }: JunkReferenceRequest, input: UpdateJunkRe
     tags: input.tags,
     source_name: input.source_name,
   };
-  const junkItemRow = await junkRepository.updateByCode(code, payload);
+
+  const junkItemRow = await junkRepository.updateOneByCode(code, payload);
 
   if (junkItemRow === null) {
     throw junkItemNotFound();
@@ -117,7 +126,7 @@ export const update = async ({ code }: JunkReferenceRequest, input: UpdateJunkRe
 };
 
 export const remove = async ({ code }: JunkReferenceRequest): Promise<void> => {
-  const deleted = await junkRepository.softDeleteByCode(code);
+  const deleted = await junkRepository.softDeleteOneByCode(code);
 
   if (!deleted) {
     throw junkItemNotFound();

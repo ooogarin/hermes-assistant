@@ -30,10 +30,10 @@ export const appValidator = ((target: Parameters<typeof zValidator>[0], schema: 
     try {
       return await validator(context, next);
     } catch (error) {
-      if (
-        target === 'json' &&
-        (error instanceof SyntaxError || (error instanceof HTTPException && error.status === 400))
-      ) {
+      const isInvalidJson =
+        target === 'json' && (error instanceof SyntaxError || (error instanceof HTTPException && error.status === 400));
+
+      if (isInvalidJson) {
         return failureResponse({
           context: context as Context<AppEnv>,
           error: {

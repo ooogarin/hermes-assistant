@@ -8,15 +8,14 @@ import {
   questionReferenceSchema,
   saveAnswerSchema,
   sessionCodeSchema,
-  updateSettingsSchema,
 } from './grammar.validator';
+import { createGrammarSettingRoutes } from './grammar-setting/grammar-setting.route';
 import type { AppEnv } from '../../core/http/app-env';
 
 export const createGrammarRoutes = () => {
   const route = new Hono<AppEnv>();
 
-  route.get('/settings', grammarHandler.getSettings);
-  route.patch('/settings', appValidator('json', updateSettingsSchema), grammarHandler.updateSettings);
+  route.route('/settings', createGrammarSettingRoutes());
   route.post('/sessions', appValidator('json', createSessionSchema), grammarHandler.createSession);
   route.get('/sessions', appValidator('query', listSessionsSchema), grammarHandler.listSessions);
   route.get('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.getSession);

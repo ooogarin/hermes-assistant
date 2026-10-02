@@ -22,9 +22,11 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
 
   try {
     const date = getJakartaDateCodeParts(new Date());
+
     trx = await startTransaction();
 
-    const sequenceRow = await notesRepository.getNextSequence(trx, date.key, date.segment);
+    const sequenceRow = await notesRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
+
     const code = formatPublicCode('NT', date.segment, sequenceRow.sequence + 1);
     const payload: CreateNotePayload = {
       title: input.title,
@@ -38,7 +40,9 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
       source_reference: input.source_reference,
       tags: input.tags,
     };
-    const noteRow = await notesRepository.insert(trx, code, payload);
+
+    const noteRow = await notesRepository.insertOne(code, payload, trx);
+
     const trxToCommit = trx;
     trx = undefined;
 
@@ -58,7 +62,7 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
 };
 
 export const getDetail = async ({ code }: NoteReferenceRequest): Promise<Note> => {
-  const noteRow = await notesRepository.findByCode(code);
+  const noteRow = await notesRepository.getOneByCode(code);
 
   if (noteRow === null) {
     throw noteNotFound();
@@ -81,6 +85,7 @@ export const list = async (input: ListNotesRequest): Promise<Note[]> => {
   };
 
   const rows = await notesRepository.getAll(query);
+
   return rows.map(toNote);
 };
 
@@ -96,7 +101,8 @@ export const update = async ({ code }: NoteReferenceRequest, input: UpdateNoteRe
     source_reference: input.source_reference,
     tags: input.tags,
   };
-  const noteRow = await notesRepository.updateByCode(code, payload);
+
+  const noteRow = await notesRepository.updateOneByCode(code, payload);
 
   if (noteRow === null) {
     throw noteNotFound();
@@ -106,7 +112,7 @@ export const update = async ({ code }: NoteReferenceRequest, input: UpdateNoteRe
 };
 
 export const remove = async ({ code }: NoteReferenceRequest): Promise<void> => {
-  const deleted = await notesRepository.softDeleteByCode(code);
+  const deleted = await notesRepository.softDeleteOneByCode(code);
 
   if (!deleted) {
     throw noteNotFound();

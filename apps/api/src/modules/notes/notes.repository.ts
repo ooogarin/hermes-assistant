@@ -10,13 +10,14 @@ import type {
 
 const noteCodeLockNamespace = 314_159_265;
 
-export const getNextSequence = async (
-  trx: DatabaseReservedConnection,
+export const getLastSequenceByDateForUpdate = async (
   dateKey: number,
   dateSegment: string,
+  trx: DatabaseReservedConnection,
 ): Promise<NoteSequenceRow> => {
   await trx`
-    SELECT pg_advisory_xact_lock(${noteCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
+    SELECT
+      pg_advisory_xact_lock(${noteCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
   `;
 
   const [row] = await trx<NoteSequenceRow[]>`
@@ -25,6 +26,7 @@ export const getNextSequence = async (
     FROM notes
     WHERE code LIKE ${`NT-${dateSegment}-%`}
   `;
+
   if (row === undefined) {
     throw new Error('Note sequence query did not return a row.');
   }
@@ -32,10 +34,10 @@ export const getNextSequence = async (
   return row;
 };
 
-export const insert = async (
-  trx: DatabaseReservedConnection,
+export const insertOne = async (
   code: string,
   input: CreateNotePayload,
+  trx: DatabaseReservedConnection,
 ): Promise<NoteRow> => {
   const [row] = await trx<NoteRow[]>`
     INSERT INTO notes (
@@ -50,7 +52,8 @@ export const insert = async (
       source_context,
       source_reference,
       tags
-    ) VALUES (
+    )
+    VALUES (
       ${code},
       ${input.title},
       ${input.content_text},
@@ -87,8 +90,10 @@ export const insert = async (
   return row;
 };
 
-export const findByCode = async (code: string): Promise<NoteRow | null> => {
-  const [row] = await getDatabaseClient()<NoteRow[]>`
+export const getOneByCode = async (code: string): Promise<NoteRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<NoteRow[]>`
     SELECT
       code,
       title,
@@ -121,6 +126,7 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
   const source = input.source ?? null;
   const from = input.from ?? null;
   const to = input.to ?? null;
+
   const rows = await database<NoteRow[]>`
     SELECT
       code,
@@ -167,8 +173,9 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
   return rows;
 };
 
-export const updateByCode = async (code: string, input: UpdateNotePayload): Promise<NoteRow | null> => {
+export const updateOneByCode = async (code: string, input: UpdateNotePayload): Promise<NoteRow | null> => {
   const database = getDatabaseClient();
+
   const [row] = await database<NoteRow[]>`
     UPDATE notes
     SET
@@ -207,15 +214,18 @@ export const updateByCode = async (code: string, input: UpdateNotePayload): Prom
   return row === undefined ? null : row;
 };
 
-export const softDeleteByCode = async (code: string): Promise<{ code: string } | null> => {
-  const [row] = await getDatabaseClient()<{ code: string }[]>`
+export const softDeleteOneByCode = async (code: string): Promise<{ code: string } | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<{ code: string }[]>`
     UPDATE notes
     SET
       deleted_at = NOW(),
       updated_at = NOW()
     WHERE code = ${code}
       AND deleted_at IS NULL
-    RETURNING code
+    RETURNING
+      code
   `;
 
   return row ?? null;

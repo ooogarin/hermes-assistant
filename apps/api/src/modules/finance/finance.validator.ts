@@ -47,12 +47,6 @@ export const listTransactionsSchema = z
   })
   .strict();
 
-export const listCategoriesSchema = z
-  .object({
-    type: transactionTypeSchema.optional(),
-  })
-  .strict();
-
 export const summaryQuerySchema = z
   .object({
     from: dateSchema,

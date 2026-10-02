@@ -8,6 +8,7 @@ import type { JunkReferenceRequest } from './junk.types';
 
 export const create = async (context: Context<AppEnv>) => {
   const input = getBody(context, createJunkSchema);
+
   const result = await junkService.create(input);
 
   return successResponse({ context, data: result, statusCode: 201 });
@@ -16,6 +17,7 @@ export const create = async (context: Context<AppEnv>) => {
 export const getDetail = async (context: Context<AppEnv>) => {
   const params = getParam(context, junkCodeSchema);
   const request: JunkReferenceRequest = { code: params.code };
+
   const result = await junkService.getDetail(request);
 
   return successResponse({ context, data: result });
@@ -23,6 +25,7 @@ export const getDetail = async (context: Context<AppEnv>) => {
 
 export const list = async (context: Context<AppEnv>) => {
   const query = getQuery(context, searchJunkSchema);
+
   const result = await junkService.list(query);
 
   return successResponse({ context, data: { items: result } });
@@ -32,6 +35,7 @@ export const update = async (context: Context<AppEnv>) => {
   const params = getParam(context, junkCodeSchema);
   const input = getBody(context, updateJunkSchema);
   const request: JunkReferenceRequest = { code: params.code };
+
   const result = await junkService.update(request, input);
 
   return successResponse({ context, data: result });
