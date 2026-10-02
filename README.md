@@ -19,7 +19,7 @@ bun install --frozen-lockfile
 cp .env.example .env
 ```
 
-Set a PostgreSQL `DATABASE_URL` and replace `INTERNAL_API_KEY` with a secret of at least 32 characters in `.env`. API startup also requires `WEB_AUTH_PASSWORD_HASH`, generated with native `Bun.password.hash(password, { algorithm: 'argon2id' })`, and the exact `WEB_AUTH_ORIGIN` (normally `http://127.0.0.1:5173` for development). Use a unique password/passphrase of at least 20 characters. Generate it through a local prompt or secret manager and keep it out of shell history/logs. In Bun dotenv files, escape every literal `$` in the PHC hash as `\$`, including inside quotes; quoting alone does not stop substitution. When supplying a real process environment variable through a secret manager, use the plain PHC hash without dotenv escape characters. `WEB_AUTH_SESSION_TTL_SECONDS` defaults to seven days. The placeholder hash is intentionally rejected at startup. See [auth configuration and constraints](docs/auth-design.md#data-and-env).
+Set a PostgreSQL `DATABASE_URL` and replace `INTERNAL_API_KEY` with a secret of at least 32 characters in `.env`. API startup also requires `WEB_AUTH_PASSWORD_HASH`, generated with native `Bun.password.hash(password, { algorithm: 'argon2id' })`, and the exact `WEB_AUTH_ORIGIN` (normally `http://127.0.0.1:5173` for development). Use a unique password/passphrase of at least 20 characters. Generate it through a local prompt or secret manager and keep it out of shell history/logs. In Bun dotenv files, escape every literal `$` in the PHC hash as `\$`, including inside quotes; quoting alone does not stop substitution. When supplying a real process environment variable through a secret manager, use the plain PHC hash without dotenv escape characters. Set `WEB_AUTH_JWT_SECRET` to 32 random bytes encoded as 64 lowercase hex characters; generate it with the command in `.env.example`. JWTs expire after 24 hours. Both example credential placeholders are intentionally rejected at startup. See [auth configuration and constraints](docs/auth-design.md#server-configuration).
 
 Then apply pending migrations and start the API:
 
@@ -36,7 +36,7 @@ bun run dev:web
 
 The frontend runs at `http://127.0.0.1:5173` and proxies `/api` requests to `API_PROXY_TARGET`. During local development, the Vite server—not browser code—adds the internal bearer key from `.env`. Do not add `INTERNAL_API_KEY` to a `VITE_*` variable.
 
-The auth backend exposes login, session inspection, and logout under `/api/v1/auth`. Browser sessions use opaque HttpOnly cookies and are cleared by an API restart/redeploy. The FE login and protected routes are still pending; removing Vite key injection belongs to that same FE stage. This development proxy is not suitable for public deployment.
+The auth backend exposes login, JWT status, and logout under `/api/v1/auth`. The signed JWT stays in an HttpOnly cookie and remains valid across API restarts while the signing secret stays the same. Logout clears the cookie; a copied JWT remains valid until its 24-hour expiry. The FE login and protected routes are still pending; removing Vite key injection belongs to that same FE stage. This development proxy is not suitable for public deployment.
 
 `GET /health` checks application liveness without querying PostgreSQL. `GET /health/ready` checks PostgreSQL readiness and returns within `READINESS_TIMEOUT_MS`.
 

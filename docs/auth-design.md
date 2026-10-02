@@ -1,283 +1,120 @@
 # Personal Web Authentication Design
 
-> Status: Technical design and backend implemented, 2026-10-01. Browser session middleware, login/session/logout endpoints, ENV validation, and login limits are available. Login visual selection, frontend integration, and removal of Vite bearer injection remain a separate stage; the frontend is not ready for public deployment yet.
+> Status: JWT authentication is implemented in the API. Frontend login, protected routing, and removal of Vite bearer injection are pending. The frontend is not ready for public deployment.
 
-## Purpose and scope
+## Scope
 
-Hermes is a private, single-owner application whose web frontend may be publicly reachable. The owner signs in with one static password configured on the API server. There is no user entity, username, registration, role, permission matrix, or authentication database migration.
+Hermes has one owner and one static web password. There is no user table, username, registration, RBAC, or auth migration. The frontend may be publicly reachable, so the API authenticates every application data request, including reads. A frontend route guard only controls navigation.
 
-The public frontend shell may be downloaded by anyone. Every application data endpoint must enforce authentication on the API server, including reads. A frontend route guard improves navigation but is not the security boundary.
-
-The existing Hermes Agent continues to use `INTERNAL_API_KEY`. Browser authentication uses a separate password and session cookie. Both credentials grant access to the existing application operations; this design introduces no RBAC or domain-specific permissions.
+Hermes Agent continues to use its separate INTERNAL_API_KEY. Browser requests use a signed JWT in an HttpOnly cookie. Both credentials grant access to the existing domain operations.
 
 ## Deployment assumptions
 
-- Serve the built frontend and `/api` through one HTTPS origin, for example `https://hermes.example.com`. A reverse proxy can send `/api/*` to Bun while serving the frontend build separately.
-- Run one API process/instance. Session state lives in that process. A restart or redeploy signs out all browser sessions; the Agent remains usable with its API key.
-- The reverse proxy forwards cookies and `Set-Cookie`, preserves `Origin`, and does not inject an internal bearer key into browser requests.
-- Production never serves the Vite development server. `/api/*` is forwarded to the API rather than falling back to SPA HTML, and API responses are not cached.
+- Serve the frontend and /api through one HTTPS origin. A reverse proxy may route /api to Bun.
+- Forward cookies, Set-Cookie, and Origin unchanged. Do not add the Agent bearer key to browser requests.
+- Share the same JWT secret across API instances. JWTs remain valid across process restarts when that secret stays the same.
+- Do not cache API responses or send /api requests to an SPA HTML fallback.
 
-The implementation targets one HTTPS origin and one API process. The exact host/provider remains an open deployment decision. Cross-origin hosting or multiple API instances requires revisiting this design before deployment.
+The exact deployment host and provider remain open decisions. Cross-origin hosting requires a new cookie and CSRF design.
 
-## Data and ENV
+## Server configuration
 
-### Server configuration
-
-| Variable | Meaning | Proposed validation/default |
+| Variable | Purpose | Validation |
 | --- | --- | --- |
-| `WEB_AUTH_PASSWORD_HASH` | Hash of the one static browser password | Required valid Argon2id PHC hash; never a frontend variable |
-| `WEB_AUTH_ORIGIN` | Exact browser origin allowed to send writes | Required URL containing only scheme, host, and optional port; HTTPS in staging/production; reject credentials, paths, queries, and fragments |
-| `WEB_AUTH_SESSION_TTL_SECONDS` | Absolute session lifetime | Integer from 300 through 604800; default 604800 (7 days) |
-| `INTERNAL_API_KEY` | Existing Agent bearer credential | Existing validation remains; independent of the browser password |
+| WEB_AUTH_PASSWORD_HASH | Argon2id PHC hash of the one browser password | Required valid Argon2id v19 hash with bounded cost |
+| WEB_AUTH_JWT_SECRET | HS256 signing secret | Required 64 lowercase hex characters representing 32 random bytes |
+| WEB_AUTH_ORIGIN | Exact public browser origin for writes | HTTPS, or loopback HTTP in development; no path, query, credentials, or fragment |
+| INTERNAL_API_KEY | Existing Hermes Agent bearer credential | Independent of the browser password and JWT |
 
-Keep these values server-side. No auth secrets belong in `VITE_*`, the frontend bundle, browser storage, URLs, logs, or response JSON. The actual password never needs to be stored in ENV: the hash represents the static credential. Provision a unique random password/passphrase of at least 20 characters, up to the login field limit of 512 characters.
+JWT expiry is fixed at 86,400 seconds (24 hours); there is no TTL environment variable or auth-off switch. API startup reports invalid configuration key names without displaying values. Database-only migration commands do not need the browser auth settings.
 
-Use native `Bun.password.hash(password, { algorithm: 'argon2id' })` during credential provisioning and asynchronous `Bun.password.verify(password, hash)` during login. Generate/provision the password through a local prompt or secret manager, keeping it out of shell arguments/history and captured tool output. In Bun dotenv files, escape every literal `$` as `\$`, including inside quoted values; quoting alone does not disable variable substitution. A real process environment variable supplied through a secret manager uses the plain PHC hash without dotenv backslashes. Startup validates the hash using a fixed, non-empty verification probe and reports invalid configuration keys only. Supported Argon2id v19 parameters are 19456–65536 KiB memory, 2–4 iterations, and parallelism 1–4; Bun's default hash parameters fit these bounds. The bounds reject malformed/weak configuration and limit verification resource usage. Bun supplies these password APIs directly. [Bun password documentation](https://bun.sh/docs/runtime/hashing#bunpassword).
+Generate the JWT secret locally with Bun and keep it server-side:
 
-Dotenv structure only (replace the salt and digest with those from your generated hash):
+    bun -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))'
 
-```dotenv
-WEB_AUTH_PASSWORD_HASH='\$argon2id\$v=19\$m=65536,t=2,p=1\$<salt>\$<digest>'
-```
+Generate the browser password hash with Bun.password.hash(password, { algorithm: 'argon2id' }). Keep the password out of shell arguments, history, and logs. In Bun dotenv files, escape each literal dollar sign in its PHC hash as a backslash followed by a dollar sign, even inside quotes. Secret-manager process variables use the plain PHC hash. Neither password hash nor JWT secret belongs in VITE_ variables, the frontend bundle, browser storage, URLs, logs, or API response JSON.
 
-There is no runtime auth-off switch. API startup requires browser auth configuration in development too. Database-only migration configuration does not need web-auth variables. The existing FE development proxy still injects the Agent key until the frontend stage is implemented, so ordinary local FE domain requests currently use Agent authentication.
+## JWT lifecycle
 
-### In-memory session record
+After successful password verification, the API signs a JWT with Hono's HS256 utility. Its claims are a fixed issuer, audience, and subject; issuance time; expiration time; and a random token ID. It carries no password, Agent key, role, or private application data. The API requires the expected algorithm, issuer, audience, claim shape, signature, and a lifetime of exactly 24 hours. All browser requests present it through the cookie.
 
-```ts
-type WebSession = {
-  issued_at: number;
-  expires_at: number;
-};
+The JWT is stateless. A restart does not invalidate it. Changing the browser password hash alone does not invalidate previously issued JWTs; rotate WEB_AUTH_JWT_SECRET to invalidate all of them. A fresh login issues a new JWT, while earlier JWTs remain valid until expiration. Logout clears the browser cookie; a copy of the JWT remains valid until its 24-hour expiry. Immediate server-side revocation would require additional state and is outside this design.
 
-// Key: SHA-256 digest of the browser's random session token.
-type WebSessionStore = Map<string, WebSession>;
-```
+## Cookie
 
-- Create a fresh token with `randomBytes(32).toString('base64url')`: 256 bits of cryptographic randomness, encoded as 43 characters.
-- The cookie carries that opaque token. The process stores only its SHA-256 digest and timestamps in milliseconds since the Unix epoch.
-- A token has no user ID, role, password, API key, or JSON payload. It needs no JWT, signature secret, or encryption because the server only accepts tokens present in its store.
-- Use a process-owned store shared by the middleware and auth service, created once per `createApp(...)` instance. Never create a new store for each request or a global singleton shared by independent test apps.
-- Check expiration on every lookup. Delete expired records during lookup and before insertion. Cap the store at 32 sessions; when full, remove the oldest session before issuing a new one. This bounds memory without a scheduler or external cache.
-- Login issues a fresh token and revokes the previous token presented by that browser. Multiple browsers can each hold one session.
-- Logout deletes the matching record. A copied token then stops working on its next authenticated request. Requests already executing when logout occurs may finish.
-- Restart/redeploy clears the store. Changing the password requires restarting the process, which also clears all sessions. Rotating `INTERNAL_API_KEY` does not change the browser credential.
-
-### Cookie
-
-| Attribute | Production value |
+| Attribute | HTTPS value |
 | --- | --- |
-| Name | `__Host-hermes_session` |
-| Value | Random opaque token |
-| `HttpOnly` | `true` |
-| `Secure` | `true` |
-| `SameSite` | `Lax` |
-| `Path` | `/` |
-| `Domain` | Omitted; host-only |
-| `Max-Age` | Session TTL |
+| Name | __Host-hermes_auth |
+| Value | Signed JWT |
+| HttpOnly | true |
+| Secure | true |
+| SameSite | Lax |
+| Path | / |
+| Domain | Omitted |
+| Max-Age | 86400 |
 
-`Lax` supports opening Hermes links from Telegram while the API still enforces write-origin checks. The server's expiration check is authoritative; browser `Max-Age` alone is insufficient. Use Hono's existing cookie helper to read, set, and delete cookies. The host-prefixed cookie requires HTTPS, path `/`, and no domain attribute. [Hono cookie helper](https://hono.dev/docs/helpers/cookie).
+The API verifies expiration independently of the browser's Max-Age. For local loopback HTTP development only, use hermes_auth without the host prefix and with Secure=false. Cookie settings derive from the validated WEB_AUTH_ORIGIN, not the request Host header. Use Hono's cookie helper to read, set, and clear the cookie. Old opaque-session cookies are ignored.
 
-For local HTTP development only, use `hermes_session` with `Secure=false` and the same remaining attributes. Local `WEB_AUTH_ORIGIN` is the frontend origin, normally `http://127.0.0.1:5173`; HTTP is accepted only for `localhost`, `127.0.0.1`, or `[::1]` in development. HTTPS origins use the secure cookie in every environment. Cookie naming/security depends on the validated configured origin, never an untrusted request header. Deletion must use the same name and path and includes the appropriate secure flag, HttpOnly, and SameSite attributes.
+## API contract
 
-## API contracts
+All responses retain Hermes's snake_case success/error envelope and Cache-Control: private, no-store.
 
-All responses retain Hermes's `snake_case` success/error envelope. Set `Cache-Control: private, no-store` on all `/api/*` responses, including failures. Successful login returns session metadata, never a token; only `Set-Cookie` carries the credential.
-
-| Method and path | Authentication | Result |
+| Method and path | Authentication | Behavior |
 | --- | --- | --- |
-| `POST /api/v1/auth/login` | No previous session; allowed Origin required | Verify password, create session, set cookie; `200` |
-| `GET /api/v1/auth/session` | Valid browser session cookie only | `200` session metadata, otherwise `401` |
-| `POST /api/v1/auth/logout` | Allowed Origin required; session may be absent/expired | Revoke presented session if any, clear cookie; `204` |
+| POST /api/v1/auth/login | No existing JWT required; exact Origin required | Verify password, issue JWT cookie, return authentication status; 200 |
+| GET /api/v1/auth/status | Valid browser JWT cookie required | Return authentication status and unchanged expiry; 200 or 401 |
+| POST /api/v1/auth/logout | Exact Origin required; JWT may be absent or expired | Clear cookie; 204 |
 
-### Login
+Login accepts JSON with exactly one password string of 1–512 characters. Do not trim or normalize it. Require application/json, allowing a charset parameter. Enforce a 4 KiB limit on actual streamed body bytes before JSON parsing. A successful login returns authenticated=true and expires_at as an ISO timestamp; the JWT appears only in Set-Cookie. Status returns the same data shape without renewing expiration. An Agent key alone cannot access status.
 
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
-Origin: https://hermes.example.com
-```
+Example: a login at 2026-10-01 12:00 UTC expires at 2026-10-02T12:00:00.000Z.
 
-```json
-{ "password": "<owner-entered-password>" }
-```
-
-Use `z.strictObject({ password: z.string().min(1).max(512) })`. Preserve the exact password: no trimming, lowercasing, or Unicode normalization. Enforce an actual streamed body limit of 4 KiB before parsing, even when `Content-Length` is missing. Require `application/json`, accepting its charset parameter.
-
-Example success body for a login on 2026-10-01 at 12:00 UTC:
-
-```json
-{
-  "success": true,
-  "data": {
-    "authenticated": true,
-    "expires_at": "2026-10-08T12:00:00.000Z"
-  }
-}
-```
-
-`GET /api/v1/auth/session` returns the same data shape for the existing session and never renews its expiration. An internal bearer key cannot substitute for a browser session on this endpoint.
-
-### Errors
-
-| Status | Stable code | Meaning |
+| Status | Code | Meaning |
 | --- | --- | --- |
-| `400` | `VALIDATION_ERROR` | Malformed JSON or invalid body/header structure; details may name fields but never echo password values |
-| `401` | `INVALID_CREDENTIALS` | Password did not match; safe message `Invalid credentials` |
-| `401` | `UNAUTHENTICATED` | Missing, malformed, unknown, revoked, or expired session / invalid bearer credential |
-| `403` | `FORBIDDEN` | Disallowed, missing, or `null` browser write Origin |
-| `413` | `PAYLOAD_TOO_LARGE` | Login body exceeds its limit |
-| `415` | `UNSUPPORTED_MEDIA_TYPE` | Login is not JSON |
-| `429` | `RATE_LIMITED` | Login allowance exhausted or password verification already busy; include `Retry-After` |
+| 400 | VALIDATION_ERROR | Malformed JSON or invalid fields |
+| 401 | INVALID_CREDENTIALS | Password mismatch |
+| 401 | UNAUTHENTICATED | Missing, malformed, invalid, or expired JWT; invalid Agent bearer |
+| 403 | FORBIDDEN | Missing or disallowed browser write Origin |
+| 413 | PAYLOAD_TOO_LARGE | Login body exceeds 4 KiB |
+| 415 | UNSUPPORTED_MEDIA_TYPE | Login body is not JSON |
+| 429 | RATE_LIMITED | Login attempt allowance exhausted or verifier busy |
+| 503 | SERVICE_UNAVAILABLE | Password verification or token issuance failed |
 
-Use the existing failure envelope with safe message, `details`, and `request_id`. Register explicit safe mappings for the new statuses rather than returning framework exception text. Do not return a password hint or a configured hash. Auth backend failure is a safe `500`/`503` and cannot fall back to granting access.
+Never echo the password, token, hash, signing secret, framework exception text, or internal error details.
 
-### Login throttling
+## Request boundary
 
-For this single-owner, single-instance application, use one process-wide login limiter: at most 10 attempts in a fixed 60-second window. Count attempts before body/password validation and verification, including successful attempts; reserve each slot synchronously before awaiting work. Permit only one Argon2 verification at a time; other requests receive `429` and `Retry-After: 1`. Always release the verification slot in `finally`.
+Only the exact POST login/logout method and path pairs bypass prior authentication. Health endpoints remain public. On domain requests, an Authorization header selects Agent bearer authentication; an invalid bearer fails 401 without falling back to a cookie. Otherwise the middleware verifies the browser JWT. The status endpoint always requires a browser JWT.
 
-This is a small bounded counter rather than an IP database or Redis service. The window resets after a restart. A hostile caller can temporarily consume the login allowance, but cannot revoke existing sessions through the limiter. Provider/edge protection can add further limits when the deployment target is selected; client-supplied forwarding headers are unnecessary for this design.
+Cookie-authenticated POST, PUT, PATCH, and DELETE requests require Origin to exactly match WEB_AUTH_ORIGIN. Login and logout require the same check even when unauthenticated. Missing, null, malformed, suffix-matching, and foreign origins fail. Safe GET, HEAD, and OPTIONS routes must not write data. SameSite=Lax, JSON-only login, and exact Origin checking protect the intended same-origin deployment against CSRF.
 
-## Middleware and request flow
+The existing process-wide login limiter admits at most 10 attempts in a fixed 60-second window and only one concurrent Argon2 verification. Attempts count before body validation. Excess requests receive 429 and Retry-After. The limiter resets on restart; it does not store JWTs.
 
-```text
-Browser → same-origin /api → request ID / safe logging / no-store
-  ├─ exact POST auth/login → Origin + body/attempt limits → Zod → handler → service
-  ├─ exact POST auth/logout → Origin → cookie validation → handler → service
-  ├─ exact GET auth/session → browser session middleware → handler → service
-  └─ domain API → bearer OR browser session middleware
-       → browser-write Origin check when using a cookie
-       → existing route → validator → handler → service → repository → PostgreSQL
+## Code ownership
 
-Hermes Agent → domain API → existing bearer authentication → existing domain flow
-```
-
-The global authentication middleware exempts only the exact method/path pairs for login and logout. Do not exempt all `/auth/*` paths or all requests with an Origin header. Existing health endpoints remain public.
-
-For domain requests, the credential selection rule is explicit:
-
-1. If `Authorization` is present, validate its structure with Zod and require the existing valid internal bearer credential. An invalid header fails `401`; do not fall back to a cookie. The key grants the existing internal access.
-2. Otherwise validate the cookie token with Zod (`^[A-Za-z0-9_-]{43}$`), digest it, look up the session, and require `expires_at > now`. Missing/invalid sessions fail `401`; malformed cookie parsing must not turn into a `500`.
-3. For cookie-authenticated requests whose method is not `GET`, `HEAD`, or `OPTIONS`, require `Origin` to exactly equal configured `WEB_AUTH_ORIGIN`. Apply this same check to login and logout, including unauthenticated logout.
-4. Never write data from a `GET` or other safe-method route. Unknown API paths retain the existing safe error boundary; browser API failures remain JSON, with no server redirect to the login HTML.
-
-The Origin comparison includes scheme, host, and port. Reject missing, `null`, malformed, suffix-matching, and other origins. Read the configured public origin rather than reconstructing it from `Host` or forwarding headers. This strict Origin policy, JSON-only login, and `SameSite` cookie form the CSRF protection for the intended browser deployment. No CORS allowance is needed for one-origin hosting. SameSite alone is insufficient for general deployments. [OWASP CSRF guidance](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).
-
-## Code organization
-
-| File | Responsibility |
+| Path | Responsibility |
 | --- | --- |
-| `apps/api/src/core/config/env.ts` | Validate and expose server auth configuration; fail closed at startup |
-| `apps/api/src/core/auth/session-store.ts` | Bounded in-memory create/find/revoke operations with injectable clock |
-| `apps/api/src/core/auth/login-limiter.ts` | Bounded attempt counter and verification admission |
-| `apps/api/src/core/middleware/auth.ts` | Bearer/session selection, exact public exemptions, session checks; reuse timing-safe bearer comparison |
-| `apps/api/src/core/middleware/web-origin.ts` | Validate required browser write Origin |
-| `apps/api/src/modules/auth/auth.validator.ts` | Login body and session response/input contracts using Zod |
-| `apps/api/src/modules/auth/auth.handler.ts` | Read validated input, call service, set/delete cookie, emit API envelopes |
-| `apps/api/src/modules/auth/auth.service.ts` | Verify password and own session issue/check/revoke rules |
-| `apps/api/src/modules/auth/auth.route.ts` | Mount three endpoints with relevant middleware and validators |
-| `apps/api/src/modules/auth/auth.types.ts` | Request, session, service, and dependency types; no user type |
-| `apps/api/src/app.ts` / `index.ts` | Create/inject one store and limiter, pass validated config, mount auth routes |
-| `.env.example` | Documents required auth settings with a rejected placeholder hash; no real credential values |
+| apps/api/src/core/config/env.ts | Validate server-side hash, origin, and signing secret |
+| apps/api/src/core/auth/web-jwt.ts | Issue and verify the scoped, 24-hour JWT |
+| apps/api/src/core/auth/auth-cookie.ts | Read, set, and clear the browser cookie |
+| apps/api/src/core/auth/login-limiter.ts | Bound login attempts and password verification |
+| apps/api/src/core/middleware/auth.ts | Choose Agent bearer or browser JWT and enforce access |
+| apps/api/src/core/middleware/web-origin.ts | Validate browser write Origin |
+| apps/api/src/modules/auth/ | Validate login, own auth rules, and adapt HTTP responses |
+| apps/api/src/app.ts | Create one limiter per app and inject auth dependencies |
 
-There is no auth repository or migration because this feature does not access PostgreSQL. Auth operations stop at the service and the in-memory infrastructure. Existing domain requests preserve their complete database-layer boundary.
-
-### Reference primitives
-
-This excerpt illustrates the intended service/store operations. It is design code, not the complete implementation: the surrounding flow must also apply limits, old-session revocation, configuration validation, and HTTP error mapping described above.
-
-```ts
-import { createHash, randomBytes } from 'node:crypto';
-import { z } from 'zod';
-
-const loginBodySchema = z.strictObject({
-  password: z.string().min(1).max(512),
-});
-const tokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
-const digestToken = (token: string): string =>
-  createHash('sha256').update(token).digest('hex');
-
-type Session = { issued_at: number; expires_at: number };
-
-const issueSession = (
-  sessions: Map<string, Session>,
-  now: number,
-  ttlSeconds: number,
-): { token: string; session: Session } => {
-  const token = randomBytes(32).toString('base64url');
-  const session = { issued_at: now, expires_at: now + ttlSeconds * 1000 };
-  sessions.set(digestToken(token), session);
-  return { token, session };
-};
-
-const findSession = (
-  sessions: Map<string, Session>,
-  rawToken: unknown,
-  now: number,
-): Session | undefined => {
-  const parsedToken = tokenSchema.safeParse(rawToken);
-  if (!parsedToken.success) return undefined;
-
-  const key = digestToken(parsedToken.data);
-  const session = sessions.get(key);
-  if (session === undefined) return undefined;
-  if (session.expires_at <= now) {
-    sessions.delete(key);
-    return undefined;
-  }
-  return session;
-};
-
-const verifyPassword = async (rawBody: unknown, passwordHash: string): Promise<boolean> => {
-  const { password } = loginBodySchema.parse(rawBody);
-  return Bun.password.verify(password, passwordHash);
-};
-```
-
-Cookie setting belongs to the handler, using `setCookie(context, cookieName, token, options)` from `hono/cookie`. Session-store functions never receive a Hono context. Keep the existing raw SQL and repository code untouched.
+Auth has no repository, database migration, session store, or token revocation list. Domain modules keep their existing route-to-repository flow.
 
 ## Frontend integration
 
-- Add public `/login` outside `AppShell`. Wrap all current application routes with a protected layout; mount the shell and feature queries only after a successful session check.
-- Add a small `AuthProvider` using React context and existing hooks. Track `checking`, `authenticated`, `unauthenticated`, and `error`; this is UI state, not a user record or persistent token.
-- Use relative `/api/v1/auth/*` requests through the existing API client with `credentials: 'same-origin'`. Validate response data with Zod. No JavaScript reads or stores the cookie.
-- On startup/reload, call the session endpoint. On a session `401`, go to login; a network/`5xx` failure shows a retry state rather than pretending the session is absent.
-- On protected-domain `401`, stop showing protected content, abort/ignore pending queries, reset in-memory feature state, and show login with a session-ended message. Concurrent failures cause one transition. Do not automatically retry write requests after a new login.
-- Keep auth-endpoint errors local: a wrong password is an inline login error rather than another global redirect.
-- Preserve only the desired internal pathname/query/hash as `return_to`, validated with Zod and URL parsing against the current origin. Accept known application destinations only; reject external/protocol-relative URLs, backslashes/control characters, `/login`, `/api`, and unknown routes. Validate again immediately before navigation. Never put a password, token, or form draft in the URL.
-- After login, use the safe return destination; use `/finance` as the proposed fallback because Ringkasan is currently a placeholder. After explicit logout, return to `/login` without automatically re-entering the previous page.
-- Add `Keluar` at the bottom of the sidebar and in the mobile drawer. Respect the existing unsaved-change prompt before an intentional logout. Clear protected UI after successful logout; if the request fails, show an error and allow retry rather than claiming the server session was revoked.
-- Treat a cookie as unavailable when login succeeds but the follow-up session check fails. Show a safe cookie/browser-storage message and remain outside the protected shell.
+The frontend stage remains pending. Add /login outside AppShell, check /api/v1/auth/status before mounting private routes, send same-origin requests with browser cookies, and provide logout in the sidebar and mobile drawer. The browser must never read or persist the JWT. A status 401 goes to login; a network/server error shows a retry state. Domain 401 responses clear protected UI without retrying interrupted writes.
 
-Implementation files: `features/auth/auth-api.ts`, `features/auth/auth-context.tsx`, `features/auth/protected-layout.tsx`, `features/auth/login/page.tsx`, plus small changes in `app.tsx`, `app/routes.tsx`, `lib/api/api-client.ts`, `components/layout/app-shell.tsx`, and `vite.config.ts`.
+Preserve only a validated internal return destination. Respect unsaved-change prompts before deliberate logout. After logout 204, clear private UI and navigate to /login. Other tabs should clear their UI on focus or a non-secret logout event; they share the browser cookie. Logout does not revoke a copied JWT, so frontend copy must not claim server-side revocation.
 
-The Vite proxy must stop adding `Authorization` for every browser request. Otherwise a protected API request would still pass via the Agent key even after browser logout. Keep forwarding `/api` for local development and preserve cookies, but pass no credential except what the browser sends. Production proxy configuration follows the same rule.
+Remove the Vite proxy's Agent bearer injection when adding the frontend login. Until then, local browser domain requests still use the Agent credential and the frontend is unsuitable for public deployment. The [login screen specification](frontend-screens/auth.md) describes the pending UI.
 
-Detailed page behavior is in [Login screen specification](frontend-screens/auth.md).
+## Verification and open decisions
 
-## Implementation and verification
+Relevant checks cover valid and invalid JWT signatures, scopes, 24-hour expiry, restart behavior, secret rotation, cookie settings, logout semantics, Origin enforcement, Agent bearer precedence, login limits, and safe error envelopes. Repository verification runs without an auth database.
 
-1. **Implemented:** ENV validation, bounded session store, and login limits with injected dependencies/clock; no new package or SQL migration.
-2. **Implemented:** auth routes, safe cookie/error handling, centralized bearer/session authentication, and Origin checks. Existing Agent contracts remain supported.
-3. **Pending frontend stage:** remove Vite bearer injection and implement auth API/context, protected layout, login, and logout together.
-4. **Pending frontend/deployment stage:** verify the built frontend against the selected login mockup at desktop/mobile widths and exercise the deployed same-origin proxy before publishing it.
-
-Meaningful automated coverage:
-
-| Area | Required checks |
-| --- | --- |
-| Config | Missing/invalid hash, origin, and TTL fail without exposing values; production HTTP is rejected |
-| Login | Correct/wrong password, exact whitespace preservation, invalid JSON/type/size, absent/disallowed Origin, limits, concurrent verification release |
-| Sessions | Cookie attributes, random issuance, expiry at boundary, malformed/unknown tokens, old-token revocation, logout replay rejection, cap eviction, process restart |
-| Access boundary | Anonymous domain reads and writes return `401`; cookie permits existing operations; bearer still works for Agent; bad bearer cannot fall back; auth/session requires a browser session |
-| CSRF | Cookie writes with absent/foreign/`null` Origin fail; allowed Origin succeeds; suffix origins fail; internal bearer writes keep working without Origin |
-| FE | Session bootstrap, direct-link return, safe redirect validation, no protected-query mount before check, wrong-password feedback, network retry, one transition on concurrent `401`, logout failure, disabled duplicate submit |
-| Deployment | Vite/production proxy forwards cookie without key injection, `/api` never returns SPA HTML, unauthenticated data access fails, API errors remain uncached, bundle contains no secrets |
-
-Run repository `bun run verify` for the backend stage and the frontend production build when integrating the frontend. Auth route/store tests run without PostgreSQL using injected dependencies. Native Argon2 verification is covered both in Hono request tests and a listening Bun server test that exercises login, protected access, logout, and rejected replay. Existing domain API tests now supply a test browser-auth configuration while continuing to exercise bearer authentication.
-
-## Decisions to confirm
-
-The static credential, absence of user/RBAC, and middleware-based API protection come directly from the owner's request. Backend implementation uses the current design defaults: same-origin deployment, one API instance with logout on restart, and a configurable seven-day absolute session lifetime. It uses opaque server-held sessions rather than JWT so logout immediately revokes the presented token.
-
-The exact deployment host/provider remains open. The login visual is awaiting selection from the three generated concepts, and `/finance` remains the proposed post-login fallback for the frontend stage. The owner authorized design and backend implementation only; frontend routing, login/logout UI, and removal of Vite bearer injection are deferred together. No frontend or production deployment is included in these two stages.
+The deployment host/provider and selected login visual remain open. The frontend implementation and production proxy verification remain pending.

@@ -1,6 +1,6 @@
 # Personal Login Screen
 
-> Status: Frontend design, 2026-10-01. The backend API/session contracts in [Personal Web Authentication Design](../auth-design.md) are implemented. Frontend login and protected routing are not implemented yet. Three image concepts have been presented in the design conversation; the selected visual is still open.
+> Status: Frontend design, 2026-10-01. The backend JWT API contracts in [Personal Web Authentication Design](../auth-design.md) are implemented. Frontend login and protected routing are not implemented yet. Three image concepts have been presented in the design conversation; the selected visual is still open.
 
 ## Scope and screen map
 
@@ -9,8 +9,8 @@ The owner enters one static password to open Hermes. There is no username, email
 | ID | Surface | Route | Purpose |
 | --- | --- | --- | --- |
 | SCR-AUTH-001 | Login | `/login` | Enter password and sign in |
-| SCR-AUTH-002 | Session check / retry | Protected route before shell mounts | Resolve whether private content may load |
-| SCR-AUTH-003 | Logout action | Sidebar footer / mobile drawer | Revoke current session and return to login |
+| SCR-AUTH-002 | Auth status / retry | Protected route before shell mounts | Resolve whether private content may load |
+| SCR-AUTH-003 | Logout action | Sidebar footer / mobile drawer | Clear the JWT cookie and return to login |
 
 `/login` sits outside `AppShell`. It has no sidebar, private-content preview, collection, or dashboard. A signed-in owner opening `/login` goes to the validated return destination or `/finance`. An unknown frontend route does not become an accepted post-login redirect.
 
@@ -50,7 +50,7 @@ Use `autocomplete="current-password"`, `name="password"`, `maxLength={512}`, spe
 
 - Enter submits the form. Empty input displays `Masukkan kata sandi.` and focuses the field; a non-empty whitespace value is sent exactly as entered.
 - Disable duplicate submissions while pending and display `Memeriksa…` through the shared button pending state. Keep entered data visible while waiting.
-- Submit only to the same-origin login endpoint. On success, confirm the cookie through the session endpoint, clear the password state, and navigate with history replacement to the safe return destination or `/finance`.
+- Submit only to the same-origin login endpoint. On success, confirm the cookie through the status endpoint, clear the password state, and navigate with history replacement to the safe return destination or `/finance`.
 - A credential mismatch clears the field, announces the error, and focuses the password input for retry. A recoverable network/service error preserves the input for retry within the mounted page.
 - Clear login password state on unmount. Never persist it, record it in analytics, or include it in a navigation notice.
 - Show API-safe errors in Indonesian. Users do not need to see environment keys, SQL, token formats, stack traces, or other implementation details.
@@ -71,15 +71,15 @@ Use `autocomplete="current-password"`, `name="password"`, `maxLength={512}`, spe
 | Session ended | Notice above form: `Sesi berakhir. Masuk lagi untuk melanjutkan.` |
 | Logout completed | Optional notice `Kamu sudah keluar.`; keep form usable |
 
-## SCR-AUTH-002 — Session check
+## SCR-AUTH-002 — Auth status check
 
-Check `/api/v1/auth/session` before mounting `AppShell` or feature queries. Show a small, stable layout with `Memeriksa sesi…`, without rendering private data or a dashboard skeleton that exposes prior content.
+Check `/api/v1/auth/status` before mounting `AppShell` or feature queries. Show a small, stable layout with `Memeriksa akses…`, without rendering private data or a dashboard skeleton that exposes prior content.
 
-- Valid session: mount the requested application page.
+- Valid JWT: mount the requested application page.
 - `401`: navigate to login with a validated internal return destination.
 - Network/`5xx`: show `Sesi belum dapat diperiksa.` and a `Coba lagi` button; do not label the owner signed out or repeatedly redirect.
 - A protected data request later returns `401`: unmount/clear the private UI, ignore outstanding responses, and show login once. Do not automatically resubmit an interrupted create/edit/delete request after login.
-- When a session expires during editing, unsaved in-memory input may be lost. Preserve only the destination, not form drafts in URLs or browser storage. This is a proposed MVP limitation, not an automatic draft-recovery feature.
+- When a JWT expires during editing, unsaved in-memory input may be lost. Preserve only the destination, not form drafts in URLs or browser storage. This is a proposed MVP limitation, not an automatic draft-recovery feature.
 
 ## SCR-AUTH-003 — Logout
 
@@ -87,8 +87,8 @@ Place a `Keluar` action with the Lucide `LogOut` icon at the bottom of the expan
 
 - Apply the existing unsaved-change prompt before deliberate logout when needed; no extra confirmation for ordinary logout.
 - Send `POST /api/v1/auth/logout`, disable the action while pending, then clear protected state and replace the route with `/login` after `204`.
-- If logout fails, display `Belum bisa keluar. Coba lagi.` and allow retry. Do not announce successful logout until the server has revoked the session.
-- Other tabs check the session on focus or receive a non-secret logout event and clear their content. A `BroadcastChannel` event may say `logout` but carries no credential or private data. Server revocation remains authoritative.
+- If logout fails, display `Belum bisa keluar. Coba lagi.` and allow retry. Do not announce successful logout until the server has cleared the cookie.
+- Other tabs check auth status on focus or receive a non-secret logout event and clear their content. A `BroadcastChannel` event may say `logout` but carries no credential or private data. Logout clears the shared browser cookie; a copied JWT remains valid until expiry.
 
 ## Responsive and accessible behavior
 
@@ -102,4 +102,4 @@ Place a `Keluar` action with the Lucide `LogOut` icon at the bottom of the expan
 
 ## Definition of done for implementation
 
-Login, reload, expired session, direct link, logout, and retry work through the real API with cookie authentication. Anonymous reads/writes remain blocked even when the route guard is bypassed. The Vite and production proxies inject no bearer key. Selected desktop/mobile visuals follow the Hermes tokens, and keyboard/password-manager flows work. No browser credential is stored outside the HttpOnly cookie.
+Login, reload, expired JWT, direct link, logout, and retry work through the real API with cookie authentication. Anonymous reads/writes remain blocked even when the route guard is bypassed. The Vite and production proxies inject no bearer key. Selected desktop/mobile visuals follow the Hermes tokens, and keyboard/password-manager flows work. No browser credential is stored outside the HttpOnly cookie.

@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { requestId } from 'hono/request-id';
 import { createLoginLimiter } from './core/auth/login-limiter';
-import { createSessionStore } from './core/auth/session-store';
 import { failureResponse, successResponse } from './core/http/response';
 import { createAuthMiddleware } from './core/middleware/auth';
 import { errorHandler } from './core/middleware/error-handler';
@@ -49,8 +48,8 @@ export const createApp = ({
   const app = new Hono<AppEnv>();
   const resources: AuthResources = {
     configuration: webAuth,
-    sessions: createSessionStore(webAuth.session_ttl_seconds, authDependencies.now),
     limiter: createLoginLimiter(authDependencies.now),
+    now: authDependencies.now ?? Date.now,
     verifyPassword: authDependencies.verifyPassword ?? ((password, hash) => Bun.password.verify(password, hash)),
   };
 

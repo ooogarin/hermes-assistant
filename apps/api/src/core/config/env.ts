@@ -73,7 +73,7 @@ const environmentSchema = databaseEnvironmentSchema
     READINESS_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2_000),
     WEB_AUTH_PASSWORD_HASH: passwordHashSchema,
     WEB_AUTH_ORIGIN: webOriginSchema,
-    WEB_AUTH_SESSION_TTL_SECONDS: z.coerce.number().int().min(300).max(604_800).default(604_800),
+    WEB_AUTH_JWT_SECRET: z.string().regex(/^[a-f0-9]{64}$/, 'Must be 32 random bytes encoded as lowercase hex.'),
   })
   .superRefine((value, context) => {
     const usesProductionPlaceholder =
@@ -156,7 +156,7 @@ export const loadEnvironment = (values: Record<string, string | undefined>): Env
     webAuth: {
       password_hash: data.WEB_AUTH_PASSWORD_HASH,
       origin: data.WEB_AUTH_ORIGIN,
-      session_ttl_seconds: data.WEB_AUTH_SESSION_TTL_SECONDS,
+      jwt_secret: data.WEB_AUTH_JWT_SECRET,
       secure_cookie: data.WEB_AUTH_ORIGIN.startsWith('https://'),
     },
   };

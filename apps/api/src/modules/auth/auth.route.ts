@@ -24,7 +24,7 @@ export const createAuthRoutes = (resources: AuthResources) => {
     createLoginVerificationMiddleware(resources.limiter),
     authHandler.login,
   );
-  route.get('/session', authHandler.getSession);
+  route.get('/status', authHandler.getStatus);
   route.post('/logout', originMiddleware, authHandler.logout);
 
   return route;
