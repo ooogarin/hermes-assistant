@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 14593)
-Total output lines: 1672
-
 # Runbook Deploy Hermes ke Tencent VPS
 
 Runbook ini adalah acuan tunggal untuk **instalasi bersih** Hermes pada VPS Tencent
@@ -590,7 +587,597 @@ otomatis tersedia untuk service API `hermes`. Dokumentasi resmi Bun juga menempa
 binary pada `~/.bun/bin` dan menyarankan verifikasi dengan `bun --version`.
 
 Pastikan versinya `1.4` atau lebih baru. Repository ini menyediakan command berikut
-di root `/opt/hermes/app`; gunakan nama tersebut apa adanya pada…4593 tokens truncated…t`. Pengambilan
+di root `/opt/hermes/app`; gunakan nama tersebut apa adanya pada bagian berikutnya:
+
+```text
+bun run db:migrate  # menjalankan migration
+bun run db:status   # melihat status migration
+bun run start:api   # menjalankan API
+```
+
+Install PostgreSQL:
+
+```bash
+sudo apt install -y postgresql postgresql-contrib
+sudo systemctl enable --now postgresql
+sudo systemctl status postgresql --no-pager
+sudo -u postgres createuser --pwprompt hermes
+sudo -u postgres createdb --owner=hermes hermes
+```
+
+Saat `createuser --pwprompt`, kamu akan diminta membuat password baru untuk user
+database `hermes`. Sebelum menjalankannya, buat password URL-safe dengan
+`openssl rand -hex 24`, simpan di password manager, lalu paste pada prompt. Password
+ini akan dipakai di `.env` (Bagian 7).
+
+Pastikan PostgreSQL benar-benar hanya bisa diakses secara lokal:
+
+```bash
+sudo -u postgres psql -c "SHOW listen_addresses;"
+sudo ss -lntp | grep 5432 || true
+```
+
+`listen_addresses` idealnya menunjukkan `localhost`. Hasil `ss` boleh menampilkan
+`127.0.0.1:5432` dan `[::1]:5432` karena keduanya loopback lokal; tidak boleh ada
+`0.0.0.0:5432`, public IP, atau `[::]:5432`.
+
+---
+
+## 7. Buat `.env` Production
+
+> **Jalankan semua command di bagian ini di VPS sebagai user `hermes`.**
+
+Repository ini sudah menyediakan `.env.example`. Dari `/opt/hermes/app`, salin lalu
+edit file production:
+
+```bash
+cp .env.example .env
+chmod 600 .env
+nano .env
+```
+
+Isi minimal yang dibutuhkan:
+
+```dotenv
+NODE_ENV=production
+HOST=127.0.0.1
+PORT=3000
+LOG_LEVEL=info
+READINESS_TIMEOUT_MS=2000
+DATABASE_URL=postgresql://hermes:DB_PASSWORD@127.0.0.1:5432/hermes
+INTERNAL_API_KEY=RANDOM_SECRET_MINIMUM_32_CHARACTERS
+```
+
+Ganti `DB_PASSWORD` dengan password yang kamu buat saat `createuser --pwprompt` di
+Bagian 6.
+
+Untuk `INTERNAL_API_KEY`, generate secret acak lalu tempel ke `.env`:
+
+```bash
+openssl rand -hex 32
+```
+
+Secret ini harus minimal 32 karakter, dan nilainya nanti harus **sama persis** dengan
+`HERMES_INTERNAL_API_KEY` di sisi Hermes Agent. Karena Agent berjalan di VPS yang
+sama, gunakan `HERMES_API_BASE_URL=http://127.0.0.1:3000`. Jangan memakai domain
+publik kecuali Agent memang dipindahkan ke mesin lain.
+
+`API_PROXY_TARGET` milik Vite development dan tidak diperlukan untuk API production
+karena frontend publik tidak dideploy oleh runbook ini.
+
+### Verifikasi koneksi PostgreSQL sebelum migration
+
+`bun install` yang berhasil hanya membuktikan dependency terpasang; itu belum menguji
+database. Tes `DATABASE_URL` yang baru dibuat menggunakan driver Bun tanpa mencetak
+URL atau password:
+
+```bash
+cd /opt/hermes/app
+bun --env-file=.env -e '
+const sql = new Bun.SQL(Bun.env.DATABASE_URL!);
+try {
+  await sql`SELECT 1`;
+  console.log("PostgreSQL connection OK");
+} finally {
+  await sql.close();
+}
+'
+```
+
+Jika muncul `password authentication failed for user "postgres"`, `.env` masih
+mengarah ke contoh `postgres:postgres` atau password-nya salah. Jika muncul role atau
+database `hermes` tidak ada, ulangi pembuatan role/database di Bagian 6. Pesan
+`PostgresError` dari `db:status` sengaja ringkas; tes langsung di atas menunjukkan
+masalah koneksi tanpa membocorkan secret.
+
+---
+
+## 8. Install Dependency dan Smoke Test
+
+> **Jalankan di VPS sebagai user `hermes`, dari directory `/opt/hermes/app`.**
+
+```bash
+cd /opt/hermes/app
+bun install --frozen-lockfile
+bun run db:migrate
+bun run db:status
+bun run start:api
+```
+
+Biarkan proses ini berjalan di terminal. Buka **terminal lain**, login lagi sebagai
+`hermes`, dan uji API-nya:
+
+```bash
+curl http://127.0.0.1:3000/health
+curl http://127.0.0.1:3000/health/ready
+set -a
+source /opt/hermes/app/.env
+set +a
+curl --header "Authorization: Bearer ${INTERNAL_API_KEY}" \
+  http://127.0.0.1:3000/api/v1/notes
+unset INTERNAL_API_KEY DATABASE_URL
+```
+
+Jangan paste nilai `INTERNAL_API_KEY` langsung ke command karena akan masuk shell
+history. Perintah di atas mengambilnya dari `.env`, lalu menghapus variable sensitif
+dari shell setelah test.
+
+Kalau ketiganya merespons wajar (bukan connection refused / 500), berarti API dan
+koneksi database sudah benar. Hentikan proses foreground dengan `Ctrl-C` — mulai
+Bagian 9, API akan dijalankan lewat systemd, bukan manual seperti ini.
+
+---
+
+## 9. Jalankan API dengan systemd
+
+> **Jalankan di VPS sebagai user `hermes`. `sudo` dipakai hanya untuk mendaftarkan dan
+> mengontrol service systemd.**
+
+Buat service file (butuh `sudo`):
+
+```bash
+sudo tee /etc/systemd/system/hermes-api.service >/dev/null <<'EOF'
+[Unit]
+Description=Hermes API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+WorkingDirectory=/opt/hermes/app
+EnvironmentFile=/opt/hermes/app/.env
+ExecStart=/home/hermes/.bun/bin/bun run start:api
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/hermes/app
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now hermes-api
+sudo systemctl status hermes-api --no-pager
+sudo journalctl -u hermes-api -n 100 --no-pager
+```
+
+`EnvironmentFile=/opt/hermes/app/.env` memastikan systemd memuat semua variabel di
+`.env` kamu, jadi API tidak perlu bergantung pada apakah kodenya sendiri sudah
+auto-load dotenv atau belum.
+
+`ProtectSystem=strict` + `ReadWritePaths` membatasi service ini hanya boleh menulis
+ke folder aplikasinya sendiri, sebagai lapisan keamanan tambahan kalau ada bug atau
+serangan.
+
+Uji ulang lewat localhost, sekarang tanpa proses foreground:
+
+```bash
+curl http://127.0.0.1:3000/health
+curl http://127.0.0.1:3000/health/ready
+```
+
+Kalau API sempat kamu ubah/update `.env` di kemudian hari, jangan lupa
+`sudo systemctl restart hermes-api` supaya perubahan terbaca.
+
+---
+
+## 10. Nginx dan HTTPS (opsional; lewati untuk Telegram-only)
+
+> **Jika bagian ini dipakai, jalankan command di VPS sebagai user `hermes`.**
+
+Untuk target awal—Hermes dan API pada VPS yang sama—langsung lanjut ke Bagian 11.
+Tidak ada alasan membuka API ke internet. Gunakan bagian ini hanya jika ada client
+eksternal yang benar-benar membutuhkan endpoint API.
+
+Sebelum melanjutkan, buka TCP `80` dan `443` di Tencent Security Group lalu jalankan:
+
+```bash
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+```
+
+Arahkan DNS domain kamu (`api.example.com`) ke Elastic IP VPS lewat panel DNS
+provider domain kamu. Tunggu propagasi (cek dengan `dig api.example.com` atau situs
+seperti dnschecker.org) sebelum lanjut, biasanya beberapa menit sampai beberapa jam.
+
+Install Nginx dan Certbot:
+
+```bash
+sudo apt install -y nginx certbot python3-certbot-nginx
+```
+
+Buat konfigurasi reverse proxy:
+
+```bash
+sudo tee /etc/nginx/sites-available/hermes-api >/dev/null <<'EOF'
+server {
+    listen 80;
+    server_name api.example.com;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/hermes-api /etc/nginx/sites-enabled/hermes-api
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Ganti `api.example.com` di file config dengan domain asli kamu sebelum lanjut.
+
+Aktifkan HTTPS:
+
+```bash
+sudo certbot --nginx -d api.example.com
+```
+
+Certbot otomatis menambahkan blok `listen 443 ssl` dan redirect HTTP→HTTPS ke config
+di atas — kamu tidak perlu menuliskannya manual. Certbot juga otomatis pasang cron
+untuk perpanjangan sertifikat.
+
+Tes dari luar:
+
+```bash
+curl https://api.example.com/health
+curl https://api.example.com/health/ready
+```
+
+HTTPS di sini hanya mengenkripsi koneksi — tidak menggantikan autentikasi.
+Hermes Agent memakai header `Authorization: Bearer <INTERNAL_API_KEY>`; browser
+memakai cookie JWT dari login. Jika FE dipublikasikan, layani FE dan `/api`
+melalui satu origin HTTPS tanpa menambahkan Agent key pada request browser.
+
+---
+
+## 11. Buat user terpisah untuk Hermes Agent
+
+> **Jalankan di VPS sebagai user `hermes`, karena pembuatan user membutuhkan `sudo`.**
+
+Hermes Agent mempunyai terminal tool. Jangan menjalankannya sebagai user `hermes`
+yang memiliki repository, deploy key, `.env` API, dan akses `sudo`. Buat user runtime
+tanpa akses administratif:
+
+```bash
+sudo adduser --disabled-password --gecos "" hermes-agent
+sudo chmod 700 /home/hermes-agent
+```
+
+Jangan masukkan `hermes-agent` ke group `sudo` dan jangan salin deploy key GitHub ke
+home user ini. Hasil yang diinginkan:
+
+```bash
+id hermes-agent
+sudo -l -U hermes-agent
+```
+
+`id` tidak boleh menampilkan group `sudo`. Perintah kedua seharusnya menyatakan user
+tidak mempunyai izin sudo.
+
+## 12. Install dan konfigurasi Hermes Agent
+
+Sebelum berpindah ke `hermes-agent`, pasang dependency sistem sebagai user `hermes`.
+Installer Hermes Agent tidak membutuhkan akses root, tetapi fitur browser/search/voice
+memakai package sistem berikut:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential ripgrep ffmpeg
+command -v g++
+command -v rg
+command -v ffmpeg
+```
+
+`sudo apt update` hanya memperbarui daftar paket; command itu tidak memasang `g++`.
+`build-essential` pada command di ataslah yang memasang compiler tersebut.
+
+Jika installer sebelumnya menampilkan `hermes-agent is not in the sudoers file`, itu
+normal dan bukan alasan untuk memasukkan user Agent ke group `sudo`. Pasang package
+sistem dari user `hermes`, lalu ulangi installer sebagai `hermes-agent`.
+
+> **Sampai titik ini command dijalankan sebagai `hermes`.**
+
+Masuk ke shell user runtime:
+
+```bash
+sudo -iu hermes-agent
+```
+
+> **Setelah command di atas selesai, prompt harus berubah menjadi `hermes-agent@...`.
+> Mulai baris berikutnya, jalankan semua command tanpa `sudo` sebagai `hermes-agent`.**
+
+Install Hermes Agent menggunakan installer resmi:
+
+```bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+source ~/.bashrc
+hermes --version
+```
+
+Installer per-user menaruh kode di `~/.hermes/hermes-agent`, command di
+`~/.local/bin/hermes`, dan data runtime di `~/.hermes`. Jangan menjalankan installer
+ini dengan `sudo`.
+
+Command `hermes` hanya masuk ke PATH user `hermes-agent`. Karena itu command berikut
+berhasil di shell Agent tetapi `hermes` biasa akan menghasilkan `command not found`
+di shell user `hermes`:
+
+```bash
+whoami
+command -v hermes
+hermes --version
+```
+
+Jika user `hermes` mencoba membaca `/home/hermes-agent/.local/bin/hermes` tanpa
+`sudo`, hasil `Permission denied` juga normal karena home Agent sengaja private.
+Jalankan CLI sebagai Agent dengan `sudo -iu hermes-agent`, bukan dengan membuka
+permission home Agent untuk user lain.
+
+Pilih provider dan model LLM:
+
+```bash
+hermes model
+```
+
+Provider/model dan kredensialnya adalah keputusan pengguna; panduan ini tidak
+menebak API provider yang dipakai. Ikuti wizard, simpan API key sebagai secret, lalu
+uji percakapan biasa sebelum menambah Telegram atau skill:
+
+```bash
+hermes
+```
+
+Kirim satu prompt sederhana, pastikan ada respons normal, lalu keluar dengan `Ctrl-C`.
+Setelah itu jalankan:
+
+```bash
+hermes doctor
+hermes status --all
+hermes config set terminal.backend local
+hermes config set terminal.cwd /home/hermes-agent
+```
+
+Backend terminal `local` sesuai keputusan tanpa Docker. Konsekuensinya, command dari
+Agent berjalan langsung sebagai Linux user `hermes-agent`; pemisahan user pada
+Bagian 11 adalah batas keamanannya.
+
+## 13. Buat bot dan forum Topics di Telegram
+
+> **Pembuatan bot dan group dilakukan di aplikasi Telegram. Command VPS pada bagian
+> ini dijalankan sebagai `hermes-agent`.**
+
+1. Chat dengan akun resmi `@BotFather`, kirim `/newbot`, lalu simpan bot token di
+   password manager.
+2. Cari Telegram numeric user ID melalui `@userinfobot`; jangan gunakan username
+   Telegram sebagai allowlist.
+3. Buat satu private Telegram group, aktifkan **Topics**, lalu buat topic sesuai
+   peta yang akan dipakai. Untuk VPS ini, peta yang disepakati adalah:
+
+   | Topic | `thread_id` | Peran |
+   | --- | ---: | --- |
+   | General | 1 | Q&A umum, tanpa data aplikasi |
+   | Speaking | 2 | Latihan percakapan, tanpa record progres |
+   | Finance | 3 | Finance API |
+   | Grammar | 4 | Grammar API |
+   | Reading | 5 | Reading API |
+   | Writing | 6 | Writing API |
+   | Listening | 26 | Q&A listening, tanpa record progres |
+   | General English | 27 | Q&A English singkat |
+   | Notes | 32 | Notes API |
+   | Junk | 34 | Junk API |
+   | Service Info | 52 | Status/cron bot; bukan ruang percakapan |
+4. Tambahkan bot ke group.
+5. Agar bot dapat menerima pesan biasa, pilih salah satu:
+   - jadikan bot admin group; atau
+   - di BotFather buka `/mybots` → bot → **Bot Settings** → **Group Privacy** →
+     **Turn off**, kemudian remove dan add kembali bot ke group.
+6. Jangan menambahkan user lain sebelum aturan akses benar-benar diuji.
+
+Bedakan ID Telegram berikut:
+
+- `TELEGRAM_ALLOWED_USERS` berisi numeric ID akun manusia yang boleh memakai bot;
+- `TELEGRAM_HOME_CHANNEL` berisi chat tujuan notifikasi/cron, yaitu ID DM kamu atau
+  ID group;
+- ID group/supergroup Topics biasanya negatif dan berbentuk `-100...`;
+- jangan gunakan numeric ID bot sebagai allowed user atau home channel.
+
+Kembali ke VPS sebagai `hermes-agent`, lalu jalankan wizard gateway:
+
+```bash
+hermes gateway setup
+```
+
+Pilih Telegram, masukkan bot token dan numeric user ID pada allowed users. Secret
+akan disimpan di `~/.hermes/.env`; pastikan permission-nya ketat:
+
+```bash
+chmod 700 ~/.hermes
+chmod 600 ~/.hermes/.env
+```
+
+Setelah wizard selesai dan gateway sudah dapat berjalan, buka chat Telegram tujuan
+lalu kirim:
+
+```text
+/sethome
+```
+
+Untuk DM, kirim `/start` atau pesan pertama ke bot terlebih dahulu. Untuk group Topics,
+jalankan `/sethome` di group yang memang akan menerima notifikasi. Jangan menebak
+destination ID dari username atau memakai ID bot.
+
+Jalankan gateway sementara di foreground:
+
+```bash
+hermes gateway
+```
+
+Kirim pesan ke bot melalui DM dan salah satu topic group. Jika bot tidak merespons,
+buka terminal Mac lain, login sebagai `hermes`, lalu lihat log sebagai user
+`hermes-agent`:
+
+```bash
+ssh hermes-vps
+sudo -iu hermes-agent
+hermes logs gateway -n 100
+```
+
+Hentikan gateway foreground dengan `Ctrl-C` setelah pengujian berhasil.
+
+Jika log menampilkan `Connected to Telegram (polling mode)`, koneksi ke Telegram sudah
+berhasil. Jika ada `the bot can't send messages to the bot`, koneksi tetap berhasil,
+tetapi `home channel` menunjuk ke ID bot atau chat yang salah. Perbaiki dengan
+`/sethome`, lalu ulangi pengujian.
+
+## 14. Pasang skill project, persona, dan hubungkan ke API
+
+> **Jalankan di VPS sebagai `hermes-agent`.**
+
+Sebagai `hermes-agent`, salin seluruh skill project dari checkout deployment. Hanya
+`hermes-personal-assistant` yang memakai REST API; tiga skill Q&A tidak memanggil API
+dan tidak menyimpan record aplikasi.
+
+```bash
+for skill in \
+  hermes-personal-assistant \
+  hermes-general-qna \
+  hermes-speaking-qna \
+  hermes-listening-qna; do
+  mkdir -p "$HOME/.hermes/skills/$skill"
+  rsync -a --delete \
+    "/opt/hermes/app/hermes/skills/$skill/" \
+    "$HOME/.hermes/skills/$skill/"
+done
+chmod 700 ~/.hermes/skills/hermes-personal-assistant/scripts/api.sh
+hermes skills list
+hermes skills check
+```
+
+Pastikan keempat skill muncul. Copy seluruh folder, bukan hanya `SKILL.md`, karena
+`hermes-personal-assistant` membutuhkan `references/` dan `scripts/api.sh`.
+
+Pasang baseline persona dan memory. Command ini tidak menimpa file yang sudah ada;
+jika file tujuan sudah ada, baca dan gabungkan isinya secara sadar, jangan overwrite
+secara buta:
+
+```bash
+mkdir -p ~/.hermes/memories
+cp --update=none /opt/hermes/app/hermes/profile-template/SOUL.md ~/.hermes/SOUL.md
+cp --update=none /opt/hermes/app/hermes/profile-template/USER.md ~/.hermes/memories/USER.md
+cp --update=none /opt/hermes/app/hermes/profile-template/MEMORY.md ~/.hermes/memories/MEMORY.md
+chmod 600 ~/.hermes/SOUL.md ~/.hermes/memories/USER.md ~/.hermes/memories/MEMORY.md
+```
+
+`SOUL.md` menentukan gaya global Hermes. `USER.md` menyimpan preferensi Garin,
+sedangkan `MEMORY.md` berisi fakta ringkas tentang lingkungan Agent. Ketiganya tidak
+boleh berisi password, token, private key, connection string, log panjang, transaksi,
+atau data belajar. Data permanen tetap berada di API/PostgreSQL.
+
+Buka `~/.hermes/config.yaml`, lalu gabungkan policy berikut. Jangan membuat key YAML
+`memory`, `skills`, atau `display` kedua apabila key tersebut sudah ada.
+
+```bash
+nano ~/.hermes/config.yaml
+```
+
+```yaml
+memory:
+  write_approval: true
+
+skills:
+  write_approval: true
+
+display:
+  memory_notifications: verbose
+```
+
+Dengan policy ini, perubahan memory yang diusulkan Hermes harus kamu review terlebih
+dahulu melalui `/memory pending`, `/memory approve <id>`, atau `/memory reject <id>`.
+Jangan menyetujui perubahan skill dari Telegram. `skills.write_approval` tetap
+dibiarkan aktif sebagai lapisan pertahanan; jika `/skills pending` muncul, periksa
+diff lalu tolak dengan `/skills reject <id>`. Setelah menyetujui memory, kirim `/new`
+pada topic terkait supaya sesi berikutnya memuat snapshot terbaru.
+
+Tambahkan dua nilai berikut ke `~/.hermes/.env`. Salin API key dari password
+manager—jangan membaca file `.env` API sebagai user Agent:
+
+```bash
+nano ~/.hermes/.env
+```
+
+```dotenv
+HERMES_API_BASE_URL=http://127.0.0.1:3000
+HERMES_INTERNAL_API_KEY=NILAI_YANG_SAMA_DENGAN_INTERNAL_API_KEY_API
+```
+
+Kemudian:
+
+```bash
+chmod 600 ~/.hermes/.env
+hermes tools
+```
+
+Pada UI `hermes tools`, gunakan allowlist Telegram minimal: **clarify**, **terminal**,
+dan **memory**. `hermes-personal-assistant` memang memerlukan terminal karena semua
+request API melewati wrapper `scripts/api.sh`; memory diperlukan hanya untuk proposal
+preferensi yang melalui approval. Jangan aktifkan **browser**, **code_execution**,
+**file**, **skills**, **delegation**, **web**, atau toolset lain yang tidak diperlukan.
+Tiga skill Q&A tidak memakai terminal, API, atau database.
+
+Uji koneksi terautentikasi tanpa mencetak nilai key:
+
+```bash
+set -a
+source ~/.hermes/.env
+set +a
+~/.hermes/skills/hermes-personal-assistant/scripts/api.sh \
+  GET /api/v1/notes --query limit 5
+unset HERMES_API_BASE_URL HERMES_INTERNAL_API_KEY
+```
+
+Setelah berhasil, uji skill lewat CLI:
+
+```bash
+hermes
+```
+
+Di dalam chat Hermes, jalankan:
+
+```text
+/hermes-personal-assistant tampilkan 5 catatan terakhir
+```
+
+## 15. Bind setiap Telegram topic ke skill yang tepat
+
+> **Jalankan command file/configuration di VPS sebagai `hermes-agent`. Pengambilan
 > `chat_id` dan `thread_id` dilakukan dari Telegram Desktop/Web.**
 
 Untuk setiap topic, buka Telegram Desktop/Web dan lihat URL berbentuk
