@@ -4,8 +4,8 @@
 
 ## List — `/english/reading`
 
-- The header shows Reading and Pengaturan. The search bar, Filter popover (levels/genre), and newest/oldest selector follow the Notes/Junk controls. Quick status chips are Semua, Belum dibaca, and Sudah dibaca.
-- The list has five columns: Judul / Cuplikan, Genre, Level, Tags, Tanggal disimpan. Manual status sits beside the title. The title/excerpt link opens full detail directly, with no side-panel. Narrow viewports scroll the table horizontally as Notes/Junk do.
+- The header shows Reading and Pengaturan with the same page spacing as Notes/Junk. The search bar, Filter popover (levels/genre), and `Urutkan: Terbaru` / `Urutkan: Terlama` button follow their toolbar sizing and spacing. Quick status chips are Semua, Belum dibaca, and Sudah dibaca.
+- The list has five columns: Judul / Cuplikan, Genre, Level, Tags, Tanggal disimpan. Header typography, frozen title column, scroll hint, and footer match the Notes/Junk list surface. Footer text is `Menampilkan N bacaan`. Genre keys such as `short_article` display as `Short Article`. Manual status sits beside the title. The title/excerpt link opens full detail directly, with no side-panel. Narrow viewports scroll the table horizontally as Notes/Junk do.
 - `GET /api/v1/reading/materials` applies search, levels, genre, reading_status, limit 100, and sort. Filter state is represented in the URL, with no page or old answer-based status parameters.
 - The footer is `Menampilkan N bacaan` based only on the returned `items.length`. There are no pagination controls or total-count requests.
 - Loading keeps the list structure; error supports retry; empty/no-results preserves filters and offers reset where useful.

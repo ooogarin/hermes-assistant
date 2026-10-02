@@ -36,3 +36,9 @@ export const formatNumber = (value: number): string => numberFormatter.format(va
 export const formatPercentage = (ratio: number): string => percentageFormatter.format(ratio);
 export const formatDate = (value: Date | string): string => dateFormatter.format(toDate(value));
 export const formatMonth = (value: Date | string): string => monthFormatter.format(toDate(value));
+export const formatDisplayLabel = (value: string): string =>
+  value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
+    .join(' ');

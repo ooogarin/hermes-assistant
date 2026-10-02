@@ -1,3 +1,4 @@
+import { ArrowDownUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
@@ -50,10 +51,10 @@ const ReadingListPage = () => {
   const materials = useApiQuery(key, (signal) => getReadingMaterials(filters, signal));
   const hasFilters = Boolean(filters.q || filters.reading_status || filters.levels?.length || filters.genre);
   return (
-    <div className='space-y-6'>
+    <div className='space-y-7'>
       <PageHeader title='Reading' actions={<EnglishSettingsLink to='/english/reading/settings' />} />
       <div className='space-y-4'>
-        <div className='flex flex-col gap-3 lg:flex-row'>
+        <div className='flex flex-col gap-3 lg:flex-row lg:items-stretch'>
           <SearchForm
             label='Cari bacaan'
             placeholder='Cari bacaan...'
@@ -110,20 +111,13 @@ const ReadingListPage = () => {
               </div>
             </div>
           </FilterPopover>
-          <ChoiceDropdown
-            mode='single'
-            label='Urutan bacaan'
-            clearable={false}
-            searchable={false}
-            className='lg:w-48'
-            placeholder='Urutkan'
-            value={filters.sort ?? 'newest'}
-            options={[
-              { value: 'newest', label: 'Terbaru' },
-              { value: 'oldest', label: 'Terlama' },
-            ]}
-            onChange={(value) => update({ sort: value ?? 'newest' })}
-          />
+          <Button
+            className='h-12 lg:shrink-0'
+            variant='secondary'
+            onClick={() => update({ sort: filters.sort === 'oldest' ? 'newest' : 'oldest' })}
+          >
+            Urutkan: {filters.sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
+          </Button>
         </div>
         <fieldset className='flex flex-wrap gap-2'>
           <legend className='sr-only'>Status baca</legend>
@@ -141,28 +135,23 @@ const ReadingListPage = () => {
       {materials.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
       {materials.status === 'error' ? <ErrorState onRetry={materials.retry} /> : null}
       {materials.status === 'success' ? (
-        <>
-          {materials.data.items.length ? (
-            <ReadingList items={materials.data.items} />
-          ) : (
-            <ContentState
-              title={hasFilters ? 'Tidak ada bacaan yang cocok' : 'Belum ada bacaan'}
-              description={
-                hasFilters
-                  ? 'Coba pencarian atau filter lain.'
-                  : 'Bacaan yang dibuat melalui Hermes akan muncul di sini.'
-              }
-              action={
-                hasFilters ? (
-                  <Button variant='secondary' onClick={() => setParams(new URLSearchParams())}>
-                    Hapus filter
-                  </Button>
-                ) : undefined
-              }
-            />
-          )}
-          <p className='text-sm text-ink-muted'>Menampilkan {materials.data.items.length} bacaan</p>
-        </>
+        materials.data.items.length ? (
+          <ReadingList items={materials.data.items} />
+        ) : (
+          <ContentState
+            title={hasFilters ? 'Tidak ada bacaan yang cocok' : 'Belum ada bacaan'}
+            description={
+              hasFilters ? 'Coba pencarian atau filter lain.' : 'Bacaan yang dibuat melalui Hermes akan muncul di sini.'
+            }
+            action={
+              hasFilters ? (
+                <Button variant='secondary' onClick={() => setParams(new URLSearchParams())}>
+                  Hapus filter
+                </Button>
+              ) : undefined
+            }
+          />
+        )
       ) : null}
     </div>
   );

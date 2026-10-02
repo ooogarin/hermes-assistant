@@ -423,6 +423,7 @@ Implementation: <http://127.0.0.1:5174/english/reading>, using an isolated tempo
 
 Browser captures are in `.tmp/reading-qa/`:
 
+- Latest list polish: `.tmp/reading-polish/reading-list.jpg`, 1280 × 800 px full-page capture, CSS viewport 1280 × 800, device pixel ratio 1. This capture shows the header, toolbar, three seeded rows and in-surface footer together.
 - `list-desktop.jpg`, `detail-desktop.jpg`: 1440 × 1000 px, CSS viewport 1440 × 1000, device pixel ratio 1.
 - `list-mobile.jpg`: 390 × 1100 px full-page capture, CSS viewport 390 × 844.
 - `detail-mobile-after.jpg`: 390 × 844 px viewport capture, CSS viewport 390 × 844, device pixel ratio 1.
@@ -438,12 +439,15 @@ State: three seeded list entries with mixed manual read statuses; Remote work ha
 ## Findings and comparison history
 
 - [P2, resolved] At 390 px, the status button compressed the title into three short lines. Evidence: `detail-mobile.jpg`. Fix: give the title a full flex row below the `sm` breakpoint, preserving title/button alignment on desktop. Post-fix evidence: `detail-mobile-after.jpg` and `mobile-comparison.jpg`; the title is readable across the available width and the button follows beneath it.
-- No actionable P0/P1/P2 findings remain in the final captures. A native-density full-view comparison and focused comparisons were inspected after the mobile fix.
+- [P2, resolved] The list header used 12 px regular text, its count sat outside the list surface in 14 px text, and its sort dropdown did not match Notes/Junk. Its page rhythm also used a smaller gap. Fix: reuse the Notes/Junk grid, 14 px semibold header, 12 px in-surface footer, 48 px `Urutkan` button, and `space-y-7` page rhythm. Post-fix evidence: `.tmp/reading-polish/reading-list.jpg`, with all five columns horizontally scrollable like Notes/Junk.
+- [P2, resolved] `short_article` appeared as a raw storage key. Added the reusable `formatDisplayLabel` helper and applied it in the Reading list and detail; the captured list shows `Short Article`.
+- During the live refresh, the console exposed a temporarily removed `ChoiceDropdown` import still used by the level filter. Restored the import; the successful reload rendered the filter and list, and the sort button toggled to `Terlama` and back. The recorded error entries predate that successful reload.
+- No actionable P0/P1/P2 findings remain in the final captures. Native-density full-view evidence is in `.tmp/reading-polish/reading-list.jpg` and the prior Reading comparisons above.
 
 ## Required fidelity surfaces
 
 - Fonts/typography: production font and Notes sizing retained; clear title/body/metadata hierarchy. Body is 18 px with 36 px line height on desktop and 16 px with 32 px line height on mobile. Long content wraps, excerpts clamp to three lines, and the corrected mobile title has room to wrap naturally.
-- Spacing/layout: article occupies the main content width; optional questions are below the article; metadata follows. Status action is beside the title on desktop. Notes detail padding and bordered surface are intentional. Table overflow stays inside its scroll container; mobile document width measured 390 px at a 390 px viewport.
+- Spacing/layout: article occupies the main content width; optional questions are below the article; metadata follows. Status action is beside the title on desktop. Notes detail padding and bordered surface are intentional. Reading page, toolbar, and list grid/footer spacing now use the same values as Notes/Junk. Table overflow stays inside its scroll container; mobile document width measured 390 px at a 390 px viewport.
 - Colors/tokens: existing ink, muted text, surface, border and primary green tokens reused. Read/unread labels include text as well as distinct semantic colors. Active controls follow Notes styling.
 - Image quality/assets: no article illustrations or photography in the source; existing Hermes logo retained. Existing Lucide icons are used for settings, navigation, copy and disclosure; no custom raster approximations were introduced.
 - Copy/content: five list columns match the intended data hierarchy. Footer is `Menampilkan N bacaan` from returned items. Optional-question explanation contains no grading language. Status copy describes manual read state, and ordinary detail responses do not expose reference answers.
@@ -457,12 +461,13 @@ State: three seeded list entries with mixed manual read statuses; Remote work ha
 - Mark read/unread independently of answers; changing read status preserves an unsaved answer draft.
 - Reading-only material omits the question section.
 - Save default question count zero; summary displays `0 soal`; restore three for preview.
-- Desktop and mobile capture checks; no warning/error console entries in checked preview sessions.
+- Desktop and mobile capture checks; the final reload rendered without new warnings/errors after the filter import was restored.
 
 ## Implementation checklist
 
 - [x] Preserve approved Reading hierarchy within the existing Notes/Junk design system.
 - [x] Fix and recapture mobile title wrapping.
+- [x] Match the Reading list header, footer, sorting control and page rhythm to Notes/Junk; format genre labels.
 - [x] Verify optional answers, explicit references, manual status and zero default.
 - [x] Remove pagination and total-count behavior from Reading.
 - [x] Restrict production changes to Reading and its optional shared settings control.

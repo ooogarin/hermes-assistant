@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { formatDate } from '../../lib/formatting/formatters';
+import { formatDate, formatDisplayLabel } from '../../lib/formatting/formatters';
 import { Button } from '../ui/button';
 import { TagList } from '../ui/chip';
 import { CopyButton } from '../ui/copy-button';
@@ -43,7 +43,7 @@ export const ReadingWorkspace = ({ material, onSubmit, onMark, submitting, marki
           </Button>
         </header>
         <p className='mt-3 text-sm text-ink-muted'>
-          {material.level} · {material.genre} · {material.wordCount} kata
+          {material.level} · {formatDisplayLabel(material.genre)} · {material.wordCount} kata
         </p>
         <article
           aria-label='Isi bacaan'
