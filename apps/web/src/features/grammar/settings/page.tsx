@@ -1,5 +1,5 @@
 import { ArrowLeft, CircleGauge, Info, ListChecks, Repeat2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ErrorState } from '../../../components/feedback/content-state';
 import { Skeleton } from '../../../components/feedback/skeleton';
@@ -8,6 +8,7 @@ import { Input } from '../../../components/ui/form-field';
 import { classNames } from '../../../lib/class-names';
 import { formatDate } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
+import { useUnsavedChanges } from '../../../lib/hooks/use-unsaved-changes';
 import { getGrammarSettings, updateGrammarSettings } from '../grammar-api';
 import type { FormEvent } from 'react';
 import type { GrammarSettings, GrammarSettingsInput } from '../grammar-api';
@@ -70,15 +71,10 @@ const SettingsForm = ({ initial }: { initial: GrammarSettings }) => {
   const dirty = defaultLevel !== saved.defaultLevel || dailyQuestionCount !== saved.dailyQuestionCount;
   const valid = Number.isInteger(dailyQuestionCount) && dailyQuestionCount >= 1 && dailyQuestionCount <= 100;
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  const canLeave = useUnsavedChanges(dirty);
 
   const leave = () => {
-    if (!dirty || window.confirm('Perubahan belum disimpan. Tetap kembali?')) navigate('/english/grammar');
+    if (canLeave()) navigate('/english/grammar');
   };
 
   const changes = useMemo(() => {

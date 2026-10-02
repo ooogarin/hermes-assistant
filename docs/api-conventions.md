@@ -4,7 +4,7 @@
 - `GET` reads, `POST` creates or performs an explicit command, `PATCH` partially updates, and `DELETE` removes.
 - Validate every body, query, path parameter, and relevant header with Zod.
 - Request bodies, query parameters, and path parameters use `snake_case`. Response JSON also uses `snake_case` recursively, including nested objects, collection metadata, and error fields. Use ISO 8601 date/timestamps and UUID strings for public identifiers unless a feature design explicitly says otherwise.
-- Authenticate application endpoints with the Agent's `Authorization: Bearer <INTERNAL_API_KEY>` or a valid browser session cookie. Exact login/logout method/path exemptions and required browser Origin checks are defined in [auth-design.md](auth-design.md). `GET /api/v1/auth/session` requires a browser cookie; an Agent key alone does not satisfy it. `GET /health` and `GET /health/ready` are explicitly public.
+- Authenticate application endpoints with the Agent's `Authorization: Bearer <INTERNAL_API_KEY>` or a valid browser JWT cookie. Exact login/logout method/path exemptions and required browser Origin checks are defined in [auth-design.md](auth-design.md). `GET /api/v1/auth/status` requires a browser cookie; an Agent key alone does not satisfy it. `GET /health` and `GET /health/ready` are explicitly public.
 - Every `/api/*` response, including errors, uses `Cache-Control: private, no-store`.
 
 ## Response envelope

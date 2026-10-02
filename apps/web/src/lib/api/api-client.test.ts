@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { z } from 'zod';
-import { apiRequest } from './api-client';
+import { apiRequest, onDomainUnauthorized } from './api-client';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -21,6 +21,41 @@ describe('apiRequest', () => {
     const data = await apiRequest('/api/v1/notes/NT-20260906-001', z.object({ code: z.string() }));
 
     expect(data).toEqual({ code: 'NT-20260906-001' });
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/notes/NT-20260906-001',
+      expect.objectContaining({ credentials: 'same-origin' }),
+    );
+  });
+
+  test('does not forward an Authorization header from browser request options', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+
+    await apiRequest('/api/v1/notes/example', z.void(), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer browser-secret' },
+    });
+
+    const options = vi.mocked(fetch).mock.calls[0]?.[1];
+    expect(new Headers(options?.headers).has('Authorization')).toBe(false);
+  });
+
+  test('reports domain 401 so protected content can be cleared', async () => {
+    const unauthorized = vi.fn();
+    const unsubscribe = onDomainUnauthorized(unauthorized);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ success: false, error: { code: 'UNAUTHENTICATED', message: 'Unauthorized' } }), {
+          status: 401,
+        }),
+      ),
+    );
+
+    await expect(apiRequest('/api/v1/notes', z.unknown())).rejects.toMatchObject({ status: 401 });
+    await expect(apiRequest('/api/v1/auth/status', z.unknown())).rejects.toMatchObject({ status: 401 });
+
+    expect(unauthorized).toHaveBeenCalledTimes(1);
+    unsubscribe();
   });
 
   test('maps a valid API error envelope to ApiError', async () => {

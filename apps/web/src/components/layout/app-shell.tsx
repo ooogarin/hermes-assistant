@@ -1,8 +1,10 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Feather, Menu, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Feather, LogOut, Menu, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../../app/auth/auth-context';
 import { navigationItems } from '../../app/navigation';
 import { classNames } from '../../lib/class-names';
+import { confirmDiscardChanges } from '../../lib/hooks/use-unsaved-changes';
 import { IconButton } from '../ui/icon-button';
 import type { NavigationItem } from '../../app/navigation';
 
@@ -144,6 +146,54 @@ const Brand = ({ collapsed = false }: { collapsed?: boolean }) => (
   </div>
 );
 
+const LogoutAction = ({ collapsed = false, onError }: { collapsed?: boolean; onError?: () => void }) => {
+  const { logout } = useAuth();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(false);
+
+  const handleLogout = async () => {
+    if (pending || !confirmDiscardChanges()) {
+      return;
+    }
+
+    setPending(true);
+    setError(false);
+
+    try {
+      await logout();
+    } catch {
+      onError?.();
+      setError(true);
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className='border-t border-border pt-4'>
+      <button
+        type='button'
+        className={classNames(
+          'flex min-h-12 w-full items-center rounded-control text-sm font-medium text-ink hover:bg-surface-subtle',
+          collapsed ? 'justify-center' : 'gap-3 px-4',
+        )}
+        aria-label={collapsed ? 'Keluar' : undefined}
+        aria-busy={pending || undefined}
+        disabled={pending}
+        title={collapsed ? 'Keluar' : undefined}
+        onClick={() => void handleLogout()}
+      >
+        <LogOut aria-hidden='true' size={21} strokeWidth={1.8} />
+        {collapsed ? null : pending ? 'Mengeluarkan…' : 'Keluar'}
+      </button>
+      {error ? (
+        <p className='mt-2 text-xs text-danger' role='alert'>
+          Belum bisa keluar. Coba lagi.
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
 type DesktopSidebarProps = {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
@@ -172,6 +222,7 @@ const DesktopSidebar = ({ expanded, onExpandedChange }: DesktopSidebarProps) => 
           <Brand collapsed={!expanded} />
         </div>
         <Navigation collapsed={!expanded} onExpand={() => onExpandedChange(true)} />
+        <LogoutAction collapsed={!expanded} onError={() => onExpandedChange(true)} />
       </div>
     </aside>
   );
@@ -260,6 +311,7 @@ export const AppShell = () => {
               </IconButton>
             </div>
             <Navigation onNavigate={() => setDrawerOpen(false)} />
+            <LogoutAction />
           </aside>
         </div>
       ) : null}
