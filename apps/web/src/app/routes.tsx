@@ -3,8 +3,9 @@ import { lazy, Suspense } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { ContentState } from '../components/feedback/content-state';
 import { CollectionSkeleton } from '../components/feedback/skeleton';
-import { AppShell } from '../components/layout/app-shell';
 import { PageHeader } from '../components/layout/page-header';
+import { AuthGate } from './auth/auth-gate';
+import { LoginPage } from './auth/login-page';
 
 const FinanceDailyPage = lazy(() => import('../features/finance/daily/page'));
 const FinanceCreatePage = lazy(() => import('../features/finance/create/page'));
@@ -59,7 +60,8 @@ const NotFoundPage = () => (
 
 export const AppRoutes = () => (
   <Routes>
-    <Route element={<AppShell />}>
+    <Route path='login' element={<LoginPage />} />
+    <Route element={<AuthGate />}>
       <Route index element={<FeaturePlaceholder title='Ringkasan' />} />
       <Route
         path='finance'

@@ -20,6 +20,14 @@ type ApiRequestOptions = Omit<RequestInit, 'body'> & {
   body?: unknown;
 };
 
+const unauthorizedListeners = new Set<() => void>();
+
+export const onDomainUnauthorized = (listener: () => void): (() => void) => {
+  unauthorizedListeners.add(listener);
+
+  return () => unauthorizedListeners.delete(listener);
+};
+
 const parseJson = async (response: Response): Promise<unknown> => {
   try {
     return await response.json();
@@ -35,6 +43,7 @@ const parseJson = async (response: Response): Promise<unknown> => {
 const createHeaders = (options: ApiRequestOptions): Headers => {
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
+  headers.delete('Authorization');
 
   if (options.body !== undefined) {
     headers.set('Content-Type', 'application/json');
@@ -57,6 +66,7 @@ export const apiRequest = async <Schema extends z.ZodType>(
     response = await fetch(path, {
       ...options,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      credentials: 'same-origin',
       headers: createHeaders(options),
     });
   } catch (error) {
@@ -84,15 +94,23 @@ export const apiRequest = async <Schema extends z.ZodType>(
     });
   }
 
-  const payload = await parseJson(response);
-
   if (!response.ok) {
+    if (response.status === 401 && !path.startsWith('/api/v1/auth/')) {
+      for (const listener of unauthorizedListeners) {
+        listener();
+      }
+    }
+
+    const payload = await parseJson(response);
+    const retryAfterHeader = Number(response.headers.get('Retry-After'));
+    const retryAfter = Number.isInteger(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader : undefined;
     const parsedError = errorEnvelopeSchema.safeParse(payload);
     if (parsedError.success) {
       throw new ApiError({
         code: parsedError.data.error.code,
         message: parsedError.data.error.message,
         requestId: parsedError.data.request_id,
+        retryAfter,
         status: response.status,
       });
     }
@@ -104,6 +122,7 @@ export const apiRequest = async <Schema extends z.ZodType>(
     });
   }
 
+  const payload = await parseJson(response);
   const parsedSuccess = successEnvelopeSchema.safeParse(payload);
 
   if (!parsedSuccess.success) {

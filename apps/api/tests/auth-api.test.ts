@@ -105,6 +105,32 @@ test('uses an unprefixed cookie for local HTTP and deletes it with the same attr
   expect(logout.headers.get('Set-Cookie')).not.toContain('Secure');
 });
 
+test('accepts localhost and IPv4 loopback as browser origins in local development', async () => {
+  const configuration = { ...testWebAuth, origin: 'http://127.0.0.1:5173', secure_cookie: false };
+  const app = createAuthApp({ webAuth: configuration });
+
+  for (const origin of ['http://127.0.0.1:5173', 'http://localhost:5173']) {
+    const login = await sendLogin(app, undefined, { Origin: origin });
+    expect(login.status).toBe(200);
+
+    const write = await app.request(`${baseUrl}/api/v1/protected`, {
+      method: 'POST',
+      headers: { Cookie: cookieFrom(login), Origin: origin },
+    });
+    expect(write.status).toBe(200);
+
+    const logout = await app.request(`${baseUrl}/api/v1/auth/logout`, {
+      method: 'POST',
+      headers: { Cookie: cookieFrom(login), Origin: origin },
+    });
+    expect(logout.status).toBe(204);
+  }
+
+  for (const origin of ['http://localhost:5174', 'http://localhost.evil:5173', 'http://127.0.0.1.evil:5173']) {
+    expect((await sendLogin(app, undefined, { Origin: origin })).status).toBe(403);
+  }
+});
+
 test('requires a valid browser JWT on domain reads and writes', async () => {
   const app = createAuthApp();
   for (const method of ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']) {

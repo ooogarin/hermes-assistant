@@ -64,7 +64,7 @@
 - Use typed application errors for expected failures; the global error handler maps them to the public HTTP contract in [architecture.md](architecture.md).
 - Never forward framework exception messages or response bodies directly to clients.
 - Accept only `postgres:` or `postgresql:` database URLs. Internal API keys must be trimmed, contain at least 32 characters, and must not use the documented placeholder in production.
-- API startup also validates the required web password hash, exact allowed Origin, and bounded session TTL described in [auth-design.md](auth-design.md). Keep browser credentials independent of the Agent key; do not bypass auth in development. Database-only migration settings remain independent of browser auth.
+- API startup also validates the required web password hash, exact allowed Origin, and JWT signing secret described in [auth-design.md](auth-design.md). Keep browser credentials independent of the Agent key; do not bypass auth in development. Database-only migration settings remain independent of browser auth.
 - Use LogTape for structured logs with safe context and request ID. Never log credentials, connection strings, sensitive bodies, SQL parameters, or client-visible stack traces.
 - Unit-test service behavior. Integration-test routes, repositories, migrations, and transactions where PostgreSQL/Hono behavior matters.
 - Tests must be deterministic and use an isolated test database.

@@ -16,7 +16,7 @@ Hermes is a Bun workspace. `apps/api` is a modular monolith with one Bun applica
 | Logging and code quality | LogTape and Biome |
 | Web frontend | React, Vite, and Tailwind CSS |
 
-ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. The [personal web authentication backend](auth-design.md) is implemented; frontend integration and deployment verification remain pending.
+ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. [Personal web authentication](auth-design.md) is implemented in the API and frontend; deployment verification remains pending.
 
 ## Key decisions
 
@@ -67,11 +67,11 @@ Telegram topic → Hermes gateway → Hermes skill → authenticated REST reques
 
 No Telegram adapter, webhook, or scheduler runs inside this API.
 
-For current local report development, browser requests use relative `/api` URLs. The Vite development server forwards them to the API and adds `Authorization: Bearer <INTERNAL_API_KEY>` from its server-side environment. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client.
+Browser requests use relative `/api` URLs with the HttpOnly JWT cookie. The Vite development server forwards them to the API without adding an Agent bearer credential. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client.
 
 [Personal Web Authentication Design](auth-design.md) defines the implemented API boundary: one static browser password hash and JWT signing secret in ENV, a signed 24-hour JWT in an HttpOnly cookie, and centralized JWT middleware alongside existing Agent bearer authentication. No user table, RBAC, or auth migration is required. Cookie-authenticated browser writes require an exact allowed Origin. JWTs remain valid across restarts when the signing secret stays the same. API startup validates required web-auth settings; database-only migrations do not require them.
 
-Before publishing the personal frontend, add its login/status/logout UI and remove Vite bearer injection together so browser login cannot be bypassed. The implementation targets same-origin HTTPS hosting; the current frontend remains unsuitable for public access until that integration and proxy verification are complete.
+The frontend now gates private routes on JWT status, offers login/logout, and removes Vite bearer injection. Public deployment still requires production same-origin HTTPS proxy verification, including cookie and Origin forwarding.
 
 Liveness does not depend on PostgreSQL; readiness may use a lightweight database check.
 

@@ -1,6 +1,6 @@
 # Personal Web Authentication Design
 
-> Status: JWT authentication is implemented in the API. Frontend login, protected routing, and removal of Vite bearer injection are pending. The frontend is not ready for public deployment.
+> Status: JWT authentication, frontend login/protected routing, and removal of Vite bearer injection are implemented. Production same-origin HTTPS proxy verification remains pending before public deployment.
 
 ## Scope
 
@@ -23,7 +23,7 @@ The exact deployment host and provider remain open decisions. Cross-origin hosti
 | --- | --- | --- |
 | WEB_AUTH_PASSWORD_HASH | Argon2id PHC hash of the one browser password | Required valid Argon2id v19 hash with bounded cost |
 | WEB_AUTH_JWT_SECRET | HS256 signing secret | Required 64 lowercase hex characters representing 32 random bytes |
-| WEB_AUTH_ORIGIN | Exact public browser origin for writes | HTTPS, or loopback HTTP in development; no path, query, credentials, or fragment |
+| WEB_AUTH_ORIGIN | Public browser origin for writes | Exact HTTPS origin outside development; loopback HTTP in development, with `localhost` and `127.0.0.1` aliases on the configured port |
 | INTERNAL_API_KEY | Existing Hermes Agent bearer credential | Independent of the browser password and JWT |
 
 JWT expiry is fixed at 86,400 seconds (24 hours); there is no TTL environment variable or auth-off switch. API startup reports invalid configuration key names without displaying values. Database-only migration commands do not need the browser auth settings.
@@ -86,7 +86,7 @@ Never echo the password, token, hash, signing secret, framework exception text, 
 
 Only the exact POST login/logout method and path pairs bypass prior authentication. Health endpoints remain public. On domain requests, an Authorization header selects Agent bearer authentication; an invalid bearer fails 401 without falling back to a cookie. Otherwise the middleware verifies the browser JWT. The status endpoint always requires a browser JWT.
 
-Cookie-authenticated POST, PUT, PATCH, and DELETE requests require Origin to exactly match WEB_AUTH_ORIGIN. Login and logout require the same check even when unauthenticated. Missing, null, malformed, suffix-matching, and foreign origins fail. Safe GET, HEAD, and OPTIONS routes must not write data. SameSite=Lax, JSON-only login, and exact Origin checking protect the intended same-origin deployment against CSRF.
+Cookie-authenticated POST, PUT, PATCH, and DELETE requests require an allowed Origin. Login and logout require the same check even when unauthenticated. In development, the configured loopback host and its `localhost`/`127.0.0.1` alias are accepted on the same port; outside development, only the exact configured HTTPS origin is accepted. Missing, null, malformed, suffix-matching, and foreign origins fail. Safe GET, HEAD, and OPTIONS routes must not write data. SameSite=Lax, JSON-only login, and exact Origin checking protect the intended same-origin deployment against CSRF.
 
 The existing process-wide login limiter admits at most 10 attempts in a fixed 60-second window and only one concurrent Argon2 verification. Attempts count before body validation. Excess requests receive 429 and Retry-After. The limiter resets on restart; it does not store JWTs.
 
@@ -107,14 +107,14 @@ Auth has no repository, database migration, session store, or token revocation l
 
 ## Frontend integration
 
-The frontend stage remains pending. Add /login outside AppShell, check /api/v1/auth/status before mounting private routes, send same-origin requests with browser cookies, and provide logout in the sidebar and mobile drawer. The browser must never read or persist the JWT. A status 401 goes to login; a network/server error shows a retry state. Domain 401 responses clear protected UI without retrying interrupted writes.
+The frontend places /login outside AppShell, checks /api/v1/auth/status before mounting private routes, sends same-origin requests with browser cookies, and provides logout in the sidebar and mobile drawer. The browser never reads or persists the JWT. A status 401 goes to login; a network/server error shows a retry state. Domain 401 responses clear protected UI without retrying interrupted writes.
 
-Preserve only a validated internal return destination. Respect unsaved-change prompts before deliberate logout. After logout 204, clear private UI and navigate to /login. Other tabs should clear their UI on focus or a non-secret logout event; they share the browser cookie. Logout does not revoke a copied JWT, so frontend copy must not claim server-side revocation.
+The frontend preserves only a validated internal return destination and checks existing dirty forms before deliberate logout. After logout 204, it clears private UI and navigates to /login. Other tabs clear their UI through a non-secret BroadcastChannel logout event where supported; they share the browser cookie. Logout does not revoke a copied JWT, so frontend copy does not claim server-side revocation.
 
-Remove the Vite proxy's Agent bearer injection when adding the frontend login. Until then, local browser domain requests still use the Agent credential and the frontend is unsuitable for public deployment. The [login screen specification](frontend-screens/auth.md) describes the pending UI.
+The Vite proxy no longer injects the Agent bearer key. The [login screen specification](frontend-screens/auth.md) describes the UI. Production proxy verification remains before public deployment.
 
 ## Verification and open decisions
 
 Relevant checks cover valid and invalid JWT signatures, scopes, 24-hour expiry, restart behavior, secret rotation, cookie settings, logout semantics, Origin enforcement, Agent bearer precedence, login limits, and safe error envelopes. Repository verification runs without an auth database.
 
-The deployment host/provider and selected login visual remain open. The frontend implementation and production proxy verification remain pending.
+The deployment host/provider and production proxy verification remain open. The login implementation follows the documented Hermes visual baseline.

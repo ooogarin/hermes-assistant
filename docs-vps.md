@@ -851,9 +851,10 @@ curl https://api.example.com/health
 curl https://api.example.com/health/ready
 ```
 
-HTTPS di sini hanya mengenkripsi koneksi — tidak menggantikan autentikasi. Semua
-request ke `/api/v1/...` tetap wajib menyertakan header `Authorization: Bearer
-<INTERNAL_API_KEY>`.
+HTTPS di sini hanya mengenkripsi koneksi — tidak menggantikan autentikasi.
+Hermes Agent memakai header `Authorization: Bearer <INTERNAL_API_KEY>`; browser
+memakai cookie JWT dari login. Jika FE dipublikasikan, layani FE dan `/api`
+melalui satu origin HTTPS tanpa menambahkan Agent key pada request browser.
 
 ---
 

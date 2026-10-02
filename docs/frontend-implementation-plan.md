@@ -154,7 +154,7 @@ Deliverable: screen documentation that is sufficient to implement without invent
 2. Add the selected icon library.
 3. Add frontend test configuration.
 4. Establish feature and shared-code directories.
-5. Keep the current Vite proxy for local development and verify that the internal API key remains server-side only. The planned [personal auth implementation](auth-design.md) removes bearer injection and forwards browser cookies instead.
+5. Keep the Vite proxy for local development. The [personal auth implementation](auth-design.md) removes bearer injection and forwards browser cookies instead.
 
 Proposed route tree:
 
@@ -302,7 +302,7 @@ Implement the following only after their missing contracts are designed and avai
 | Save General English response to Notes | Save/preview payload and confirmation contract missing |
 | Advanced Notes filters and sorting | Type, source, date-range, and sort API support missing |
 | Advanced Junk filters and sorting | Date-range and sort API support missing |
-| Production frontend access | [Auth backend](auth-design.md) implemented; FE login/status/logout, removal of proxy bearer injection, and deployment verification still pending |
+| Production frontend access | [Auth backend and FE](auth-design.md) implemented; production same-origin HTTPS proxy verification still pending |
 | Ringkasan destination | Product content and data contract missing |
 
 ## 7. Testing and verification
@@ -355,7 +355,7 @@ Compare implemented screens with their visual references at minimum widths of ap
 | FE-09 | Reading known-code workflow |
 | FE-10 | Writing known-code workflow |
 | FE-11 | Grammar known-code workflow |
-| Later | Collection screens, General English, Ringkasan, and production authentication following the [personal auth design](auth-design.md) |
+| Later | Collection screens, General English, Ringkasan, and production proxy verification following the [personal auth design](auth-design.md) |
 
 Each work item should be independently reviewable, preserve unrelated changes, include proportionate tests, and update affected documentation when a behavior or contract decision changes.
 

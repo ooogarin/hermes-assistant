@@ -1,6 +1,6 @@
 # Personal Login Screen
 
-> Status: Frontend design, 2026-10-01. The backend JWT API contracts in [Personal Web Authentication Design](../auth-design.md) are implemented. Frontend login and protected routing are not implemented yet. Three image concepts have been presented in the design conversation; the selected visual is still open.
+> Status: Frontend login, protected routing, and logout are implemented against the backend JWT API. The UI follows the Hermes visual baseline below; production proxy verification remains pending.
 
 ## Scope and screen map
 
@@ -30,7 +30,7 @@ Follow the existing [Frontend Screen Guide](../frontend-screens.md), tokens, `Fi
 | Controls | 8px radius; at least 44px height/touch target; proposed login height 48px |
 | Layout | Generous whitespace, form width 360–400px, minimal rules, no decorative illustration or nested cards |
 
-The three concepts vary grouping and heading placement within this baseline. They do not change auth fields or behavior. Exact headline copy/layout is selected with the visual; tokens and this behavior specification remain authoritative if generated pixels introduce a gradient or inaccurate dimensions.
+The implemented layout uses a compact centered form, generous whitespace, and the existing Hermes wordmark and controls. The tokens and behavior below remain authoritative.
 
 ## SCR-AUTH-001 — Login
 

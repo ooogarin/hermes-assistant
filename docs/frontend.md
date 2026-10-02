@@ -120,17 +120,17 @@ bun run dev:api
 bun run dev:web
 ```
 
-`apps/web/vite.config.ts` loads `.env` from the workspace root. It forwards relative `/api` requests to `API_PROXY_TARGET` (default `http://127.0.0.1:3000`) and adds the internal bearer credential only in the Vite server process.
+`apps/web/vite.config.ts` loads `.env` from the workspace root. It forwards relative `/api` requests to `API_PROXY_TARGET` (default `http://127.0.0.1:3000`) without adding an Agent bearer credential. Browser requests use the HttpOnly JWT cookie.
 
-`INTERNAL_API_KEY` is an internal service credential, not a browser credential. Never prefix it with `VITE_`, interpolate it into frontend source, place it in local storage, or send it from browser code. This proxy is for local development only.
+`INTERNAL_API_KEY` is an internal service credential, not a browser credential. Never prefix it with `VITE_`, interpolate it into frontend source, place it in local storage, or send it from browser code. The Vite proxy is for local development only.
 
-## Planned personal web authentication
+## Personal web authentication
 
 [Personal Web Authentication Design](auth-design.md) defines the implemented backend boundary: one static password hash and JWT signing secret in server ENV, an HttpOnly cookie containing a signed 24-hour JWT, and API middleware that accepts a valid browser JWT or the existing Agent bearer credential. No user entity or RBAC is introduced. JWTs remain valid across restarts when the signing secret is unchanged.
 
-The frontend will add public `/login` outside `AppShell`, an auth-status check before mounting protected routes, and `Keluar` in the sidebar/mobile drawer. The [Login screen specification](frontend-screens/auth.md) defines fields, responsive behavior, accessible feedback, direct-link return, expiry, and retry. In that frontend stage, browser API requests remain relative and carry only their JWT cookie, and Vite must stop injecting the Agent key.
+The frontend has public `/login` outside `AppShell`, an auth-status check before mounting protected routes, and `Keluar` in the sidebar/mobile drawer. The [Login screen specification](frontend-screens/auth.md) defines fields, responsive behavior, accessible feedback, direct-link return, expiry, and retry. Browser API requests remain relative and carry only their JWT cookie; Vite does not inject the Agent key.
 
-Frontend auth is still a design target. The current Vite proxy continues to authenticate domain requests with the Agent key. Public deployment remains blocked until login/status/logout UI and removal of proxy key injection are implemented and tested together through the same-origin HTTPS proxy. JWT expiry is fixed at 24 hours; logout clears the cookie without revoking a copied JWT. Exact deployment host, fallback route, and login visual remain open frontend/deployment choices.
+Public deployment remains blocked until the production same-origin HTTPS proxy is verified with cookie and Origin forwarding. JWT expiry is fixed at 24 hours; logout clears the cookie without revoking a copied JWT. The exact deployment host remains open.
 
 Shared navigation, screen, state, and accessibility conventions are defined in [frontend-screens.md](frontend-screens.md). Module-specific screen specifications will be added only after the related API data is available.
 
