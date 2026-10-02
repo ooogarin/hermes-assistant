@@ -8,13 +8,15 @@ import type {
   ReadingMaterialList,
   ReadingService,
   ReadingSettings,
-  SaveReadingSubmissionRequest,
+  SaveReadingAnswersRequest,
+  UpdateReadingMaterialRequest,
   UpdateReadingSettingsRequest,
 } from '../src/modules/reading/reading.types';
 
 const settings: ReadingSettings = {
   default_level: 'A1',
   default_word_count: 300,
+  default_question_count: 3,
   min_word_count: 250,
   max_word_count: 350,
   updated_at: '2026-09-05T10:00:00.000Z',
@@ -27,6 +29,10 @@ const material: ReadingMaterial = {
   genre: 'story',
   tags: ['daily-life'],
   target_word_count: 300,
+  target_question_count: 3,
+  reading_status: 'unread',
+  created_at: '2026-09-05T10:00:00.000Z',
+  updated_at: '2026-09-05T10:00:00.000Z',
   word_count: 8,
   content_text: 'Mira visits the market early every Sunday morning.',
   is_override: false,
@@ -51,17 +57,12 @@ const materialList: ReadingMaterialList = {
       title: material.title,
       genre: material.genre,
       level: material.level,
-      target_word_count: material.target_word_count,
-      word_count: material.word_count,
+      content_excerpt: material.content_text,
       tags: material.tags,
-      source: material.source,
-      status: 'unanswered',
-      question_count: material.questions.length,
-      answered_question_count: 0,
+      reading_status: 'unread',
       created_at: '2026-09-05T10:00:00.000Z',
     },
   ],
-  meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
 };
 
 const createReadingServiceStub = (overrides: Partial<ReadingService> = {}): ReadingService => ({
@@ -70,7 +71,8 @@ const createReadingServiceStub = (overrides: Partial<ReadingService> = {}): Read
   createMaterial: async () => material,
   listMaterials: async () => materialList,
   getMaterial: async () => material,
-  saveSubmission: async () => material,
+  saveAnswers: async () => material,
+  updateMaterial: async () => material,
   getExpectedAnswers: async () => expectedAnswers,
   ...overrides,
 });
@@ -83,8 +85,9 @@ mock.module('../src/modules/reading/reading.service', () => ({
   createMaterial: (input: CreateReadingMaterialRequest) => activeReadingService.createMaterial(input),
   listMaterials: (input: Parameters<ReadingService['listMaterials']>[0]) => activeReadingService.listMaterials(input),
   getMaterial: (code: string) => activeReadingService.getMaterial(code),
-  saveSubmission: (code: string, input: SaveReadingSubmissionRequest) =>
-    activeReadingService.saveSubmission(code, input),
+  updateMaterial: (code: string, input: UpdateReadingMaterialRequest) =>
+    activeReadingService.updateMaterial(code, input),
+  saveAnswers: (code: string, input: SaveReadingAnswersRequest) => activeReadingService.saveAnswers(code, input),
   getExpectedAnswers: (code: string) => activeReadingService.getExpectedAnswers(code),
 }));
 
@@ -123,7 +126,7 @@ test('reads and updates reading settings', async () => {
   expect(updateInput).toEqual({ default_level: 'B1' });
 });
 
-test('lists reading materials with validated filters and pagination', async () => {
+test('lists reading materials with validated read-status filters and no pagination', async () => {
   let listInput: Parameters<ReadingService['listMaterials']>[0] | undefined;
   const response = await createReadingApp({
     listMaterials: async (input) => {
@@ -131,39 +134,27 @@ test('lists reading materials with validated filters and pagination', async () =
       return materialList;
     },
   }).request(
-    'http://localhost/api/v1/reading/materials?q=market&status=unanswered&levels=A1%2CB1&page=1&limit=20&sort=newest',
+    'http://localhost/api/v1/reading/materials?q=market&reading_status=unread&levels=A1%2CB1&limit=20&sort=newest',
     { headers },
   );
 
   expect(response.status).toBe(200);
   expect(listInput).toEqual({
     q: 'market',
-    status: 'unanswered',
+    reading_status: 'unread',
     levels: ['A1', 'B1'],
-    page: 1,
     limit: 20,
     sort: 'newest',
   });
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(materialList) });
 });
 
-test('normalizes the legacy reading level filter and rejects ambiguous level filters', async () => {
-  let listInput: Parameters<ReadingService['listMaterials']>[0] | undefined;
-  const app = createReadingApp({
-    listMaterials: async (input) => {
-      listInput = input;
-      return materialList;
-    },
-  });
-
-  const legacyResponse = await app.request('http://localhost/api/v1/reading/materials?level=B1', { headers });
-  const ambiguousResponse = await app.request('http://localhost/api/v1/reading/materials?level=A1&levels=B1', {
-    headers,
-  });
-
-  expect(legacyResponse.status).toBe(200);
-  expect(listInput).toMatchObject({ levels: ['B1'] });
-  expect(ambiguousResponse.status).toBe(400);
+test('rejects removed status and pagination filters', async () => {
+  const app = createReadingApp();
+  for (const query of ['page=1', 'status=completed', 'level=B1']) {
+    const response = await app.request(`http://localhost/api/v1/reading/materials?${query}`, { headers });
+    expect(response.status).toBe(400);
+  }
 });
 
 test('creates a reading material without exposing expected answers', async () => {
@@ -224,44 +215,50 @@ test('rejects create requests that use only the former topic and passage_text na
   expect(createCalled).toBe(false);
 });
 
-test('rejects a reading material with fewer than three questions', async () => {
-  let createCalled = false;
-  const response = await createReadingApp({
-    createMaterial: async () => {
-      createCalled = true;
+test('accepts material creation with omitted defaults and explicit zero questions', async () => {
+  let createInput: CreateReadingMaterialRequest | undefined;
+  const app = createReadingApp({
+    createMaterial: async (input) => {
+      createInput = input;
       return material;
     },
-  }).request('http://localhost/api/v1/reading/materials', {
+  });
+  const response = await app.request('http://localhost/api/v1/reading/materials', {
     method: 'POST',
     headers,
     body: JSON.stringify({
       title: material.title,
-      level: material.level,
-      genre: material.genre,
-      target_word_count: material.target_word_count,
       content_text: material.content_text,
-      source: material.source,
-      questions: expectedAnswers.slice(0, 2).map(({ question_text, expected_answer }) => ({
-        question_text,
-        expected_answer,
-      })),
+      genre: material.genre,
+      source: 'request',
+      target_question_count: 0,
     }),
   });
-
-  expect(response.status).toBe(400);
-  expect(createCalled).toBe(false);
+  expect(response.status).toBe(201);
+  expect(createInput).toEqual({
+    title: material.title,
+    content_text: material.content_text,
+    genre: material.genre,
+    source: 'request',
+    target_question_count: 0,
+    questions: [],
+    tags: [],
+  });
 });
 
-test('passes a complete reading submission to the service', async () => {
-  let submissionInput: SaveReadingSubmissionRequest | undefined;
-  const answers = expectedAnswers.map(({ question_number }) => ({ question_number, user_answer: 'Answer' }));
+test('passes partial and cleared reading answers to the service', async () => {
+  let submissionInput: SaveReadingAnswersRequest | undefined;
+  const answers = [
+    { question_number: 1, user_answer: 'Mira' },
+    { question_number: 2, user_answer: null },
+  ];
   const response = await createReadingApp({
-    saveSubmission: async (_code, input) => {
+    saveAnswers: async (_code, input) => {
       submissionInput = input;
       return material;
     },
-  }).request(`http://localhost/api/v1/reading/materials/${material.code}/submissions`, {
-    method: 'POST',
+  }).request(`http://localhost/api/v1/reading/materials/${material.code}/answers`, {
+    method: 'PATCH',
     headers,
     body: JSON.stringify({
       answers: answers.map(({ question_number, user_answer }) => ({
@@ -296,4 +293,27 @@ test('validates reading material codes before calling the service', async () => 
 
   expect(response.status).toBe(400);
   expect(getCalled).toBe(false);
+});
+
+test('marks manual reading status through PATCH', async () => {
+  let input: UpdateReadingMaterialRequest | undefined;
+  const app = createReadingApp({
+    updateMaterial: async (_code, value) => {
+      input = value;
+      return { ...material, reading_status: value.reading_status };
+    },
+  });
+  const response = await app.request(`http://localhost/api/v1/reading/materials/${material.code}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ reading_status: 'read' }),
+  });
+  expect(response.status).toBe(200);
+  expect(input).toEqual({ reading_status: 'read' });
+  const invalid = await app.request(`http://localhost/api/v1/reading/materials/${material.code}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ reading_status: 'completed' }),
+  });
+  expect(invalid.status).toBe(400);
 });

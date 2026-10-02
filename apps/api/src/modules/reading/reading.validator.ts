@@ -13,13 +13,14 @@ const questionSchema = z.object({
 
 export const createMaterialSchema = z.object({
   title: textSchema(300),
-  level: textSchema(32),
+  level: textSchema(32).optional(),
   genre: textSchema(100),
   tags: z.array(textSchema(64)).max(50).default([]),
-  target_word_count: z.number().int().positive().max(20_000),
+  target_word_count: z.number().int().positive().max(20_000).optional(),
+  target_question_count: z.number().int().min(0).max(20).optional(),
   content_text: textSchema(100_000),
   source: sourceSchema,
-  questions: z.array(questionSchema).min(3).max(5),
+  questions: z.array(questionSchema).max(20).default([]),
 });
 
 export const materialCodeSchema = z.object({
@@ -29,39 +30,35 @@ export const materialCodeSchema = z.object({
 export const listMaterialsSchema = z
   .object({
     q: textSchema(500).optional(),
-    status: z.enum(['unanswered', 'completed']).optional(),
-    level: textSchema(32).optional(),
+    reading_status: z.enum(['unread', 'read']).optional(),
     levels: levelsSchema.optional(),
     genre: textSchema(100).optional(),
-    page: z.coerce.number().int().min(1).default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
+    limit: z.coerce.number().int().min(1).max(100).default(100),
     sort: z.enum(['newest', 'oldest']).default('newest'),
   })
-  .strict()
-  .refine(({ level, levels }) => level === undefined || levels === undefined, {
-    message: 'Use either level or levels, not both.',
-    path: ['levels'],
-  })
-  .transform(({ level, levels, ...query }) => {
-    const selectedLevels = levels ?? (level === undefined ? undefined : [level]);
-    return selectedLevels === undefined ? query : { ...query, levels: selectedLevels };
-  });
+  .strict();
 
-export const saveSubmissionSchema = z.object({
-  answers: z
-    .array(
-      z.object({
-        question_number: z.number().int().positive(),
-        user_answer: textSchema(20_000),
-      }),
-    )
-    .min(1)
-    .max(5),
-});
+export const updateMaterialSchema = z.object({ reading_status: z.enum(['unread', 'read']) }).strict();
+
+export const saveAnswersSchema = z
+  .object({
+    answers: z
+      .array(
+        z
+          .object({
+            question_number: z.number().int().positive(),
+            user_answer: textSchema(20_000).nullable(),
+          })
+          .strict(),
+      )
+      .max(20),
+  })
+  .strict();
 
 export const updateSettingsSchema = z
   .object({
     default_level: textSchema(32).optional(),
+    default_question_count: z.number().int().min(0).max(20).optional(),
     default_word_count: z.number().int().positive().max(20_000).optional(),
     min_word_count: z.number().int().positive().max(20_000).optional(),
     max_word_count: z.number().int().positive().max(20_000).optional(),

@@ -1,7 +1,6 @@
 import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseExecutor, DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CountRow,
   CreateReadingMaterialPayload,
   IdRow,
   ListReadingMaterialsQuery,
@@ -10,19 +9,20 @@ import type {
   ReadingMaterialRow,
   ReadingQuestionWithAnswerRow,
   ReadingSettingsRow,
-  SaveReadingSubmissionPayload,
+  ReadingStatus,
+  SaveReadingAnswersPayload,
   SequenceRow,
   UpdateReadingSettingsPayload,
 } from './reading.types';
 
 const readingCodeLockNamespace = 141_421_356;
-const readingSubmissionLockNamespace = 244_948_974;
 
 export const getSettings = async (): Promise<ReadingSettingsRow> => {
   const [row] = await getDatabaseClient()<ReadingSettingsRow[]>`
     SELECT
       default_level,
       default_word_count,
+      default_question_count,
       min_word_count,
       max_word_count,
       updated_at
@@ -49,11 +49,13 @@ export const updateSettings = async (input: UpdateReadingSettingsPayload): Promi
       END,
       min_word_count = CASE WHEN ${input.min_word_count !== undefined} THEN ${input.min_word_count ?? 0} ELSE min_word_count END,
       max_word_count = CASE WHEN ${input.max_word_count !== undefined} THEN ${input.max_word_count ?? 0} ELSE max_word_count END,
+      default_question_count = COALESCE(${input.default_question_count ?? null}::INTEGER, default_question_count),
       updated_at = NOW()
     WHERE id = (SELECT id FROM reading_settings ORDER BY id ASC LIMIT 1)
     RETURNING
       default_level,
       default_word_count,
+      default_question_count,
       min_word_count,
       max_word_count,
       updated_at
@@ -117,7 +119,7 @@ export const insertMaterial = async (
       ${input.genre},
       ${trx.array(input.tags, 'TEXT')},
       ${input.target_word_count},
-      ${input.questions.length},
+      ${input.target_question_count},
       ${word_count},
       ${input.content_text},
       ${is_override},
@@ -193,8 +195,12 @@ const findMaterialRowWithExecutor = async (
       genre,
       tags,
       target_word_count,
+      target_question_count,
       word_count,
       content_text,
+      reading_status,
+      created_at,
+      updated_at,
       is_override,
       source
     FROM reading_materials
@@ -217,122 +223,40 @@ export const findByCodeInTransaction = async (
 export const listMaterials = async (input: ListReadingMaterialsQuery): Promise<ReadingMaterialListRow[]> => {
   const database = getDatabaseClient();
   const searchPattern = input.q === undefined ? null : `%${input.q}%`;
-  const offset = (input.page - 1) * input.limit;
   const levels = input.levels ?? null;
-  const levelValues = database.array(levels ?? [], 'TEXT');
   return database<ReadingMaterialListRow[]>`
-      WITH material_summary AS (
-        SELECT
-          m.id,
-          m.code,
-          m.title,
-          m.genre,
-          m.level,
-          m.target_word_count,
-          m.word_count,
-          m.tags,
-          m.source,
-          m.created_at,
-          EXISTS (
-            SELECT 1
-            FROM reading_submissions s
-            WHERE s.material_id = m.id AND s.deleted_at IS NULL
-          ) AS is_completed,
-          (
-            SELECT COUNT(*)::INTEGER
-            FROM reading_questions q
-            WHERE q.material_id = m.id AND q.deleted_at IS NULL
-          ) AS question_count,
-          (
-            SELECT COUNT(*)::INTEGER
-            FROM reading_answers a
-            JOIN reading_submissions s ON s.id = a.submission_id
-            WHERE s.material_id = m.id AND s.deleted_at IS NULL AND a.deleted_at IS NULL
-          ) AS answered_question_count
-        FROM reading_materials m
-        WHERE m.deleted_at IS NULL
-      )
-      SELECT
-        code,
-        title,
-        genre,
-        level,
-        target_word_count,
-        word_count,
-        tags,
-        source,
-        is_completed,
-        question_count,
-        answered_question_count,
-        created_at
-      FROM material_summary
-      WHERE (${searchPattern}::TEXT IS NULL OR (
-        title ILIKE ${searchPattern}
-        OR genre ILIKE ${searchPattern}
-        OR code ILIKE ${searchPattern}
-        OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
-      ))
-        AND (${levels === null} OR level = ANY(${levelValues}))
-        AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
-        AND (
-          ${input.status}::TEXT IS NULL
-          OR (${input.status}::TEXT = 'completed' AND is_completed)
-          OR (${input.status}::TEXT = 'unanswered' AND NOT is_completed)
-        )
-      ORDER BY
-        CASE WHEN ${input.sort} = 'oldest' THEN created_at END ASC,
-        CASE WHEN ${input.sort} = 'newest' THEN created_at END DESC,
-        CASE WHEN ${input.sort} = 'oldest' THEN id END ASC,
-        CASE WHEN ${input.sort} = 'newest' THEN id END DESC
-      LIMIT ${input.limit}
-      OFFSET ${offset}
-    `;
+    SELECT code, title, LEFT(REGEXP_REPLACE(content_text, $$\\s+$$, ' ', 'g'), 200) AS content_excerpt,
+      genre, level, tags, reading_status, created_at
+    FROM reading_materials
+    WHERE deleted_at IS NULL
+      AND (${searchPattern}::TEXT IS NULL OR title ILIKE ${searchPattern} OR genre ILIKE ${searchPattern}
+        OR code ILIKE ${searchPattern} OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern})
+      AND (${levels === null} OR level = ANY(${database.array(levels ?? [], 'TEXT')}))
+      AND (${input.genre ?? null}::TEXT IS NULL OR genre = ${input.genre ?? null})
+      AND (${input.reading_status ?? null}::TEXT IS NULL OR reading_status = ${input.reading_status ?? null})
+    ORDER BY
+      CASE WHEN ${input.sort} = 'oldest' THEN created_at END ASC,
+      CASE WHEN ${input.sort} = 'newest' THEN created_at END DESC,
+      CASE WHEN ${input.sort} = 'oldest' THEN id END ASC,
+      CASE WHEN ${input.sort} = 'newest' THEN id END DESC
+    LIMIT ${input.limit}
+  `;
 };
 
-export const countMaterials = async (input: ListReadingMaterialsQuery): Promise<CountRow> => {
-  const database = getDatabaseClient();
-  const searchPattern = input.q === undefined ? null : `%${input.q}%`;
-  const levels = input.levels ?? null;
-  const levelValues = database.array(levels ?? [], 'TEXT');
-  const [count] = await database<CountRow[]>`
-      WITH material_summary AS (
-        SELECT
-          m.id,
-          m.code,
-          m.title,
-          m.genre,
-          m.level,
-          m.tags,
-          EXISTS (
-            SELECT 1
-            FROM reading_submissions s
-            WHERE s.material_id = m.id AND s.deleted_at IS NULL
-          ) AS is_completed
-        FROM reading_materials m
-        WHERE m.deleted_at IS NULL
-      )
-      SELECT COUNT(*)::INTEGER AS total
-      FROM material_summary
-      WHERE (${searchPattern}::TEXT IS NULL OR (
-        title ILIKE ${searchPattern}
-        OR genre ILIKE ${searchPattern}
-        OR code ILIKE ${searchPattern}
-        OR ARRAY_TO_STRING(tags, ' ') ILIKE ${searchPattern}
-      ))
-        AND (${levels === null} OR level = ANY(${levelValues}))
-        AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
-        AND (
-          ${input.status}::TEXT IS NULL
-          OR (${input.status}::TEXT = 'completed' AND is_completed)
-          OR (${input.status}::TEXT = 'unanswered' AND NOT is_completed)
-        )
-    `;
+export const updateReadingStatus = async (code: string, status: ReadingStatus): Promise<IdRow | null> => {
+  const [row] = await getDatabaseClient()<IdRow[]>`
+    UPDATE reading_materials SET reading_status = ${status}, updated_at = NOW()
+    WHERE code = ${code} AND deleted_at IS NULL RETURNING id
+  `;
+  return row ?? null;
+};
 
-  if (count === undefined) {
-    throw new Error('Reading material count query did not return a row.');
-  }
-
-  return count;
+export const lockMaterial = async (trx: DatabaseReservedConnection, code: string): Promise<IdRow | null> => {
+  // Serialize edits to the same answer group and keep ownership validation inside the transaction.
+  const [row] = await trx<IdRow[]>`
+    SELECT id FROM reading_materials WHERE code = ${code} AND deleted_at IS NULL FOR UPDATE
+  `;
+  return row ?? null;
 };
 
 export const getQuestions = async (materialId: number): Promise<ReadingQuestionWithAnswerRow[]> => {
@@ -346,45 +270,54 @@ export const getQuestionsInTransaction = async (
   return getQuestionsWithExecutor(trx, materialId);
 };
 
-export const insertSubmission = async (trx: DatabaseReservedConnection, code: string): Promise<IdRow | null> => {
-  // Keep the existence check and single-submission insert deterministic for concurrent requests.
-  await trx`
-    SELECT pg_advisory_xact_lock(${readingSubmissionLockNamespace}::INTEGER, hashtext(${code}))
-  `;
-
-  const [submission] = await trx<IdRow[]>`
-    INSERT INTO reading_submissions (material_id)
-    SELECT id FROM reading_materials WHERE code = ${code} AND deleted_at IS NULL
-    ON CONFLICT (material_id) WHERE deleted_at IS NULL DO NOTHING
+export const upsertSubmission = async (trx: DatabaseReservedConnection, materialId: number): Promise<IdRow> => {
+  const [row] = await trx<IdRow[]>`
+    INSERT INTO reading_submissions (material_id) VALUES (${materialId})
+    ON CONFLICT (material_id) WHERE deleted_at IS NULL DO UPDATE SET updated_at = NOW()
     RETURNING id
   `;
-
-  return submission ?? null;
+  if (row === undefined) throw new Error('Reading answer group was not returned.');
+  return row;
 };
 
-export const insertAnswers = async (
+export const clearAnswers = async (
   trx: DatabaseReservedConnection,
-  code: string,
-  submissionId: number,
-  input: SaveReadingSubmissionPayload,
+  materialId: number,
+  questionNumbers: number[],
 ): Promise<void> => {
-  const questionNumbers = input.answers.map((answer) => answer.question_number);
-  const userAnswers = input.answers.map((answer) => answer.user_answer);
   await trx`
-    INSERT INTO reading_answers (
-      submission_id,
-      question_id,
-      user_answer
-    )
-    SELECT
-      ${submissionId},
-      q.id,
-      payload.user_answer
+    UPDATE reading_answers a SET deleted_at = NOW(), updated_at = NOW()
+    FROM reading_questions q, reading_submissions s
+    WHERE a.question_id = q.id AND a.submission_id = s.id
+      AND q.material_id = ${materialId} AND s.material_id = ${materialId}
+      AND q.question_number = ANY(${trx.array(questionNumbers, 'INTEGER')})
+      AND q.deleted_at IS NULL AND s.deleted_at IS NULL AND a.deleted_at IS NULL
+  `;
+};
+
+export const upsertAnswers = async (
+  trx: DatabaseReservedConnection,
+  materialId: number,
+  submissionId: number,
+  input: SaveReadingAnswersPayload,
+): Promise<void> => {
+  await trx`
+    INSERT INTO reading_answers (submission_id, question_id, user_answer)
+    SELECT ${submissionId}, q.id, payload.user_answer
     FROM reading_questions q
-    JOIN reading_materials m ON m.id = q.material_id
-    JOIN UNNEST(${trx.array(questionNumbers, 'INTEGER')}, ${trx.array(userAnswers, 'TEXT')}) AS payload(question_number, user_answer)
-      ON payload.question_number = q.question_number
-    WHERE m.code = ${code} AND q.deleted_at IS NULL
+    JOIN UNNEST(
+      ${trx.array(
+        input.answers.map((answer) => answer.question_number),
+        'INTEGER',
+      )},
+      ${trx.array(
+        input.answers.map((answer) => answer.user_answer),
+        'TEXT',
+      )}
+    ) AS payload(question_number, user_answer) ON payload.question_number = q.question_number
+    WHERE q.material_id = ${materialId} AND q.deleted_at IS NULL
+    ON CONFLICT (submission_id, question_id) DO UPDATE
+    SET user_answer = EXCLUDED.user_answer, deleted_at = NULL, updated_at = NOW()
   `;
 };
 

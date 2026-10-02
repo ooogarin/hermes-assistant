@@ -2,7 +2,7 @@
 
 This document focuses on the Reading sub-skill in Hermes English Learning. Reading practice is delivered through Telegram and persisted through the REST API and PostgreSQL.
 
-> Status: The revised database schema is implemented by `0010_align_reading_schema.ts`. Reading repository, API, frontend, and Hermes create examples use `title` and `content_text` directly. Optional-question, partial-answer, manual-status, and list/detail redesign behavior remains pending in the next implementation stages. Reading uses direct REST API calls, not MCP.
+> Status: Revised Reading schema, API, frontend, and Hermes reference are implemented. Reading uses direct REST API calls, not MCP.
 
 ---
 
@@ -235,7 +235,7 @@ One row groups the material's saved user answers. It is created only when the us
 
 Only one active submission is allowed per material. The uniqueness is enforced by a partial unique index on `material_id` where `deleted_at IS NULL`, so a new active submission can be created after an earlier submission is soft-deleted.
 
-The approved answer workflow updates the existing active group rather than creating new attempts. The existing API's one-complete-submission rule is removed in its next implementation stage; no schema change to the child tables is required for partial answers.
+The answer workflow updates the existing active group rather than creating new attempts. Partial saves use the existing child-table schema.
 
 ### `reading_answers`
 
@@ -259,7 +259,7 @@ The unique `(submission_id, question_id)` pair remains. Clearing an answer soft-
 
 Database constraints enforce 0–20 question counts and the two allowed read statuses. The partial index `(reading_status, created_at DESC, id DESC) WHERE deleted_at IS NULL` supports the approved status filter and stable created-date ordering.
 
-Reading uses `title` and `content_text` directly in repository rows, service payloads, and API create/detail contracts; list responses use `title`. There are no aliases or fallbacks to the former `topic` or `passage_text` fields. The frontend consumes these new fields, exposing `contentText` to components in the same style as Notes. Hermes create examples use the same API names. Inserts explicitly persist the supplied question array length as `target_question_count`. Schema defaults do not enable optional questions, partial answer saving, or manual marking in the current HTTP API by themselves.
+Reading uses `title` and `content_text` directly in repository rows, service payloads, and API create/detail contracts; list responses use `title`. There are no aliases or fallbacks to former fields. The frontend exposes `contentText` to components, matching Notes. Hermes uses the same API field names. Material insertion persists the resolved `target_question_count`. Answer saves lock the active material row before validating ownership and updating the one active answer group; concurrent saves preserve omitted answers. Clears alone do not create an answer group.
 
 The migration's `down` restores the legacy column names and preserves material/question/answer rows. It removes the newly added settings count, target count, read marks, and status index; rolling back discards those new fields' values. Deploy the migration together with the matching repository SQL; use a safe `_test` database for verification.
 
@@ -353,27 +353,21 @@ Questions:
 
 ---
 
-## 10. Current API During the Database Stage
+## 10. API contract
 
-This section documents the current HTTP behavior for the staged rollout. The new field names are already implemented; the revised question/answer/status and collection behavior described above follows in the next stages.
+- `GET/PATCH /api/v1/reading/settings` returns/updates `default_level`, `default_word_count`, `min_word_count`, `max_word_count`, and `default_question_count` (0–20). Word defaults must satisfy `min_word_count ≤ default_word_count ≤ max_word_count`.
+- `POST /materials` requires `title`, `content_text`, `genre`, and `source`. Tags default to an empty array. Omitted `level`, `target_word_count`, and `target_question_count` resolve from saved settings. Omitted `questions` becomes an empty array. Its length must match the effective question count, or the service returns `400 READING_QUESTION_COUNT_MISMATCH`. The passive API never generates missing questions or references.
+- Create/detail responses include the effective word/question targets, actual `word_count`, manual `reading_status`, `created_at`, `updated_at`, source, tags, and ordered questions with nullable `user_answer`. They exclude reference answers.
+- `PATCH /materials/:code` requires `reading_status: read|unread`. It changes only the manual reading mark, independent of answers; setting a target value makes retries idempotent.
+- `PATCH /materials/:code/answers` accepts `{ answers: [{ question_number, user_answer }] }`. It saves only the supplied subset; omitted answers survive. Nonempty text is trimmed, while explicit null clears a saved answer through soft deletion. A later answer reactivates the same row. An empty array is a no-op. Unknown, foreign, or duplicate question numbers return `400 INVALID_READING_ANSWERS`; no partial writes survive a rejected request. Materials without questions cannot receive answers or create answer groups.
+- `GET /materials` accepts `q`, `levels` (comma-separated), exact `genre`, `reading_status: read|unread`, `limit` (1–100, default 100), and `sort: newest|oldest`. Filtering precedes the limit; stable ordering uses `created_at` and `id`. It returns `{ items: [...] }` with no pagination metadata, total-count query, or SQL offset. Removed `status`, `page`, and single `level` filters fail validation.
+- List items contain `code`, `title`, derived `content_excerpt` (up to 200 characters with whitespace normalized), `genre`, `level`, `tags`, `reading_status`, and `created_at`.
+- `GET /materials/:code/expected-answers` exposes references only through an explicit request. No prior user answers are required. A material without questions returns an empty `items` array.
+- `POST /materials/:code/submissions` is removed. Clients use the answer PATCH endpoint.
+- Missing or soft-deleted materials return `404 READING_MATERIAL_NOT_FOUND`.
 
-`/api/v1/reading` provides `GET/PATCH /settings`, `POST /materials`, `GET /materials`, `GET /materials/:code`, `POST /materials/:code/submissions`, and `GET /materials/:code/expected-answers`.
+The FE requests 100 items and displays `Menampilkan N bacaan` using `items.length`. Rows open full detail directly; there is no side-panel or pagination. Read marks never change automatically on opening a material, saving answers, or viewing references.
 
-Request bodies, query parameters, path parameters, and every response field use `snake_case` recursively.
+## 11. Verification
 
-`POST /materials` requires `title` and `content_text`; requests using only the old `topic` and `passage_text` names fail validation. Detail responses return `title` and `content_text`, and list items return `title`. Old field names are not emitted.
-
-`GET /materials` searches `title`, `genre`, `tags`, and `code` case-insensitively. It supports `levels` as a comma-separated list of exact level values, exact `genre`, `status` (`unanswered` or `completed`), `page`, `limit` (maximum 100), and `sort` (`newest` or `oldest`). The legacy single `level` parameter remains accepted, but clients must not send it together with `levels`. PostgreSQL applies the filtering, stable `created_at`/`id` ordering, pagination, and active-row counts. `completed` means the material has one active complete submission; soft-deleted materials, submissions, questions, and answers are excluded.
-
-The backend calculates response field `word_count` from the stored passage. A submission must contain every question exactly once; MVP permits one active complete submission per material and returns `409 READING_SUBMISSION_ALREADY_EXISTS` for a repeated submission while an active submission exists. Material detail excludes `expected_answer`; expected answers are retrieved only by the dedicated endpoint after submission or by explicit request.
-
-### Approved API target — pending implementation
-
-- Keep the implemented `title` and `content_text` names and expose `reading_status`, `target_question_count`, and `default_question_count` where relevant.
-- Resolve omitted level, target word count, and target question count from saved settings. Explicit zero questions is valid; positive effective counts require matching question content.
-- `PATCH /materials/:code` sets `reading_status` to `read` or `unread`; sending the target value makes retries idempotent.
-- `PATCH /materials/:code/answers` saves/updates a subset, preserves omitted answers, and accepts an explicit null to clear a saved answer. Reject duplicate/unknown question numbers and answers for materials without questions.
-- `GET /materials` supports `reading_status=read|unread`, search, levels, genre, `limit` (maximum 100), and sort. It returns `{ items: [...] }` without pagination metadata or a total-count query. Filtering and sorting happen before the limit. Remove legacy `status`, `page`, and SQL offset/count behavior in this API stage.
-- The FE requests `limit=100`, shows `Menampilkan N bacaan` using `items.length`, and opens full detail directly. There is no list side-panel or pagination.
-- Return a derived `content_excerpt` for list previews; do not store a redundant excerpt column or request each detail separately.
-- Ordinary material responses exclude expected answers. Explicit reference-answer requests remain available independently of user answers.
+Run `bun run verify` for formatting, type checks, service/API tests, and frontend tests. PostgreSQL suites require a safe `TEST_DATABASE_URL` ending in `_test`; `bun run test:integration` runs each integration file in its own Bun process so API module mocks cannot replace real repositories/services. Reading workflow integration covers defaults, explicit zero, snapshots, optional/partial answers, corrections, clears/reactivation, rejected ownership, reference visibility, manual marks, filtering/limits, and concurrent saves.

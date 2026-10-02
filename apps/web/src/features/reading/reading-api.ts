@@ -6,17 +6,21 @@ const readingSettingsSchema = z
   .object({
     default_level: z.string(),
     default_word_count: z.number().int().positive(),
+    default_question_count: z.number().int().min(0).max(20),
     min_word_count: z.number().int().positive(),
     max_word_count: z.number().int().positive(),
     updated_at: z.string(),
   })
-  .transform(({ default_level, default_word_count, max_word_count, min_word_count, updated_at }) => ({
-    defaultLevel: default_level,
-    defaultWordCount: default_word_count,
-    maxWordCount: max_word_count,
-    minWordCount: min_word_count,
-    updatedAt: updated_at,
-  }));
+  .transform(
+    ({ default_level, default_word_count, default_question_count, max_word_count, min_word_count, updated_at }) => ({
+      defaultLevel: default_level,
+      defaultWordCount: default_word_count,
+      defaultQuestionCount: default_question_count,
+      maxWordCount: max_word_count,
+      minWordCount: min_word_count,
+      updatedAt: updated_at,
+    }),
+  );
 
 const readingQuestionSchema = z
   .object({
@@ -38,19 +42,39 @@ const readingMaterialSchema = z
     genre: z.string(),
     tags: z.array(z.string()),
     target_word_count: z.number().int().positive(),
+    target_question_count: z.number().int().min(0).max(20),
+    reading_status: z.enum(['unread', 'read']),
+    created_at: z.string(),
+    updated_at: z.string(),
     word_count: z.number().int().nonnegative(),
     content_text: z.string(),
     is_override: z.boolean(),
     source: z.enum(['cron', 'request']),
     questions: z.array(readingQuestionSchema),
   })
-  .transform(({ is_override, content_text, target_word_count, word_count, ...material }) => ({
-    ...material,
-    isOverride: is_override,
-    contentText: content_text,
-    targetWordCount: target_word_count,
-    wordCount: word_count,
-  }));
+  .transform(
+    ({
+      is_override,
+      content_text,
+      target_word_count,
+      target_question_count,
+      reading_status,
+      created_at,
+      updated_at,
+      word_count,
+      ...material
+    }) => ({
+      ...material,
+      isOverride: is_override,
+      contentText: content_text,
+      targetWordCount: target_word_count,
+      targetQuestionCount: target_question_count,
+      readingStatus: reading_status,
+      createdAt: created_at,
+      updatedAt: updated_at,
+      wordCount: word_count,
+    }),
+  );
 
 const expectedAnswerSchema = z
   .object({
@@ -70,31 +94,20 @@ const readingListItemSchema = z
   .object({
     code: z.string(),
     title: z.string(),
+    content_excerpt: z.string(),
     genre: z.string(),
     level: z.string(),
-    target_word_count: z.number().int().positive(),
-    word_count: z.number().int().nonnegative(),
     tags: z.array(z.string()),
-    source: z.enum(['cron', 'request']),
-    status: z.enum(['unanswered', 'completed']),
-    question_count: z.number().int().nonnegative(),
-    answered_question_count: z.number().int().nonnegative(),
+    reading_status: z.enum(['unread', 'read']),
     created_at: z.string(),
   })
-  .transform(({ answered_question_count, created_at, question_count, target_word_count, word_count, ...item }) => ({
+  .transform(({ content_excerpt, reading_status, created_at, ...item }) => ({
     ...item,
-    answeredQuestionCount: answered_question_count,
+    contentExcerpt: content_excerpt,
+    readingStatus: reading_status,
     createdAt: created_at,
-    questionCount: question_count,
-    targetWordCount: target_word_count,
-    wordCount: word_count,
   }));
-
-const paginationSchema = z
-  .object({ page: z.number().int(), limit: z.number().int(), total: z.number().int(), total_pages: z.number().int() })
-  .transform(({ total_pages, ...meta }) => ({ ...meta, totalPages: total_pages }));
-
-const readingListSchema = z.object({ items: z.array(readingListItemSchema), meta: paginationSchema });
+const readingListSchema = z.object({ items: z.array(readingListItemSchema) });
 
 export type ReadingSettings = z.output<typeof readingSettingsSchema>;
 export type ReadingMaterial = z.output<typeof readingMaterialSchema>;
@@ -105,21 +118,29 @@ export type ReadingListFilters = {
   genre?: string;
   levels?: string[];
   limit?: number;
-  page?: number;
   q?: string;
   sort?: 'newest' | 'oldest';
-  status?: 'unanswered' | 'completed';
+  reading_status?: 'unread' | 'read';
 };
 export type ReadingSettingsInput = Pick<
   ReadingSettings,
   'defaultLevel' | 'defaultWordCount' | 'minWordCount' | 'maxWordCount'
->;
+> & { defaultQuestionCount?: number };
 
 export const getReadingSettings = (signal?: AbortSignal): Promise<ReadingSettings> =>
   apiRequest('/api/v1/reading/settings', readingSettingsSchema, { signal });
 
 export const updateReadingSettings = (input: ReadingSettingsInput): Promise<ReadingSettings> =>
-  apiRequest('/api/v1/reading/settings', readingSettingsSchema, { body: input, method: 'PATCH' });
+  apiRequest('/api/v1/reading/settings', readingSettingsSchema, {
+    body: {
+      default_level: input.defaultLevel,
+      default_word_count: input.defaultWordCount,
+      min_word_count: input.minWordCount,
+      max_word_count: input.maxWordCount,
+      default_question_count: input.defaultQuestionCount,
+    },
+    method: 'PATCH',
+  });
 
 export const getReadingMaterial = (code: string, signal?: AbortSignal): Promise<ReadingMaterial> =>
   apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}`, readingMaterialSchema, { signal });
@@ -136,16 +157,30 @@ export const getReadingMaterials = (
   );
 };
 
-export const submitReadingAnswers = (
+export const saveReadingAnswers = (
   code: string,
-  answers: Array<{ questionNumber: number; userAnswer: string }>,
+  answers: Array<{ questionNumber: number; userAnswer: string | null }>,
 ): Promise<ReadingMaterial> =>
-  apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}/submissions`, readingMaterialSchema, {
-    body: { answers },
-    method: 'POST',
+  apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}/answers`, readingMaterialSchema, {
+    body: {
+      answers: answers.map(({ questionNumber, userAnswer }) => ({
+        question_number: questionNumber,
+        user_answer: userAnswer,
+      })),
+    },
+    method: 'PATCH',
   });
 
 export const getReadingExpectedAnswers = (code: string, signal?: AbortSignal): Promise<ReadingExpectedAnswer[]> =>
   apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}/expected-answers`, expectedAnswersSchema, {
     signal,
+  });
+
+export const markReadingMaterial = (
+  code: string,
+  readingStatus: ReadingMaterial['readingStatus'],
+): Promise<ReadingMaterial> =>
+  apiRequest(`/api/v1/reading/materials/${encodeURIComponent(code)}`, readingMaterialSchema, {
+    method: 'PATCH',
+    body: { reading_status: readingStatus },
   });

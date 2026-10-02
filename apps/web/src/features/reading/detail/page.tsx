@@ -4,11 +4,10 @@ import { Link, useParams } from 'react-router-dom';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
-import { PageHeader } from '../../../components/layout/page-header';
 import { ReadingWorkspace } from '../../../components/reading/reading-workspace';
 import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { getReadingMaterial, submitReadingAnswers } from '../reading-api';
+import { getReadingMaterial, markReadingMaterial, saveReadingAnswers } from '../reading-api';
 import type { ReadingMaterial } from '../reading-api';
 
 const ReadingDetailPage = () => {
@@ -16,34 +15,53 @@ const ReadingDetailPage = () => {
   const material = useApiQuery(code, (signal) => getReadingMaterial(code, signal));
   const [savedMaterial, setSavedMaterial] = useState<ReadingMaterial>();
   const [submitting, setSubmitting] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const [notice, setNotice] = useState<string>();
   const [submitError, setSubmitError] = useState<string>();
 
-  const submit = async (answers: Array<{ questionNumber: number; userAnswer: string }>) => {
+  const submit = async (answers: Array<{ questionNumber: number; userAnswer: string | null }>) => {
     setSubmitting(true);
     setSubmitError(undefined);
+    setNotice(undefined);
     try {
-      setSavedMaterial(await submitReadingAnswers(code, answers));
-    } catch (error) {
-      setSubmitError(
-        error instanceof ApiError && error.status === 409
-          ? 'Jawaban untuk materi ini sudah pernah dikirim.'
-          : 'Jawaban belum dapat dikirim. Coba lagi.',
-      );
+      setSavedMaterial(await saveReadingAnswers(code, answers));
+      setNotice('Jawaban berhasil disimpan.');
+    } catch {
+      setSubmitError('Jawaban belum dapat disimpan. Coba lagi.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const current =
+    savedMaterial?.code === code ? savedMaterial : material.status === 'success' ? material.data : undefined;
+  const mark = async () => {
+    if (!current) return;
+    setMarking(true);
+    setSubmitError(undefined);
+    setNotice(undefined);
+    try {
+      setSavedMaterial(await markReadingMaterial(code, current.readingStatus === 'read' ? 'unread' : 'read'));
+      setNotice(current.readingStatus === 'read' ? 'Bacaan ditandai belum dibaca.' : 'Bacaan ditandai sudah dibaca.');
+    } catch {
+      setSubmitError('Status baca belum dapat disimpan. Coba lagi.');
+    } finally {
+      setMarking(false);
+    }
+  };
+
   return (
-    <div className='space-y-7'>
-      <Link
-        className='inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline'
-        to='/english/reading'
-      >
-        <ArrowLeft aria-hidden='true' size={18} />
-        Semua Reading
-      </Link>
-      <PageHeader title='Reading' actions={<EnglishSettingsLink to='/english/reading/settings' />} />
+    <div className='space-y-5'>
+      <div className='flex items-center justify-between gap-4'>
+        <Link
+          className='inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline'
+          to='/english/reading'
+        >
+          <ArrowLeft aria-hidden='true' size={18} />
+          Kembali ke Reading
+        </Link>
+        <EnglishSettingsLink to='/english/reading/settings' />
+      </div>
 
       {material.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
       {material.status === 'error' ? (
@@ -69,8 +87,20 @@ const ReadingDetailPage = () => {
           {submitError}
         </p>
       )}
-      {material.status === 'success' ? (
-        <ReadingWorkspace material={savedMaterial ?? material.data} onSubmit={submit} submitting={submitting} />
+      {notice ? (
+        <p role='status' className='text-sm text-primary'>
+          {notice}
+        </p>
+      ) : null}
+      {material.status === 'success' && current ? (
+        <ReadingWorkspace
+          key={code}
+          material={current}
+          onSubmit={submit}
+          onMark={() => void mark()}
+          submitting={submitting}
+          marking={marking}
+        />
       ) : null}
     </div>
   );

@@ -13,6 +13,7 @@ import type { FormEvent } from 'react';
 export type LearningSettings = {
   defaultLevel: string;
   defaultWordCount: number;
+  defaultQuestionCount?: number;
   maxWordCount: number;
   minWordCount: number;
   updatedAt: string;
@@ -20,7 +21,7 @@ export type LearningSettings = {
 
 export type LearningSettingsInput = Pick<
   LearningSettings,
-  'defaultLevel' | 'defaultWordCount' | 'minWordCount' | 'maxWordCount'
+  'defaultLevel' | 'defaultWordCount' | 'minWordCount' | 'maxWordCount' | 'defaultQuestionCount'
 >;
 
 type LearningSettingsPageProps = {
@@ -34,6 +35,7 @@ const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 const toInput = (settings: LearningSettings): LearningSettingsInput => ({
   defaultLevel: settings.defaultLevel,
+  ...(settings.defaultQuestionCount === undefined ? {} : { defaultQuestionCount: settings.defaultQuestionCount }),
   defaultWordCount: settings.defaultWordCount,
   maxWordCount: settings.maxWordCount,
   minWordCount: settings.minWordCount,
@@ -96,6 +98,9 @@ const Summary = ({ settings }: { settings: LearningSettings }) => {
     { icon: List, label: 'Target (ideal)', value: `${settings.defaultWordCount} kata` },
     { icon: ArrowDown, label: 'Rentang minimum', value: `${settings.minWordCount} kata` },
     { icon: ArrowUp, label: 'Rentang maksimum', value: `${settings.maxWordCount} kata` },
+    ...(settings.defaultQuestionCount === undefined
+      ? []
+      : [{ icon: List, label: 'Jumlah soal', value: `${settings.defaultQuestionCount} soal` }]),
     { icon: Tag, label: 'Genre & topik', value: 'Beragam secara otomatis' },
   ];
 
@@ -133,13 +138,18 @@ const SettingsForm = ({
   const dirty = useMemo(
     () =>
       values.defaultLevel !== saved.defaultLevel ||
+      values.defaultQuestionCount !== saved.defaultQuestionCount ||
       values.defaultWordCount !== saved.defaultWordCount ||
       values.minWordCount !== saved.minWordCount ||
       values.maxWordCount !== saved.maxWordCount,
     [saved, values],
   );
   const valid =
-    Object.values(values).every((value) => (typeof value === 'number' ? Number.isInteger(value) && value > 0 : true)) &&
+    Object.entries(values).every(([key, value]) =>
+      typeof value === 'number'
+        ? Number.isInteger(value) && (key === 'defaultQuestionCount' ? value >= 0 && value <= 20 : value > 0)
+        : true,
+    ) &&
     values.minWordCount <= values.defaultWordCount &&
     values.defaultWordCount <= values.maxWordCount;
   const rootPath = `/english/${feature.toLowerCase()}`;
@@ -244,6 +254,34 @@ const SettingsForm = ({
                   : 'Gunakan bilangan bulat positif dengan minimum ≤ target ≤ maksimum.'}
               </p>
             </section>
+            {feature === 'Reading' ? (
+              <section className='mt-9 border-t border-border pt-8'>
+                <h2 className='text-xl font-semibold text-ink'>Pertanyaan opsional</h2>
+                <label className='mt-5 grid gap-2 text-sm font-medium text-ink' htmlFor='reading-question-count'>
+                  Jumlah soal default
+                  <Input
+                    id='reading-question-count'
+                    type='number'
+                    min={0}
+                    max={20}
+                    step={1}
+                    value={Number.isNaN(values.defaultQuestionCount) ? '' : (values.defaultQuestionCount ?? 3)}
+                    onChange={(event) =>
+                      setValues((current) => ({ ...current, defaultQuestionCount: event.target.valueAsNumber }))
+                    }
+                  />
+                </label>
+                <p className='mt-3 text-sm text-ink-muted'>Pilih 0–20 soal. Gunakan 0 untuk bacaan tanpa pertanyaan.</p>
+                {values.defaultQuestionCount !== undefined &&
+                (!Number.isInteger(values.defaultQuestionCount) ||
+                  values.defaultQuestionCount < 0 ||
+                  values.defaultQuestionCount > 20) ? (
+                  <p className='mt-2 text-sm text-danger' role='alert'>
+                    Jumlah soal harus bilangan bulat antara 0 dan 20.
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
           </fieldset>
 
           <Button className='mt-8 min-w-52' disabled={!dirty || !valid} pending={saving} type='submit'>

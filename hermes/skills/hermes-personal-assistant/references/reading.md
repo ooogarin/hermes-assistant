@@ -1,15 +1,16 @@
 # Reading
 
-Reading creates passages with 3–5 comprehension questions. The API stores expected answers, but ordinary material responses do not expose them.
+Reading creates passages with optional 0–20 comprehension questions; the saved default starts at 3. Questions and user answers are supplements without grading. The API stores expected answers, but ordinary material responses do not expose them.
 
 ## Endpoints
 
 - `GET|PATCH /api/v1/reading/settings`
 - `POST /api/v1/reading/materials`
-- `GET /api/v1/reading/materials` lists materials; filters include `q`, `status`,
-  `levels`, `genre`, `page`, `limit`, and `sort=newest|oldest`.
+- `GET /api/v1/reading/materials` lists materials; filters include `q`, `reading_status=unread|read`,
+  `levels`, `genre`, `limit` (maximum 100), and `sort=newest|oldest`; it returns items without pagination metadata.
 - `GET /api/v1/reading/materials/:code`
-- `POST /api/v1/reading/materials/:code/submissions`
+- `PATCH /api/v1/reading/materials/:code/answers`
+- `PATCH /api/v1/reading/materials/:code` with `reading_status: unread|read`
 - `GET /api/v1/reading/materials/:code/expected-answers`
 
 Create material body:
@@ -21,6 +22,7 @@ Create material body:
   "genre": "informative article",
   "tags": ["environment", "cities"],
   "target_word_count": 350,
+  "target_question_count": 3,
   "content_text": "...",
   "source": "request",
   "questions": [
@@ -35,14 +37,14 @@ Create material body:
 
 1. Resolve `title`, `level`, `genre`, and target length from the request. For a request
    without overrides, fetch Reading settings and use `default_level` and
-   `default_word_count`; keep the stored min/max bounds in mind.
+   `default_word_count`, plus `default_question_count`; keep the stored min/max bounds in mind.
 2. Treat user-provided level, length, topic, or genre as a one-off override. A Reading
    default-setting change requires an explicit request and confirmation of the exact
    current and proposed values.
 3. Write a passage at the selected level and target length. Use a coherent topic and
    genre, and avoid repeating a recent topic when the available context makes that
    possible.
-4. Create exactly 3–5 questions. Mix suitable question types such as main idea,
+4. Resolve the question count from the explicit override or `default_question_count` (0–20). Preserve an explicit zero. Generate exactly that many questions; omit questions or send an empty array for zero. Mix suitable question types such as main idea,
    detail, vocabulary-in-context, inference, and reference. Every question needs an
    `expected_answer`, but do not show expected answers in the initial material.
 5. Send one `POST /api/v1/reading/materials` with `source=request` (or `source=cron`
@@ -80,7 +82,7 @@ not expose expected answers.
 
 💡 *Level B1*
 Kosakata kunci: budget, income, expenses, emergency fund, interest.
-_Balas dengan nomor jawaban, misalnya `1. ...`_
+_Pertanyaan opsional: boleh dijawab sebagian atau dilewati._
 ```
 
 Rules for this format:
@@ -96,27 +98,19 @@ Rules for this format:
   `📝 *Preview — belum disimpan*` and do not invent an `RD-...` code. For payload-only
   and full-preview requests, follow the parent skill's preview rules.
 
-For cron, fetch settings and read `default_level`, `default_word_count`, `min_word_count`, and `max_word_count` from the response. Use those defaults in the `snake_case` create request, set `source: "cron"`, and choose a fresh topic/genre when possible. For a user request, use provided one-off overrides without changing settings unless explicitly asked; set `source: "request"`.
+For cron, fetch settings and read `default_level`, `default_word_count`, `min_word_count`, `max_word_count`, and `default_question_count` from the response. Use those defaults in the `snake_case` create request, set `source: "cron"`, and choose a fresh topic/genre when possible. For a user request, use provided one-off overrides without changing settings unless explicitly asked; set `source: "request"`.
 
-Submission body is `{ "answers": [{ "question_number": 1, "user_answer": "..." }] }`. Reading does not grade answers as correct/partial/incorrect in MVP. Response questions use `question_number`, `question_text`, `user_answer`, and `expected_answer`. Once all questions have answers, show expected answers by fetching the dedicated endpoint. Also fetch them when explicitly requested.
+## Optional Answer and Manual-Status Flow
 
-Resolve the material from an explicit `RD-...` code or an unambiguous current session. If uncertain, ask before persisting answers.
-
-## Answer and Expected-Answer Flow
-
-- If the user answers the current material unambiguously, collect answers by
-  `question_number` and submit them through `POST /materials/:code/submissions`.
-- If an answer mentions a code, use that code. If multiple materials are active and no
-  code is given, ask which material the answer belongs to.
-- A submission may contain one or more answered questions. Do not invent answers for
-  unanswered questions.
-- Reading MVP stores submissions but does not assign `correct`, `partial`, or
-  `incorrect`. Do not call the result a score.
-- After submission, summarize which questions were received and offer expected answers.
-  Fetch `GET /materials/:code/expected-answers` only when the user asks for them or
-  when all questions have been answered and the normal flow calls for showing them.
-- Do not reveal an expected answer before submission unless the user explicitly asks to
-  see the answer key.
+- Resolve the material from an explicit `RD-...` code or an unambiguous current material with questions. Ask if the target is unclear. Read status is not an answer-targeting rule.
+- Save only supplied answers through `PATCH /materials/:code/answers` with `{ "answers": [{ "question_number": 1, "user_answer": "..." }] }`. The user may answer none, some, or all questions, continue later, or correct an answer. Omitted answers are preserved; explicit `user_answer: null` clears a saved answer. Do not invent missing answers.
+- A material without questions has no expected/user answers or answer group. Never submit answers for it.
+- Never assign correct/partial/incorrect, a score, or answer-based completion. Summarize saved answers without requiring the rest.
+- Fetch reference answers only when the user explicitly requests them, independently of saved user answers. Do not automatically reveal them after saving all answers.
+- Change `reading_status` only after an explicit mark-read/unread request. Use PATCH on the material with the target status. Opening/sending a passage, saving answers, and requesting references never changes this mark.
+- Omitted level, target word count, and target question count resolve from settings in the API. Hermes still generates and supplies matching question content for positive counts; the API does not generate missing questions. Include `target_question_count: 0` for an explicit reading-only request. Defaults include `default_question_count`; persistent edits require an explicit request.
+- Material responses include `title`, `content_text`, `reading_status`, target counts and ordered questions with nullable `user_answer`; ordinary responses exclude `expected_answer`.
+- In Telegram, omit the entire Pertanyaan section and answer prompt when there are zero questions. Otherwise describe answers as optional, for example `_Boleh dijawab sebagian atau dilewati._`.
 
 If the user says `preview` or `jangan call API`, do not fetch settings, materials, or
 answer keys. Use the parent skill's preview levels: default shows the proposed

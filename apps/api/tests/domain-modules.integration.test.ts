@@ -304,7 +304,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     }
   });
 
-  test('persists one complete reading submission and protects expected answers', async () => {
+  test('persists editable reading answers without changing manual read status', async () => {
     const material = await readingService.createMaterial({
       title: 'Morning market',
       level: 'A1',
@@ -332,7 +332,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       'The market.',
     ]);
 
-    const submitted = await readingService.saveSubmission(material.code, {
+    const submitted = await readingService.saveAnswers(material.code, {
       answers: [
         { question_number: 1, user_answer: 'Mira.' },
         { question_number: 2, user_answer: 'Sunday morning.' },
@@ -348,25 +348,23 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     await expect(
       readingService.listMaterials({
         q: 'MARKET',
-        status: 'completed',
-        page: 1,
+        reading_status: 'unread',
         limit: 20,
         sort: 'newest',
       }),
     ).resolves.toMatchObject({
-      items: [{ code: material.code, status: 'completed', question_count: 3, answered_question_count: 3 }],
-      meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
+      items: [{ code: material.code, reading_status: 'unread' }],
     });
 
     await expect(
-      readingService.saveSubmission(material.code, {
+      readingService.saveAnswers(material.code, {
         answers: [
           { question_number: 1, user_answer: 'Mira.' },
           { question_number: 2, user_answer: 'Sunday morning.' },
           { question_number: 3, user_answer: 'The market.' },
         ],
       }),
-    ).rejects.toMatchObject({ code: 'READING_SUBMISSION_ALREADY_EXISTS', statusCode: 409 });
+    ).resolves.toMatchObject({ code: material.code, reading_status: 'unread' });
 
     await getDatabase()`
       UPDATE reading_submissions
@@ -374,7 +372,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       WHERE material_id = (SELECT id FROM reading_materials WHERE code = ${material.code})
     `;
 
-    const resubmitted = await readingService.saveSubmission(material.code, {
+    const resubmitted = await readingService.saveAnswers(material.code, {
       answers: [
         { question_number: 1, user_answer: 'Mira.' },
         { question_number: 2, user_answer: 'Sunday morning.' },

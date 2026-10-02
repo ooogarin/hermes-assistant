@@ -18,7 +18,7 @@ import type {
   ReadingQuestionWithAnswerRow,
   ReadingSettings,
   ReadingSettingsRow,
-  SaveReadingSubmissionPayload,
+  SaveReadingAnswersPayload,
 } from '../src/modules/reading/reading.types';
 import type {
   WritingCountRow,
@@ -70,6 +70,7 @@ const writingMaterial: WritingMaterial = {
 const readingSettings: ReadingSettings = {
   default_level: 'A1',
   default_word_count: 300,
+  default_question_count: 3,
   min_word_count: 250,
   max_word_count: 350,
   updated_at: '2026-09-05T10:00:00.000Z',
@@ -82,6 +83,10 @@ const readingMaterial: ReadingMaterial = {
   genre: 'story',
   tags: [],
   target_word_count: 300,
+  target_question_count: 3,
+  reading_status: 'unread',
+  created_at: '2026-09-05T10:00:00.000Z',
+  updated_at: '2026-09-05T10:00:00.000Z',
   word_count: 5,
   content_text: 'Mira visits the morning market.',
   is_override: false,
@@ -96,6 +101,7 @@ const readingMaterial: ReadingMaterial = {
 const readingSettingsRow: ReadingSettingsRow = {
   default_level: readingSettings.default_level,
   default_word_count: readingSettings.default_word_count,
+  default_question_count: readingSettings.default_question_count,
   min_word_count: readingSettings.min_word_count,
   max_word_count: readingSettings.max_word_count,
   updated_at: readingSettings.updated_at,
@@ -109,6 +115,10 @@ const readingMaterialRow: ReadingMaterialRow = {
   genre: readingMaterial.genre,
   tags: readingMaterial.tags,
   target_word_count: readingMaterial.target_word_count,
+  target_question_count: readingMaterial.target_question_count,
+  reading_status: readingMaterial.reading_status,
+  created_at: readingMaterial.created_at,
+  updated_at: readingMaterial.updated_at,
   word_count: readingMaterial.word_count,
   content_text: readingMaterial.content_text,
   is_override: readingMaterial.is_override,
@@ -181,8 +191,7 @@ let readingSettingsResult = readingSettingsRow;
 let readingMaterialResult: ReadingMaterialRow | null = readingMaterialRow;
 let readingQuestionsResult: ReadingQuestionWithAnswerRow[] = readingQuestionRows;
 let readingListResult: ReadingMaterialListRow[] = [];
-let readingCountResult: { total: number | string } = { total: 0 };
-let readingSubmissionPayloadResult: SaveReadingSubmissionPayload | null = null;
+let readingSubmissionPayloadResult: SaveReadingAnswersPayload | null = null;
 let readingFindByCodeCallCount = 0;
 let writingSettingsResult = writingSettingsRow;
 let writingSubmissionResult: WritingSubmissionRow | null = writingSubmissionRow;
@@ -285,13 +294,15 @@ mock.module('../src/modules/reading/reading.repository', () => ({
   getQuestions: async () => readingQuestionsResult,
   getQuestionsInTransaction: async () => readingQuestionsResult,
   listMaterials: async () => readingListResult,
-  countMaterials: async () => readingCountResult,
-  insertSubmission: async () => ({ id: 1 }),
-  insertAnswers: async (
+  lockMaterial: async () => (readingMaterialResult === null ? null : { id: 1 }),
+  upsertSubmission: async () => ({ id: 1 }),
+  clearAnswers: async () => undefined,
+  updateReadingStatus: async () => ({ id: 1 }),
+  upsertAnswers: async (
     _trx: DatabaseReservedConnection,
-    _code: string,
+    _materialId: number,
     _submissionId: number,
-    payload: SaveReadingSubmissionPayload,
+    payload: SaveReadingAnswersPayload,
   ) => {
     readingSubmissionPayloadResult = payload;
   },
@@ -333,7 +344,6 @@ beforeEach(() => {
   readingMaterialResult = readingMaterialRow;
   readingQuestionsResult = readingQuestionRows;
   readingListResult = [];
-  readingCountResult = { total: 0 };
   readingSubmissionPayloadResult = null;
   readingFindByCodeCallCount = 0;
   writingSettingsResult = writingSettingsRow;
@@ -413,6 +423,7 @@ test('create flows return the transaction-local result without a post-commit rea
     content_text: 'Mira visits the market.',
     source: 'request',
     questions: [{ question_text: 'Who visits?', expected_answer: 'Mira.' }],
+    target_question_count: 1,
   });
   const createdWritingMaterial = await writingService.createMaterial({
     topic: writingMaterial.topic,
@@ -423,7 +434,7 @@ test('create flows return the transaction-local result without a post-commit rea
     target_word_count: writingMaterial.target_word_count,
     source: writingMaterial.source,
   });
-  const submittedReadingMaterial = await readingService.saveSubmission(readingMaterial.code, {
+  const submittedReadingMaterial = await readingService.saveAnswers(readingMaterial.code, {
     answers: [
       { question_number: 1, user_answer: 'Mira.' },
       { question_number: 2, user_answer: 'The market.' },
@@ -442,7 +453,7 @@ test('create flows return the transaction-local result without a post-commit rea
       { question_number: 3, user_answer: 'Morning.' },
     ],
   });
-  expect(readingFindByCodeCallCount).toBe(1);
+  expect(readingFindByCodeCallCount).toBe(0);
   expect(writingGetMaterialCallCount).toBe(0);
   expect(committedTransactionCount).toBe(4);
 });
@@ -453,19 +464,14 @@ test('reading and writing services compose list responses from repository rows',
     {
       code: readingMaterial.code,
       title: readingMaterial.title,
+      content_excerpt: 'Mira visits the market.',
       genre: readingMaterial.genre,
       level: readingMaterial.level,
-      target_word_count: readingMaterial.target_word_count,
-      word_count: readingMaterial.word_count,
       tags: readingMaterial.tags,
-      source: readingMaterial.source,
-      is_completed: true,
-      question_count: '3',
-      answered_question_count: '2',
+      reading_status: 'read',
       created_at: '2026-09-05T10:00:00.000Z',
     },
   ];
-  readingCountResult = { total: '21' };
   writingListResult = [
     {
       code: writingMaterial.code,
@@ -483,24 +489,8 @@ test('reading and writing services compose list responses from repository rows',
   ];
   writingCountResult = { total: '21' };
 
-  await expect(readingService.listMaterials({ page: 2, limit: 20, sort: 'newest' })).resolves.toEqual({
-    items: [
-      {
-        code: readingMaterial.code,
-        title: readingMaterial.title,
-        genre: readingMaterial.genre,
-        level: readingMaterial.level,
-        target_word_count: readingMaterial.target_word_count,
-        word_count: readingMaterial.word_count,
-        tags: readingMaterial.tags,
-        source: readingMaterial.source,
-        status: 'completed',
-        question_count: 3,
-        answered_question_count: 2,
-        created_at: '2026-09-05T10:00:00.000Z',
-      },
-    ],
-    meta: { page: 2, limit: 20, total: 21, total_pages: 2 },
+  await expect(readingService.listMaterials({ limit: 100, sort: 'newest' })).resolves.toEqual({
+    items: readingListResult.map((row) => ({ ...row, created_at: String(row.created_at) })),
   });
   await expect(writingService.listMaterials({ page: 2, limit: 20, sort: 'newest' })).resolves.toEqual({
     items: [
@@ -698,16 +688,16 @@ test('reading settings keep the default word count inside the configured range',
   });
 });
 
-test('reading requires every question exactly once in a submission', async () => {
+test('reading rejects duplicate question numbers in optional answers', async () => {
   await expect(
-    readingService.saveSubmission(readingMaterial.code, {
+    readingService.saveAnswers(readingMaterial.code, {
       answers: [
         { question_number: 1, user_answer: 'Mira' },
         { question_number: 1, user_answer: 'Mira again' },
         { question_number: 3, user_answer: 'Morning' },
       ],
     }),
-  ).rejects.toMatchObject({ code: 'INCOMPLETE_READING_SUBMISSION', statusCode: 400 });
+  ).rejects.toMatchObject({ code: 'INVALID_READING_ANSWERS', statusCode: 400 });
 });
 
 test('writing settings keep the default word count inside the configured range', async () => {

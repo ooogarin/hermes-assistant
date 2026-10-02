@@ -5,7 +5,8 @@ import {
   createMaterialSchema,
   listMaterialsSchema,
   materialCodeSchema,
-  saveSubmissionSchema,
+  saveAnswersSchema,
+  updateMaterialSchema,
   updateSettingsSchema,
 } from './reading.validator';
 import type { AppEnv } from '../../core/http/app-env';
@@ -17,12 +18,18 @@ export const createReadingRoutes = () => {
   route.patch('/settings', appValidator('json', updateSettingsSchema), readingHandler.updateSettings);
   route.post('/materials', appValidator('json', createMaterialSchema), readingHandler.createMaterial);
   route.get('/materials', appValidator('query', listMaterialsSchema), readingHandler.listMaterials);
-  route.get('/materials/:code', appValidator('param', materialCodeSchema), readingHandler.getMaterial);
-  route.post(
-    '/materials/:code/submissions',
+  route.patch(
+    '/materials/:code',
     appValidator('param', materialCodeSchema),
-    appValidator('json', saveSubmissionSchema),
-    readingHandler.saveSubmission,
+    appValidator('json', updateMaterialSchema),
+    readingHandler.updateMaterial,
+  );
+  route.get('/materials/:code', appValidator('param', materialCodeSchema), readingHandler.getMaterial);
+  route.patch(
+    '/materials/:code/answers',
+    appValidator('param', materialCodeSchema),
+    appValidator('json', saveAnswersSchema),
+    readingHandler.saveAnswers,
   );
   route.get(
     '/materials/:code/expected-answers',

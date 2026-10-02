@@ -279,6 +279,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
     const code = 'RD-20261001-001';
     const input: CreateReadingMaterialPayload = {
       title: 'Morning market',
+      target_question_count: 5,
       level: 'A1',
       genre: 'story',
       tags: ['daily-life'],
@@ -311,11 +312,10 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
       title: input.title,
       content_text: input.content_text,
     });
-    const query = { page: 1, limit: 100, sort: 'newest' as const, q: input.title };
+    const query = { limit: 100, sort: 'newest' as const, q: input.title };
     expect((await readingRepository.listMaterials(query)).map(({ code, title }) => ({ code, title }))).toEqual([
       { code, title: input.title },
     ]);
-    expect(await readingRepository.countMaterials(query)).toEqual({ total: 1 });
     expect(
       await getDatabase()<StoredMaterialRow[]>`
         SELECT title, content_text, target_question_count, reading_status

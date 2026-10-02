@@ -412,3 +412,61 @@ No actionable P0, P1, or P2 differences remain on the implemented and locally re
 - [x] Responsive browser inspection, Biome check, TypeScript check, production build, and diff validation.
 
 final result: passed
+# Reading implementation QA
+
+Date: 2026-10-02. Scope: Reading only.
+
+Source visual truth: `docs/frontend-design/reading-approved.png` (887 × 1774 px, composed list and detail mockups).
+Implementation: <http://127.0.0.1:5174/english/reading>, using an isolated temporary PostgreSQL database.
+
+## Evidence and normalization
+
+Browser captures are in `.tmp/reading-qa/`:
+
+- `list-desktop.jpg`, `detail-desktop.jpg`: 1440 × 1000 px, CSS viewport 1440 × 1000, device pixel ratio 1.
+- `list-mobile.jpg`: 390 × 1100 px full-page capture, CSS viewport 390 × 844.
+- `detail-mobile-after.jpg`: 390 × 844 px viewport capture, CSS viewport 390 × 844, device pixel ratio 1.
+- `list-reference-width.jpg`, `detail-reference-width.jpg`: 887 × 1000 px captures for narrower desktop/tablet inspection.
+- `list-comparison.jpg`, `detail-comparison.jpg`: source and implementation main content together at native pixel density. Browser chrome and sidebar are cropped out. Implementation desktop content is wider, so line wrapping and vertical height are expected to differ; these comparisons do not claim pixel equality.
+- `list-focused.jpg`, `detail-focused.jpg`: native-density comparisons of title, metadata and controls.
+- `mobile-comparison.jpg`: before/after mobile title layout, normalized to 390 CSS px without browser chrome.
+
+The approved mockup supplies hierarchy and Reading content structure. Existing Notes/Junk components supply the production font, brand logo, green palette, button treatments, table scrolling, sidebar width and detail surface. Reusing these existing components is an intentional repository constraint. No new raster imagery is required.
+
+State: three seeded list entries with mixed manual read statuses; Remote work habits detail with three optional questions initially collapsed; matching article text. Public code and calculated word count differ from the illustrative mockup (96 actual words versus 95 in the mockup).
+
+## Findings and comparison history
+
+- [P2, resolved] At 390 px, the status button compressed the title into three short lines. Evidence: `detail-mobile.jpg`. Fix: give the title a full flex row below the `sm` breakpoint, preserving title/button alignment on desktop. Post-fix evidence: `detail-mobile-after.jpg` and `mobile-comparison.jpg`; the title is readable across the available width and the button follows beneath it.
+- No actionable P0/P1/P2 findings remain in the final captures. A native-density full-view comparison and focused comparisons were inspected after the mobile fix.
+
+## Required fidelity surfaces
+
+- Fonts/typography: production font and Notes sizing retained; clear title/body/metadata hierarchy. Body is 18 px with 36 px line height on desktop and 16 px with 32 px line height on mobile. Long content wraps, excerpts clamp to three lines, and the corrected mobile title has room to wrap naturally.
+- Spacing/layout: article occupies the main content width; optional questions are below the article; metadata follows. Status action is beside the title on desktop. Notes detail padding and bordered surface are intentional. Table overflow stays inside its scroll container; mobile document width measured 390 px at a 390 px viewport.
+- Colors/tokens: existing ink, muted text, surface, border and primary green tokens reused. Read/unread labels include text as well as distinct semantic colors. Active controls follow Notes styling.
+- Image quality/assets: no article illustrations or photography in the source; existing Hermes logo retained. Existing Lucide icons are used for settings, navigation, copy and disclosure; no custom raster approximations were introduced.
+- Copy/content: five list columns match the intended data hierarchy. Footer is `Menampilkan N bacaan` from returned items. Optional-question explanation contains no grading language. Status copy describes manual read state, and ordinary detail responses do not expose reference answers.
+
+## Interactions verified in the browser
+
+- List navigation, search, read-status filtering and a zero-result footer.
+- Questions collapsed initially; native disclosure opens/closes with keyboard Enter.
+- Save one answer while leaving two empty; reload preserves the partial answer.
+- Clear a saved answer; explicit reference-answer link remains available with unanswered questions.
+- Mark read/unread independently of answers; changing read status preserves an unsaved answer draft.
+- Reading-only material omits the question section.
+- Save default question count zero; summary displays `0 soal`; restore three for preview.
+- Desktop and mobile capture checks; no warning/error console entries in checked preview sessions.
+
+## Implementation checklist
+
+- [x] Preserve approved Reading hierarchy within the existing Notes/Junk design system.
+- [x] Fix and recapture mobile title wrapping.
+- [x] Verify optional answers, explicit references, manual status and zero default.
+- [x] Remove pagination and total-count behavior from Reading.
+- [x] Restrict production changes to Reading and its optional shared settings control.
+
+Residual test gaps: no dedicated mobile source mockup, browser zoom or screen-reader session. The shared Writing settings behavior is unchanged when the optional Reading question-count control is absent.
+
+final result: passed

@@ -5,7 +5,8 @@ import {
   createMaterialSchema,
   listMaterialsSchema,
   materialCodeSchema,
-  saveSubmissionSchema,
+  saveAnswersSchema,
+  updateMaterialSchema,
   updateSettingsSchema,
 } from './reading.validator';
 import type { Context } from 'hono';
@@ -45,10 +46,10 @@ export const getMaterial = async (context: Context<AppEnv>) => {
   return successResponse({ context, data: result });
 };
 
-export const saveSubmission = async (context: Context<AppEnv>) => {
+export const saveAnswers = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
-  const input = getBody(context, saveSubmissionSchema);
-  const result = await readingService.saveSubmission(params.code, input);
+  const input = getBody(context, saveAnswersSchema);
+  const result = await readingService.saveAnswers(params.code, input);
 
   return successResponse({ context, data: result });
 };
@@ -58,4 +59,10 @@ export const getExpectedAnswers = async (context: Context<AppEnv>) => {
   const result = await readingService.getExpectedAnswers(params.code);
 
   return successResponse({ context, data: { items: result } });
+};
+
+export const updateMaterial = async (context: Context<AppEnv>) => {
+  const params = getParam(context, materialCodeSchema);
+  const input = getBody(context, updateMaterialSchema);
+  return successResponse({ context, data: await readingService.updateMaterial(params.code, input) });
 };

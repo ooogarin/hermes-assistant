@@ -29,7 +29,10 @@ const ReadingExpectedAnswersPage = () => {
           <ErrorState onRetry={answers.retry} />
         )
       ) : null}
-      {answers.status === 'success' ? (
+      {answers.status === 'success' && answers.data.length === 0 ? (
+        <ContentState title='Bacaan ini tanpa pertanyaan' description='Tidak ada jawaban acuan untuk bacaan ini.' />
+      ) : null}
+      {answers.status === 'success' && answers.data.length > 0 ? (
         <section className='rounded-surface border border-border bg-surface px-6 sm:px-8'>
           <ol>
             {answers.data.map((answer) => (
