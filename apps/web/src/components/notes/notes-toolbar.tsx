@@ -4,7 +4,7 @@ import { ChoiceDropdown } from '../ui/choice-dropdown';
 import { DatePicker } from '../ui/date-picker';
 import { FilterChip } from '../ui/filter-chip';
 import { FilterPopover } from '../ui/filter-popover';
-import { TextField } from '../ui/form-field';
+import { Field, TextField } from '../ui/form-field';
 import { SearchForm } from '../ui/search-form';
 import type { NoteType } from '../../features/notes/notes-api';
 
@@ -99,8 +99,7 @@ export const NotesToolbar = ({
           open={filtersOpen}
         >
           <div className='space-y-4'>
-            <div className='grid gap-2 text-sm font-medium text-ink'>
-              Tipe
+            <Field label='Tipe'>
               <ChoiceDropdown<NoteType>
                 className='w-full'
                 label='Filter tipe catatan'
@@ -111,7 +110,7 @@ export const NotesToolbar = ({
                 searchPlaceholder='Cari tipe...'
                 value={selectedType ?? null}
               />
-            </div>
+            </Field>
             <TextField
               label='Kategori'
               onChange={(event) => onCategoryChange(event.target.value)}

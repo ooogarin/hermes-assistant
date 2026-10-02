@@ -7,7 +7,7 @@ import { JunkCategoryLabel, JunkTags } from './junk-badges';
 import type { JunkItem } from '../../features/junk/junk-api';
 
 const minimumWidth = 'min-w-[calc(clamp(10rem,35cqw,26rem)+42rem)]';
-const columns = `grid ${minimumWidth} grid-cols-[clamp(10rem,35cqw,26rem)_8rem_8rem_minmax(12rem,1fr)_10rem] gap-4`;
+const columns = `grid ${minimumWidth} grid-cols-[clamp(10rem,35cqw,26rem)_6rem_10rem_minmax(12rem,1fr)_10rem] gap-4`;
 
 export const JunkList = ({
   items,
