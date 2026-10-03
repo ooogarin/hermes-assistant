@@ -7,10 +7,9 @@ import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getCorrectedWriting } from '../writing-api';
 
 const CorrectedWritingPage = () => {
-  const { code = '', submissionNumber = '' } = useParams();
-  const number = Number(submissionNumber);
-  const result = useApiQuery(`${code}:${number}`, (signal) => getCorrectedWriting(code, number, signal));
-  const feedbackPath = `/english/writing/${code}/submissions/${number}`;
+  const { code = '' } = useParams();
+  const result = useApiQuery(code, (signal) => getCorrectedWriting(code, signal));
+  const feedbackPath = `/english/writing/submissions/${code}/feedback`;
 
   return (
     <div>
@@ -28,14 +27,19 @@ const CorrectedWritingPage = () => {
         {result.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
         {result.status === 'error' ? (
           result.error instanceof ApiError && result.error.status === 404 ? (
-            <ContentState title='Versi perbaikan tidak ditemukan' description='Periksa kembali kode dan nomor draft.' />
+            <ContentState title='Tulisan tidak ditemukan' description='Periksa kembali kode tulisan.' />
+          ) : result.error instanceof ApiError && result.error.code === 'WRITING_SUBMISSION_NOT_ANALYZED' ? (
+            <ContentState
+              title='Tulisan belum dianalisis'
+              description='Versi perbaikan tersedia setelah analisis melalui Telegram.'
+            />
           ) : (
             <ErrorState onRetry={result.retry} />
           )
         ) : null}
         {result.status === 'success' ? (
           <article className='rounded-surface border border-border bg-surface px-6 py-8 sm:px-8'>
-            <p className='max-w-(--reading-width) whitespace-pre-wrap text-base leading-8 text-ink'>
+            <p className='max-w-(--reading-width) whitespace-pre-wrap break-words text-base leading-8 text-ink'>
               {result.data.correctedText}
             </p>
           </article>

@@ -1,34 +1,24 @@
-import { BookOpen, CalendarDays, ChartNoAxesColumnIncreasing, PenLine, Tag } from 'lucide-react';
+import { ResponsiveTags } from '../ui/responsive-tags';
 import type { WritingMaterial } from '../../features/writing/writing-api';
 
 export const WritingMeta = ({ material }: { material: WritingMaterial }) => (
-  <dl className='flex flex-wrap gap-x-7 gap-y-3 text-sm text-ink-muted'>
-    <div className='flex items-center gap-2'>
-      <BookOpen aria-hidden='true' size={18} />
-      <dt className='sr-only'>Genre</dt>
-      <dd>{material.genre}</dd>
-    </div>
-    <div className='flex items-center gap-2'>
-      <ChartNoAxesColumnIncreasing aria-hidden='true' size={18} />
-      <dt className='sr-only'>Level</dt>
-      <dd>Level {material.level}</dd>
-    </div>
-    <div className='flex items-center gap-2'>
-      <PenLine aria-hidden='true' size={18} />
-      <dt className='sr-only'>Target</dt>
-      <dd>Target {material.targetWordCount} kata</dd>
-    </div>
-    <div className='flex items-center gap-2'>
-      <CalendarDays aria-hidden='true' size={18} />
-      <dt className='sr-only'>Sumber</dt>
-      <dd>{material.source === 'cron' ? 'Daily practice' : 'Request'}</dd>
-    </div>
-    {material.tags.map((tag) => (
-      <div key={tag} className='flex items-center gap-2 text-primary'>
-        <Tag aria-hidden='true' size={17} />
-        <dt className='sr-only'>Tag</dt>
-        <dd>#{tag}</dd>
+  <dl className='space-y-2 text-sm'>
+    {[
+      ['Genre', material.genre],
+      ['Level', material.level],
+      ['Target', `${material.targetWordCount} kata`],
+      ['Sumber', material.source === 'cron' ? 'Daily practice' : 'Request'],
+    ].map(([label, value]) => (
+      <div key={label} className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-start gap-3'>
+        <dt className='text-ink-muted'>{label}</dt>
+        <dd className='min-w-0 break-words'>{value}</dd>
       </div>
     ))}
+    <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-start gap-3'>
+      <dt className='text-ink-muted'>Tags</dt>
+      <dd className='min-w-0'>
+        {material.tags.length ? <ResponsiveTags label='Tag prompt' tags={material.tags} /> : '—'}
+      </dd>
+    </div>
   </dl>
 );

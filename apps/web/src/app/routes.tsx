@@ -30,6 +30,10 @@ const ReadingListPage = lazy(() => import('../features/reading/list/page'));
 const ReadingSettingsPage = lazy(() => import('../features/reading/settings/page'));
 const CorrectedWritingPage = lazy(() => import('../features/writing/corrected-text/page'));
 const WritingDetailPage = lazy(() => import('../features/writing/detail/page'));
+const WritingCreatePage = lazy(() => import('../features/writing/create/page'));
+const WritingEditPage = lazy(() => import('../features/writing/edit/page'));
+const WritingMaterialPage = lazy(() => import('../features/writing/material/page'));
+const WritingMaterialsPage = lazy(() => import('../features/writing/materials/page'));
 const WritingFeedbackPage = lazy(() => import('../features/writing/feedback/page'));
 const WritingListPage = lazy(() => import('../features/writing/list/page'));
 const WritingSettingsPage = lazy(() => import('../features/writing/settings/page'));
@@ -249,7 +253,31 @@ export const AppRoutes = () => (
         }
       />
       <Route
-        path='english/writing/:code'
+        path='english/writing/new'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <WritingCreatePage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/writing/materials'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <WritingMaterialsPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/writing/materials/:code'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <WritingMaterialPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/writing/submissions/:code'
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
             <WritingDetailPage />
@@ -257,7 +285,15 @@ export const AppRoutes = () => (
         }
       />
       <Route
-        path='english/writing/:code/submissions/:submissionNumber'
+        path='english/writing/submissions/:code/edit'
+        element={
+          <Suspense fallback={<CollectionSkeleton rows={5} />}>
+            <WritingEditPage />
+          </Suspense>
+        }
+      />
+      <Route
+        path='english/writing/submissions/:code/feedback'
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
             <WritingFeedbackPage />
@@ -265,7 +301,7 @@ export const AppRoutes = () => (
         }
       />
       <Route
-        path='english/writing/:code/submissions/:submissionNumber/corrected-text'
+        path='english/writing/submissions/:code/corrected-text'
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
             <CorrectedWritingPage />

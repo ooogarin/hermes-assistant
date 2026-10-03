@@ -1,7 +1,7 @@
 # English Learning — Writing Design
 
 > Updated: 2026-10-03. Backend implemented against the user-applied migration 0011.
-> Hermes runtime and frontend integration with the new submission API are pending.
+> Frontend integration with the independent submission API is implemented. Hermes runtime adaptation is pending.
 
 The [Writing submission contract](writing-submission-contract.md) defines exact API,
 validation, schema, and error details. The [redesign proposal](writing-submission-redesign-proposal.md)
@@ -145,9 +145,12 @@ remains visible.
 
 ## 7. Remaining delivery work
 
-Hermes runtime instructions need the save-first flow, `WS` references, and separate
-analysis writes. Frontend adapters and screens need submission-code navigation,
-free-writing save/read/edit, metadata corrections, and an inactive analysis CTA.
+Frontend adapters and screens implement submission-code navigation, free-writing
+save/read/edit, prompt submission history, metadata corrections, and an inactive
+analysis CTA. See the [Writing screens](../frontend-screens/writing.md).
+
+Hermes runtime instructions still need the save-first flow, `WS` references, and
+separate analysis writes.
 
 Reanalysis, automatic web-to-Hermes analysis requests, progress tracking, and cross-skill
 vocabulary reuse are deferred.

@@ -69,9 +69,10 @@ const vocabularySchema = z
     repeatedWords: repeated_words,
   }));
 
-const adherenceSchema = z
-  .object({ status: z.string(), notes: z.string() })
-  .transform(({ notes, status }) => ({ notes, status }));
+const adherenceSchema = z.object({
+  status: z.enum(['aligned', 'partially_aligned', 'not_aligned']),
+  notes: z.string(),
+});
 
 const analysisSchema = z
   .object({
@@ -80,42 +81,66 @@ const analysisSchema = z
     corrected_text: z.string(),
     vocabulary: vocabularySchema,
     structure: z.object({ feedback: z.string(), suggestions: z.array(z.string()) }),
-    topic_adherence: adherenceSchema,
-    genre_adherence: adherenceSchema,
+    prompt_adherence: adherenceSchema.nullable(),
     next_steps: z.array(z.string()),
   })
-  .transform(({ corrected_text, genre_adherence, grammar, next_steps, topic_adherence, ...analysis }) => ({
+  .transform(({ corrected_text, grammar, next_steps, prompt_adherence, ...analysis }) => ({
     ...analysis,
     correctedText: corrected_text,
-    genreAdherence: genre_adherence,
     grammar: { errorCount: grammar.error_count, items: grammar.items },
     nextSteps: next_steps,
-    topicAdherence: topic_adherence,
+    promptAdherence: prompt_adherence,
   }));
+
+const submissionFields = {
+  code: z.string(),
+  material_code: z.string().nullable(),
+  word_count: z.number().int().nonnegative(),
+  estimated_topic: z.string().nullable(),
+  estimated_genre: z.string().nullable(),
+  estimated_tags: z.array(z.string()).nullable(),
+  estimated_level: z.string().nullable(),
+  analysis_status: z.enum(['not_analyzed', 'analyzed']),
+  created_at: z.string(),
+  updated_at: z.string(),
+};
+
+const mapSubmissionMetadata = (submission: z.infer<z.ZodObject<typeof submissionFields>>) => ({
+  code: submission.code,
+  materialCode: submission.material_code,
+  wordCount: submission.word_count,
+  estimatedTopic: submission.estimated_topic,
+  estimatedGenre: submission.estimated_genre,
+  estimatedTags: submission.estimated_tags,
+  estimatedLevel: submission.estimated_level,
+  analysisStatus: submission.analysis_status,
+  createdAt: submission.created_at,
+  updatedAt: submission.updated_at,
+});
 
 const submissionSchema = z
   .object({
-    submission_number: z.number().int().positive(),
+    ...submissionFields,
     original_text: z.string(),
-    word_count: z.number().int().nonnegative(),
-    estimated_level: z.string(),
-    analysis: analysisSchema,
-    submitted_at: z.string(),
+    analysis: analysisSchema.nullable(),
+    analyzed_at: z.string().nullable(),
   })
-  .transform(({ estimated_level, original_text, submission_number, submitted_at, word_count, ...submission }) => ({
-    ...submission,
-    estimatedLevel: estimated_level,
-    originalText: original_text,
-    submissionNumber: submission_number,
-    submittedAt: submitted_at,
-    wordCount: word_count,
+  .transform((submission) => ({
+    ...mapSubmissionMetadata(submission),
+    analysis: submission.analysis,
+    analyzedAt: submission.analyzed_at,
+    originalText: submission.original_text,
   }));
 
+const submissionListItemSchema = z
+  .object({ ...submissionFields, text_excerpt: z.string() })
+  .transform((submission) => ({ ...mapSubmissionMetadata(submission), textExcerpt: submission.text_excerpt }));
+
 const correctedTextSchema = z
-  .object({ submission_number: z.number().int().positive(), corrected_text: z.string() })
-  .transform(({ corrected_text, submission_number }) => ({
+  .object({ code: z.string(), corrected_text: z.string() })
+  .transform(({ corrected_text, code }) => ({
+    code,
     correctedText: corrected_text,
-    submissionNumber: submission_number,
   }));
 
 const writingListItemSchema = z
@@ -128,16 +153,29 @@ const writingListItemSchema = z
     target_word_count: z.number().int().positive(),
     tags: z.array(z.string()),
     source: z.enum(['cron', 'request']),
-    status: z.enum(['unsubmitted', 'reviewed']),
+    status: z.enum(['unsubmitted', 'submitted', 'reviewed']),
     submission_count: z.number().int().nonnegative(),
-    latest_submission_number: z.number().int().positive().nullable(),
+    analyzed_submission_count: z.number().int().nonnegative(),
+    unanalyzed_submission_count: z.number().int().nonnegative(),
+    latest_submission_code: z.string().nullable(),
     created_at: z.string(),
   })
   .transform(
-    ({ created_at, latest_submission_number, prompt_excerpt, submission_count, target_word_count, ...item }) => ({
+    ({
+      created_at,
+      latest_submission_code,
+      prompt_excerpt,
+      submission_count,
+      target_word_count,
+      analyzed_submission_count,
+      unanalyzed_submission_count,
+      ...item
+    }) => ({
       ...item,
       createdAt: created_at,
-      latestSubmissionNumber: latest_submission_number,
+      latestSubmissionCode: latest_submission_code,
+      analyzedSubmissionCount: analyzed_submission_count,
+      unanalyzedSubmissionCount: unanalyzed_submission_count,
       promptExcerpt: prompt_excerpt,
       submissionCount: submission_count,
       targetWordCount: target_word_count,
@@ -149,10 +187,13 @@ const paginationSchema = z
   .transform(({ total_pages, ...meta }) => ({ ...meta, totalPages: total_pages }));
 
 const writingListSchema = z.object({ items: z.array(writingListItemSchema), meta: paginationSchema });
+const submissionListSchema = z.object({ items: z.array(submissionListItemSchema), meta: paginationSchema });
 
 export type WritingSettings = z.output<typeof settingsSchema>;
 export type WritingMaterial = z.output<typeof materialSchema>;
 export type WritingSubmission = z.output<typeof submissionSchema>;
+export type WritingAnalysis = z.output<typeof analysisSchema>;
+export type WritingSubmissionListItem = z.output<typeof submissionListItemSchema>;
 export type WritingMaterialListItem = z.output<typeof writingListItemSchema>;
 export type WritingMaterialList = z.output<typeof writingListSchema>;
 export type WritingListFilters = {
@@ -162,14 +203,40 @@ export type WritingListFilters = {
   page?: number;
   q?: string;
   sort?: 'newest' | 'oldest';
-  status?: 'unsubmitted' | 'reviewed';
+  status?: 'unsubmitted' | 'submitted' | 'reviewed';
+};
+
+export type WritingSubmissionFilters = {
+  materialCode?: string;
+  writingType?: 'free' | 'prompted';
+  analysisStatus?: 'not_analyzed' | 'analyzed';
+  q?: string;
+  page?: number;
+  limit?: number;
+  sort?: 'newest' | 'oldest';
+};
+
+export type UpdateWritingSubmissionInput = {
+  originalText?: string;
+  estimatedTopic?: string;
+  estimatedGenre?: string;
+  estimatedTags?: string[];
+  estimatedLevel?: string;
 };
 
 export const getWritingSettings = (signal?: AbortSignal): Promise<WritingSettings> =>
   apiRequest('/api/v1/writing/settings', settingsSchema, { signal });
 
 export const updateWritingSettings = (input: LearningSettingsInput): Promise<WritingSettings> =>
-  apiRequest('/api/v1/writing/settings', settingsSchema, { body: input, method: 'PATCH' });
+  apiRequest('/api/v1/writing/settings', settingsSchema, {
+    method: 'PATCH',
+    body: {
+      default_level: input.defaultLevel,
+      default_word_count: input.defaultWordCount,
+      min_word_count: input.minWordCount,
+      max_word_count: input.maxWordCount,
+    },
+  });
 
 export const getWritingMaterial = (code: string, signal?: AbortSignal): Promise<WritingMaterial> =>
   apiRequest(`/api/v1/writing/materials/${encodeURIComponent(code)}`, materialSchema, { signal });
@@ -186,24 +253,74 @@ export const getWritingMaterials = (
   );
 };
 
-export const getWritingSubmission = (
-  code: string,
-  submissionNumber: number,
-  signal?: AbortSignal,
-): Promise<WritingSubmission> =>
-  apiRequest(
-    `/api/v1/writing/materials/${encodeURIComponent(code)}/submissions/${submissionNumber}`,
-    submissionSchema,
+export const getWritingSubmission = (code: string, signal?: AbortSignal): Promise<WritingSubmission> =>
+  apiRequest(`/api/v1/writing/submissions/${encodeURIComponent(code)}`, submissionSchema, { signal });
+
+export const getWritingSubmissions = (filters: WritingSubmissionFilters, signal?: AbortSignal) => {
+  const { materialCode, writingType, analysisStatus, ...query } = filters;
+
+  return apiRequest(
+    `/api/v1/writing/submissions${buildQueryString({
+      ...query,
+      material_code: materialCode,
+      writing_type: writingType,
+      analysis_status: analysisStatus,
+    })}`,
+    submissionListSchema,
     { signal },
   );
+};
+
+// Collections show every matching item; pagination stays inside the API transport.
+const collectWritingPages = async <Item>(
+  loadPage: (page: number) => Promise<{ items: Item[]; meta: { totalPages: number } }>,
+): Promise<Item[]> => {
+  const firstPage = await loadPage(1);
+  const items = [...firstPage.items];
+
+  for (let page = 2; page <= firstPage.meta.totalPages; page += 1) {
+    const nextPage = await loadPage(page);
+    items.push(...nextPage.items);
+  }
+
+  return items;
+};
+
+export const getAllWritingMaterials = (
+  filters: Omit<WritingListFilters, 'page' | 'limit'>,
+  signal?: AbortSignal,
+): Promise<WritingMaterialListItem[]> =>
+  collectWritingPages((page) => getWritingMaterials({ ...filters, page, limit: 100 }, signal));
+
+export const getAllWritingSubmissions = (
+  filters: Omit<WritingSubmissionFilters, 'page' | 'limit'>,
+  signal?: AbortSignal,
+): Promise<WritingSubmissionListItem[]> =>
+  collectWritingPages((page) => getWritingSubmissions({ ...filters, page, limit: 100 }, signal));
+
+export const createWritingSubmission = (originalText: string, materialCode?: string): Promise<WritingSubmission> =>
+  apiRequest('/api/v1/writing/submissions', submissionSchema, {
+    method: 'POST',
+    body: { original_text: originalText, material_code: materialCode },
+  });
+
+export const updateWritingSubmission = (
+  code: string,
+  input: UpdateWritingSubmissionInput,
+): Promise<WritingSubmission> =>
+  apiRequest(`/api/v1/writing/submissions/${encodeURIComponent(code)}`, submissionSchema, {
+    method: 'PATCH',
+    body: {
+      original_text: input.originalText,
+      estimated_topic: input.estimatedTopic,
+      estimated_genre: input.estimatedGenre,
+      estimated_tags: input.estimatedTags,
+      estimated_level: input.estimatedLevel,
+    },
+  });
 
 export const getCorrectedWriting = (
   code: string,
-  submissionNumber: number,
   signal?: AbortSignal,
 ): Promise<z.output<typeof correctedTextSchema>> =>
-  apiRequest(
-    `/api/v1/writing/materials/${encodeURIComponent(code)}/submissions/${submissionNumber}/corrected-text`,
-    correctedTextSchema,
-    { signal },
-  );
+  apiRequest(`/api/v1/writing/submissions/${encodeURIComponent(code)}/corrected-text`, correctedTextSchema, { signal });

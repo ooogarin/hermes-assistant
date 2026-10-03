@@ -53,4 +53,12 @@ describe('AppRoutes', () => {
 
     expect(await screen.findByRole('heading', { name: 'Halaman tidak ditemukan' })).toBeInTheDocument();
   });
+
+  test('opens free writing from its new application route', async () => {
+    renderRoutes('/english/writing/new');
+
+    expect(await screen.findByRole('heading', { name: 'Tulis bebas' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Tulisanmu')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Simpan tulisan' })).toBeDisabled();
+  });
 });

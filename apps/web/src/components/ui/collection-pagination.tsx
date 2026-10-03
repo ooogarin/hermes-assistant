@@ -3,6 +3,7 @@ import { Button } from './button';
 
 type CollectionPaginationProps = {
   itemCount: number;
+  itemLabel?: string;
   limit: number;
   onPageChange: (page: number) => void;
   page: number;
@@ -12,6 +13,7 @@ type CollectionPaginationProps = {
 
 export const CollectionPagination = ({
   itemCount,
+  itemLabel = 'materi',
   limit,
   onPageChange,
   page,
@@ -24,7 +26,7 @@ export const CollectionPagination = ({
   return (
     <footer className='flex flex-col gap-4 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between'>
       <p>
-        Menampilkan {first}–{last} dari {total} materi
+        Menampilkan {first}–{last} dari {total} {itemLabel}
       </p>
       <div className='flex items-center gap-2'>
         <Button

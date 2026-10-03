@@ -1,10 +1,10 @@
 # Writing — Independent Submissions and Optional Analysis
 
-> Date: 2026-10-03. Status: agreed design; backend implemented, client integration pending.
+> Date: 2026-10-03. Status: backend and frontend implemented; Hermes integration pending.
 > Migration 0011 has been applied by the user. The
 > [Writing submission contract](writing-submission-contract.md) defines the implemented
 > schema, endpoint contracts, edit guards, and module ownership, and takes precedence
-> over this proposal. Hermes runtime instructions and frontend workflows remain to be adapted.
+> over this proposal. Frontend workflows are implemented; Hermes runtime instructions remain to be adapted.
 
 ## 1. Purpose and decision status
 
@@ -331,8 +331,10 @@ migration 0006. The user has applied migration 0011; backend development does no
 3. Completed: implement separate save/read/result-write workflows against this schema. Services
    enforce text locking, code immutability, and rejection of repeated analysis. Repository
    updates explicitly refresh `updated_at`.
-4. Pending: update Hermes and frontend routes/navigation to submission codes. Keep analysis
-   Telegram-only and the web analysis button inactive for this release.
+4. Completed: update frontend routes/navigation to submission codes, free and prompted
+   save/read/edit flows, metadata correction, feedback, and an inactive analysis CTA.
+5. Pending: update Hermes to the save-first flow and independent submission codes.
+   Analysis remains Telegram-only for this release.
 
 Application verification covers independent saves,
 optional analysis, atomic feedback persistence, exact text preservation, incorrect material

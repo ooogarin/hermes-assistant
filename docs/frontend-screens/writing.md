@@ -1,63 +1,88 @@
 # Writing Screen List
 
-> Status: Existing screens require adaptation to the new Writing backend. Save/read/edit and analysis persistence APIs are implemented; frontend workflows and submission-code navigation are pending. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
+> Status: Implemented against the independent submission API. Analysis is requested only through a direct Telegram command; the web CTA is inactive. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document.
 
 ## Scope
 
-The [Writing submission redesign proposal](../feature-docs/writing-submission-redesign-proposal.md)
-defines the next intended flow: independent free writing, saving before optional analysis,
-and submission-code navigation. The screen descriptions below remain the existing MVP
-baseline. The [Writing submission contract](../feature-docs/writing-submission-contract.md)
-defines the implemented backend contract: text locks after analysis while estimates remain
-editable. For this release, the web analysis button is inactive and analysis is requested
-only through a direct Telegram command. The previous material-bound submission endpoints have been removed; use the new `/submissions` endpoints when adapting these screens. Implement save/read/edit before any future
-automatic web-to-Hermes analysis integration.
-
-Writing helps the user practise active English production with generated prompts and structured feedback. Persistent defaults control the routine level and word-count range. One-off requests may use another topic, genre, level, or target word count without changing the saved defaults.
-
-The initial web scope is to update persistent defaults, open a known writing prompt, submit a draft, review stored feedback, and read corrected text. Prompt generation remains owned by Hermes/Telegram and the API.
+The [Writing submission contract](../feature-docs/writing-submission-contract.md) owns the API rules. The web supports free writing and responses to Hermes prompts, saving without analysis, reviewing existing feedback, and correcting estimated metadata. Prompt generation and AI analysis remain owned by Hermes/Telegram.
 
 ## Screen map
 
-```text
-/english/writing
-├── SCR-WRITE-001  Writing material list (design ready; API blocked)
-├── /settings
-│   └── SCR-WRITE-002  Writing settings
-└── /:code
-    ├── SCR-WRITE-003  Writing prompt and draft workspace
-    └── /submissions/:number
-        ├── SCR-WRITE-004  Writing feedback review
-        └── /corrected-text
-            └── SCR-WRITE-005  Corrected text
-```
+| Screen | Route | Purpose |
+| --- | --- | --- |
+| Tulisan | `/english/writing` | Browse free and prompted submissions |
+| Tulis bebas | `/english/writing/new` | Save text without a material |
+| Prompt | `/english/writing/materials` | Browse generated materials |
+| Prompt workspace | `/english/writing/materials/:code` | Write a response and browse its submissions |
+| Submission detail | `/english/writing/submissions/:code` | Read original text, estimates, and analysis status |
+| Edit submission | `/english/writing/submissions/:code/edit` | Edit unlocked text and estimated metadata |
+| Feedback | `/english/writing/submissions/:code/feedback` | Review stored analysis |
+| Corrected text | `/english/writing/submissions/:code/corrected-text` | Read the corrected version on demand |
+| Settings | `/english/writing/settings` | Update persistent prompt defaults |
 
-| ID | Screen | Proposed route | Initial status | API status |
-| --- | --- | --- | --- | --- |
-| SCR-WRITE-001 | Writing material list | `/english/writing` | Implemented | Available |
-| SCR-WRITE-002 | Writing settings | `/english/writing/settings` | Implemented | Available |
-| SCR-WRITE-003 | Writing prompt and draft workspace | `/english/writing/:code` | Prompt/composer implemented; submit unavailable | Submission command missing |
-| SCR-WRITE-004 | Writing feedback review | `/english/writing/:code/submissions/:number` | Implemented for a known submission | Available |
-| SCR-WRITE-005 | Corrected text | `/english/writing/:code/submissions/:number/corrected-text` | Implemented on demand | Available |
+Material routes use `WR` codes. Submission routes use independent `WS` codes. Login return destinations recognize all these routes. There are no numeric submission routes.
 
-Proposed web routes are frontend navigation only. They do not alter the REST API contract.
+## Visual consistency
 
-## SCR-WRITE-001 — Writing material list
+Writing follows the Notes/Junk component patterns: a shared page header and primary add action,
+search with a filter popover and sort control, status chips, and a bordered white collection.
+Rows use aligned columns, a sticky title/excerpt column, responsive tags, and the same hover
+and keyboard focus treatment. Horizontal overflow stays inside the collection, with a hint
+and keyboard access when scrolling is needed. The footer shows only the number of items;
+there are no pagination controls.
 
-**Purpose**  
-Find a writing prompt and start, continue, or review a draft.
+Detail, feedback, and form surfaces use the same border, radius, spacing, and typography as
+Notes/Junk. Metadata appears in labeled rows. Forms reuse the shared dropdown, tag input,
+fields, and save/cancel buttons. Writing retains its separate Tulisan and Prompt navigation.
 
-**UI composition**
+## Collections
 
-- Header: `Writing` and the local `Pengaturan` action, with no supporting subtitle.
-- Search, status chips, a multi-select level filter, and genre filter.
-- One grouped table-like list with topic/prompt, genre, level, target word count, tags, date, source, status, code, and draft count.
-- Selecting a row opens SCR-WRITE-003 or its latest submission review.
+### Tulisan
 
-**Data contract**
+- The main Writing page has `Tulisan` and `Prompt` navigation, a `Tulis bebas` action, and local settings.
+- `GET /api/v1/writing/submissions` provides search, analysis status, writing type, and sort. Search/filter/sort state is represented in the URL. The UI loads all matching results by collecting API pages of up to 100 items; a failed page shows an error instead of an incomplete collection.
+- Rows show estimated topic when available, otherwise the submission code, followed by the original-text excerpt, writing type, word count, creation date, available estimates, and analysis status.
+- Analysis status appears as a rounded badge beside the title, matching Reading: green for analyzed and amber for not analyzed. Genre and level have separate columns.
+- Rows always open the submission's `WS` detail. Missing estimates are never copied from a material.
+- Empty collections offer free writing. Empty search results retain filters and offer `Hapus filter`.
 
-- `GET /api/v1/writing/materials` supports keyword, status, `levels` as a comma-separated list, genre, page, limit, and sort parameters. The legacy single `level` parameter remains accepted.
-- Search/filter state is represented in the URL. Reviewed rows navigate to their latest submission number from the API.
+### Prompt
+
+- `GET /api/v1/writing/materials` provides search, status, CEFR levels, genre, and sort. The UI collects all API pages and displays one list without pagination controls.
+- Rows show topic, criteria, date, tags, saved/analyzed counts, and material status. They always open the material workspace.
+- Status labels are `Belum ada tulisan` (`unsubmitted`), `Belum dianalisis` (`submitted`), and `Ada analisis` (`reviewed`). A reviewed material can still contain unanalyzed submissions, shown by the separate counts.
+
+## Compose and save
+
+- Free writing opens a composer without loading or generating a material.
+- A material workspace shows its prompt and criteria in a detail panel above the composer. Criteria are guidance; writing outside them does not block saving.
+- A material's submissions are loaded using `GET /submissions?material_code=WR-...`, collecting every API page in newest-first order. The history uses the same table and item-count footer as the main list.
+- `POST /api/v1/writing/submissions` sends only `original_text` and, for prompted writing, `material_code`.
+- Preserve the exact original text, including whitespace and line breaks. The local word count is informational; the API returns the authoritative count.
+- Disable save for blank text, and limit text to 100,000 characters. Keep the draft while saving or after failure; allow retry.
+- On success, navigate to the returned `WS` detail and show a short success notice. Saving does not request analysis.
+- The composer registers unsaved changes; its back action confirms before discarding.
+
+## Submission detail and editing
+
+- `GET /api/v1/writing/submissions/:code` supplies original text, nullable estimates, creation date, word count, analysis status, and optional feedback.
+- Show `Belum diestimasi` for null topic, genre, tags, and level. An explicitly empty tags array displays `Tanpa tag`.
+- Prompted writing links to its material; free writing is identified without a synthetic prompt.
+- Before analysis, show `Edit tulisan` and an inactive `Analisis tulisan` button. Explain Telegram availability and offer copying the `WS` code. The web does not start or queue analysis.
+- After analysis, offer feedback and `Edit metadata`. Original text is locked; estimates remain editable.
+- The edit form uses `PATCH /submissions/:code`, sending only changed fields. It does not send code, material association, word count, analysis, or timestamps.
+- Topic and genre cannot be cleared after filling; level uses CEFR choices. Tags can be changed to `[]`. Unchanged null metadata stays omitted.
+- Metadata corrections do not change feedback or analysis status.
+- If analysis finishes while a text edit is open, handle `WRITING_SUBMISSION_TEXT_LOCKED` by keeping the unsaved text visible, marking it locked, and allowing subsequent metadata-only edits.
+- Save failures preserve entered values. Back/cancel actions confirm before discarding changes.
+
+## Feedback and corrected text
+
+- Feedback reads the same `GET /submissions/:code` result. When analysis is null, show an unanalyzed state and a link to the original writing.
+- Lead with overall feedback, word count, estimated level, and analysis date. Follow with strengths, priorities, grammar, vocabulary, structure, and next steps; no overall score is invented.
+- Show a concise `Kesesuaian dengan prompt` section only when `prompt_adherence` is present. Free writing has no adherence section.
+- `GET /submissions/:code/corrected-text` loads corrected text only on its dedicated page. Preserve line breaks and a comfortable reading width; keep the original writing unchanged.
+- A `WRITING_SUBMISSION_NOT_ANALYZED` response shows an unanalyzed state. Missing submissions have a safe not-found state; other read failures offer retry.
 
 ## SCR-WRITE-002 — Writing settings
 
@@ -95,10 +120,10 @@ GET   /api/v1/writing/settings
 PATCH /api/v1/writing/settings
 
 {
-  "defaultLevel": "B1",
-  "defaultWordCount": 200,
-  "minWordCount": 150,
-  "maxWordCount": 250
+  "default_level": "B1",
+  "default_word_count": 200,
+  "min_word_count": 150,
+  "max_word_count": 250
 }
 ```
 
@@ -122,58 +147,3 @@ PATCH /api/v1/writing/settings
 **Out of scope**
 
 - Persistent topic, genre, tag, feedback-style, schedule, notification, streak, or theme settings.
-
-## SCR-WRITE-003 — Writing prompt and draft workspace
-
-**Purpose**  
-Read one known prompt and submit a draft for analysis.
-
-**Data contract**
-
-```text
-GET  /api/v1/writing/materials/:code
-POST /api/v1/writing/materials/:code/submissions
-```
-
-- Present prompt text, topic, genre, level, target word count, tags, and stable material code.
-- The draft composer preserves entered content while saving. The frontend can show a non-authoritative live word count, while the API returns the authoritative saved count.
-- A material may have multiple submissions; do not imply a single-attempt limit.
-
-**Known API limitation**
-
-- The current POST schema requires `originalText`, `estimatedLevel`, and a complete structured `analysis` in one request. A browser cannot author authoritative feedback. The composer therefore preserves the draft and shows its word count, but keeps submission unavailable until the API exposes a command that accepts `originalText` and owns the analysis workflow.
-
-## SCR-WRITE-004 — Writing feedback review
-
-**Purpose**  
-Review the structured analysis stored for one submitted draft.
-
-**Data contract**
-
-```text
-GET /api/v1/writing/materials/:code/submissions/:submissionNumber
-```
-
-- Lead with overall feedback, estimated level, and word count, then use restrained sections for strengths, priority improvements, grammar, vocabulary, structure, topic/genre adherence, and next steps.
-- Do not calculate an overall score; the domain provides qualitative analysis, not a score.
-
-## SCR-WRITE-005 — Corrected text
-
-**Purpose**  
-Read the corrected version of one submitted draft on demand.
-
-**Data contract**
-
-```text
-GET /api/v1/writing/materials/:code/submissions/:submissionNumber/corrected-text
-```
-
-- Use a comfortable reading width and preserve line breaks.
-- Keep corrected text behind a clear local action from feedback review; do not replace the original draft silently.
-
-## Implementation order
-
-1. SCR-WRITE-002 Settings, because its API contract is complete and independent of the missing collection endpoint.
-2. SCR-WRITE-003 for a known material code, including draft preservation while saving.
-3. SCR-WRITE-004 feedback review and SCR-WRITE-005 corrected text after submission data is verified.
-4. SCR-WRITE-001 only after the API adds a paginated material collection contract.
