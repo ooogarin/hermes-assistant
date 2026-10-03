@@ -4,6 +4,17 @@ This document focuses on the Writing sub-skill in Hermes English Learning. Writi
 
 > Status: MVP design. The MVP uses direct REST API calls, not MCP.
 
+> Design update (2026-10-03): [Independent submissions and optional analysis](writing-submission-redesign-proposal.md)
+> records the new agreed direction for daily, by-request, and free writing. Its agreed
+> decisions supersede conflicting target behavior below, including mandatory material
+> links and analysis at submission time. This document retains the original MVP baseline;
+> the redesign is not implemented, and its remaining open decisions are explicitly listed.
+
+> Phases 1–2 update: [Writing submission contract](writing-submission-contract.md) defines
+> the text-only post-analysis lock, editable estimates, Telegram-only analysis requests,
+> finalized API contracts, and a prepared transitional migration. Migration execution is
+> reserved for the user; new API/FE workflows are not implemented yet.
+
 ---
 
 ## 1. Goal

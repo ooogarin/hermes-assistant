@@ -128,7 +128,8 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
       FROM reading_materials
       ORDER BY code
     `;
-    const migrations = await loadMigrations(migrationDirectory);
+    const allMigrations = await loadMigrations(migrationDirectory);
+    const migrations = allMigrations.filter(({ name }) => name <= readingMigrationName);
 
     expect(await migrateDatabase(databaseClient, migrations)).toEqual([readingMigrationName]);
     expect(await migrateDatabase(databaseClient, migrations)).toEqual([]);
@@ -335,7 +336,8 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
   test('rolls back the schema rename without removing material, question, or answer rows', async () => {
     const databaseClient = getDatabase();
     await seedLegacyData(databaseClient);
-    const migrations = await loadMigrations(migrationDirectory);
+    const allMigrations = await loadMigrations(migrationDirectory);
+    const migrations = allMigrations.filter(({ name }) => name <= readingMigrationName);
     await migrateDatabase(databaseClient, migrations);
     await databaseClient`UPDATE reading_materials SET reading_status = 'read' WHERE code = 'RD-20261001-001'`;
 

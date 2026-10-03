@@ -4,6 +4,15 @@
 
 ## Scope
 
+The [Writing submission redesign proposal](../feature-docs/writing-submission-redesign-proposal.md)
+defines the next intended flow: independent free writing, saving before optional analysis,
+and submission-code navigation. The screen descriptions below remain the existing MVP
+baseline. The [Writing submission contract](../feature-docs/writing-submission-contract.md)
+now defines the next implementation: text locks after analysis while estimates remain
+editable. For this release, the web analysis button is inactive and analysis is requested
+only through a direct Telegram command. Implement save/read/edit before any future
+automatic web-to-Hermes analysis integration.
+
 Writing helps the user practise active English production with generated prompts and structured feedback. Persistent defaults control the routine level and word-count range. One-off requests may use another topic, genre, level, or target word count without changing the saved defaults.
 
 The initial web scope is to update persistent defaults, open a known writing prompt, submit a draft, review stored feedback, and read corrected text. Prompt generation remains owned by Hermes/Telegram and the API.
