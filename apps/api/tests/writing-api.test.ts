@@ -35,7 +35,6 @@ const material: WritingMaterial = {
   genre: 'journal',
   tags: ['work', 'reflection'],
   target_word_count: 150,
-  is_override: false,
   source: 'request',
 };
 

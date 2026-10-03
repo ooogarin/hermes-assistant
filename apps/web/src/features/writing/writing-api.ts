@@ -28,12 +28,10 @@ const materialSchema = z
     genre: z.string(),
     tags: z.array(z.string()),
     target_word_count: z.number().int().positive(),
-    is_override: z.boolean(),
     source: z.enum(['cron', 'request']),
   })
-  .transform(({ is_override, prompt_text, target_word_count, ...material }) => ({
+  .transform(({ prompt_text, target_word_count, ...material }) => ({
     ...material,
-    isOverride: is_override,
     promptText: prompt_text,
     targetWordCount: target_word_count,
   }));

@@ -32,7 +32,6 @@ export type WritingMaterial = {
   genre: string;
   tags: string[];
   target_word_count: number;
-  is_override: boolean;
   source: WritingSource;
 };
 
@@ -128,7 +127,6 @@ export type WritingMaterialRow = {
   genre: string;
   tags: string[];
   target_word_count: number;
-  is_override: boolean;
   source: WritingSource;
 };
 

@@ -2,6 +2,7 @@ import type { DatabaseTransaction } from '../src/core/database/database.types';
 
 export const up = async (trx: DatabaseTransaction): Promise<void> => {
   // Writing data is assumed empty; this migration only changes the schema.
+  await trx`ALTER TABLE writing_materials DROP COLUMN is_override`;
   await trx`DROP INDEX idx_writing_submissions_material`;
 
   await trx`
@@ -16,14 +17,9 @@ export const up = async (trx: DatabaseTransaction): Promise<void> => {
     ADD COLUMN estimated_genre TEXT,
     ADD COLUMN estimated_tags TEXT[],
     ADD COLUMN analyzed_at TIMESTAMPTZ,
-    ADD COLUMN revision INTEGER NOT NULL DEFAULT 1,
-    ADD COLUMN analysis_status TEXT GENERATED ALWAYS AS (
-      CASE WHEN analysis IS NULL THEN 'not_analyzed' ELSE 'analyzed' END
-    ) STORED NOT NULL,
     ADD CONSTRAINT uq_writing_submissions_code UNIQUE (code),
     ADD CONSTRAINT chk_writing_submissions_code
       CHECK (code ~ '^WS-[0-9]{8}-[0-9]{3,}$'),
-    ADD CONSTRAINT chk_writing_submissions_revision CHECK (revision > 0),
     ADD CONSTRAINT chk_writing_submissions_original_text
       CHECK (original_text ~ '[^[:space:]]'),
     ADD CONSTRAINT chk_writing_submissions_analysis_object
@@ -48,19 +44,25 @@ export const up = async (trx: DatabaseTransaction): Promise<void> => {
 };
 
 export const down = async (trx: DatabaseTransaction): Promise<void> => {
-  // Rollback restores removed columns only while the submissions table is empty.
-  await trx`LOCK TABLE writing_submissions IN ACCESS EXCLUSIVE MODE`;
+  // Rollback restores removed fields only while Writing data is empty.
+  await trx`LOCK TABLE writing_materials, writing_submissions IN ACCESS EXCLUSIVE MODE`;
 
   const rows = await trx<Array<{ id: number }>>`
     SELECT
       id
     FROM writing_submissions
+    UNION ALL
+    SELECT
+      id
+    FROM writing_materials
     LIMIT 1
   `;
 
   if (rows.length > 0) {
-    throw new Error('Writing rollback requires an empty writing_submissions table.');
+    throw new Error('Writing rollback requires empty writing_materials and writing_submissions tables.');
   }
+
+  await trx`ALTER TABLE writing_materials ADD COLUMN is_override BOOLEAN NOT NULL`;
 
   await trx`DROP INDEX idx_writing_submissions_active_material_created`;
   await trx`DROP INDEX idx_writing_submissions_active_created`;
@@ -70,11 +72,8 @@ export const down = async (trx: DatabaseTransaction): Promise<void> => {
     DROP CONSTRAINT chk_writing_submissions_analysis_time,
     DROP CONSTRAINT chk_writing_submissions_analysis_object,
     DROP CONSTRAINT chk_writing_submissions_original_text,
-    DROP CONSTRAINT chk_writing_submissions_revision,
     DROP CONSTRAINT chk_writing_submissions_code,
     DROP CONSTRAINT uq_writing_submissions_code,
-    DROP COLUMN analysis_status,
-    DROP COLUMN revision,
     DROP COLUMN analyzed_at,
     DROP COLUMN estimated_tags,
     DROP COLUMN estimated_genre,

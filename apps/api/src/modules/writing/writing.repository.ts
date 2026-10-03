@@ -41,7 +41,6 @@ export const getLastSequenceByDateForUpdate = async (
 export const insertOne = async (
   code: string,
   input: CreateWritingMaterialPayload,
-  is_override: boolean,
   trx: DatabaseReservedConnection,
 ): Promise<WritingMaterialRow> => {
   const [row] = await trx<WritingMaterialRow[]>`
@@ -53,7 +52,6 @@ export const insertOne = async (
       genre,
       tags,
       target_word_count,
-      is_override,
       source
     )
     VALUES (
@@ -64,7 +62,6 @@ export const insertOne = async (
       ${input.genre},
       ${trx.array(input.tags, 'TEXT')},
       ${input.target_word_count},
-      ${is_override},
       ${input.source}::writing_source
     )
     RETURNING
@@ -75,7 +72,6 @@ export const insertOne = async (
       genre,
       tags,
       target_word_count,
-      is_override,
       source
   `;
 
@@ -98,7 +94,6 @@ export const getOneByCode = async (code: string): Promise<WritingMaterialRow | n
       genre,
       tags,
       target_word_count,
-      is_override,
       source
     FROM writing_materials
     WHERE code = ${code} AND deleted_at IS NULL

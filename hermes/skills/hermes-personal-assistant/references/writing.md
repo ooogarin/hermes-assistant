@@ -56,7 +56,7 @@ as `📝 *Ringkasan*`, `💪 *Kekuatan*`, `🎯 *Prioritas Perbaikan*`, and
 `➡️ *Langkah Berikutnya*`. Do not include the full corrected text unless the user
 requests it. Omit empty sections instead of showing placeholders.
 
-Settings and material responses use fields such as `default_level`, `default_word_count`, `prompt_text`, `target_word_count`, and `is_override`. Submission responses recursively use snake_case, including `submission_number`, `word_count`, `estimated_level`, `corrected_text`, `overall_feedback`, and `next_steps`.
+Settings and material responses use fields such as `default_level`, `default_word_count`, `prompt_text`, `target_word_count`, and `source`. Submission responses recursively use snake_case, including `submission_number`, `word_count`, `estimated_level`, `corrected_text`, `overall_feedback`, and `next_steps`.
 
 Resolve the target from an explicit `WR-...` code or unambiguous active material before analyzing a draft. Ask if uncertain.
 

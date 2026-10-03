@@ -25,7 +25,6 @@ type SubmissionRow = {
   analysis: unknown | null;
   analysis_status: 'not_analyzed' | 'analyzed';
   analyzed_at: Date | null;
-  revision: number;
 };
 
 const getSubmission = async (database: DatabaseClient, code: string): Promise<SubmissionRow | undefined> => {
@@ -40,9 +39,8 @@ const getSubmission = async (database: DatabaseClient, code: string): Promise<Su
       estimated_tags,
       estimated_level,
       analysis,
-      analysis_status,
-      analyzed_at,
-      revision
+      CASE WHEN analysis IS NULL THEN 'not_analyzed' ELSE 'analyzed' END AS analysis_status,
+      analyzed_at
     FROM writing_submissions
     WHERE code = ${code}
   `;
@@ -61,6 +59,29 @@ const insertPendingSubmission = async (database: DatabaseClient, code: string): 
       ${code},
       ${originalText},
       3
+    )
+  `;
+};
+
+const insertMaterial = async (database: DatabaseClient): Promise<void> => {
+  await database`
+    INSERT INTO writing_materials (
+      code,
+      topic,
+      prompt_text,
+      level,
+      genre,
+      target_word_count,
+      source
+    )
+    VALUES (
+      'WR-20261002-001',
+      'Food',
+      'Describe your favorite food.',
+      'A1',
+      'journal',
+      150,
+      'cron'
     )
   `;
 };
@@ -101,29 +122,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
       databaseClient,
       migrations.filter(({ name }) => name < writingMigrationName),
     );
-
-    await databaseClient`
-      INSERT INTO writing_materials (
-        code,
-        topic,
-        prompt_text,
-        level,
-        genre,
-        target_word_count,
-        is_override,
-        source
-      )
-      VALUES (
-        'WR-20261002-001',
-        'Food',
-        'Describe your favorite food.',
-        'A1',
-        'journal',
-        150,
-        FALSE,
-        'cron'
-      )
-    `;
   });
 
   afterAll(async () => {
@@ -137,6 +135,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     const databaseClient = getDatabase();
 
     await applyMigration();
+    await insertMaterial(databaseClient);
     await insertPendingSubmission(databaseClient, 'WS-20261003-003');
     await databaseClient`
       INSERT INTO writing_submissions (
@@ -164,7 +163,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
         analysis: null,
         analysis_status: 'not_analyzed',
         analyzed_at: null,
-        revision: 1,
       });
     }
 
@@ -175,7 +173,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
       UPDATE writing_submissions
       SET
         estimated_topic = 'User topic',
-        revision = revision + 1,
         updated_at = NOW()
       WHERE code = 'WS-20261003-003'
     `;
@@ -183,7 +180,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     expect(await getSubmission(databaseClient, 'WS-20261003-003')).toMatchObject({
       estimated_topic: 'User topic',
       analysis_status: 'not_analyzed',
-      revision: 2,
     });
 
     const feedback = { corrected_text: 'I went yesterday.', prompt_adherence: null };
@@ -196,7 +192,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
         estimated_genre = 'journal',
         estimated_tags = ARRAY['daily life'],
         estimated_level = 'A1',
-        revision = revision + 1,
         updated_at = NOW()
       WHERE code = 'WS-20261003-003'
     `;
@@ -206,7 +201,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
       analysis: feedback,
       analysis_status: 'analyzed',
       analyzed_at: expect.any(Date),
-      revision: 3,
     });
   });
 
@@ -222,10 +216,21 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
       FROM information_schema.columns
       WHERE table_schema = CURRENT_SCHEMA()
         AND table_name = 'writing_submissions'
-        AND column_name IN ('code', 'submission_number', 'submitted_at')
+        AND column_name IN ('code', 'submission_number', 'submitted_at', 'analysis_status', 'revision')
     `;
 
     expect(columns).toEqual([{ column_name: 'code', is_nullable: 'NO' }]);
+
+    const overrideColumns = await databaseClient<Array<{ column_name: string }>>`
+      SELECT
+        column_name
+      FROM information_schema.columns
+      WHERE table_schema = CURRENT_SCHEMA()
+        AND table_name = 'writing_materials'
+        AND column_name = 'is_override'
+    `;
+
+    expect(overrideColumns).toHaveLength(0);
 
     const oldIndexes = await databaseClient<Array<{ indexname: string }>>`
       SELECT
@@ -330,15 +335,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     for (const insert of invalidWrites) {
       await expect(Promise.resolve(insert())).rejects.toMatchObject({ errno: '23514' });
     }
-
-    await expect(
-      Promise.resolve(databaseClient`
-        UPDATE writing_submissions
-        SET
-          analysis_status = 'not_analyzed'
-        WHERE code = 'WS-20261003-002'
-      `),
-    ).rejects.toMatchObject({ errno: '428C9' });
   });
 
   test('rolls back the empty schema and can reapply the migration', async () => {
@@ -351,6 +347,18 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     expect(await applyMigration()).toEqual([writingMigrationName]);
   });
 
+  test('refuses rollback after a material is saved without submissions', async () => {
+    const databaseClient = getDatabase();
+    const migrations = await getMigrations();
+
+    await applyMigration();
+    await insertMaterial(databaseClient);
+
+    await expect(rollbackLatestMigration(databaseClient, migrations)).rejects.toThrow(
+      'Writing rollback requires empty writing_materials and writing_submissions tables.',
+    );
+  });
+
   test('refuses rollback after any submission is saved', async () => {
     const databaseClient = getDatabase();
     const migrations = await getMigrations();
@@ -360,7 +368,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     await insertPendingSubmission(databaseClient, code);
 
     await expect(rollbackLatestMigration(databaseClient, migrations)).rejects.toThrow(
-      'Writing rollback requires an empty writing_submissions table.',
+      'Writing rollback requires empty writing_materials and writing_submissions tables.',
     );
 
     expect((await getSubmission(databaseClient, code))?.original_text).toBe(originalText);

@@ -4,7 +4,6 @@ import { formatPublicCode } from '../../shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../../shared/date/date';
 import { countWords } from '../../shared/text/word-count';
 import * as writingRepository from './writing.repository';
-import * as writingSettingService from './writing-setting/writing-setting.service';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type { AppError } from '../../core/errors/app-error';
 import type {
@@ -25,8 +24,6 @@ import type {
 } from './writing.types';
 
 export const createMaterial = async (input: CreateWritingMaterialRequest): Promise<WritingMaterial> => {
-  const settings = await writingSettingService.getSettings();
-
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -37,11 +34,9 @@ export const createMaterial = async (input: CreateWritingMaterialRequest): Promi
     const sequenceRow = await writingRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
 
     const code = formatPublicCode('WR', date.segment, sequenceRow.sequence + 1);
-    const is_override =
-      input.level !== settings.default_level || input.target_word_count !== settings.default_word_count;
     const payload = toCreateWritingMaterialPayload(input);
 
-    const materialRow = await writingRepository.insertOne(code, payload, is_override, trx);
+    const materialRow = await writingRepository.insertOne(code, payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
@@ -171,7 +166,6 @@ const toWritingMaterial = (row: WritingMaterialRow): WritingMaterial => ({
   genre: row.genre,
   tags: row.tags,
   target_word_count: row.target_word_count,
-  is_override: row.is_override,
   source: row.source,
 });
 

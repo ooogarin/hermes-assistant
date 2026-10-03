@@ -61,7 +61,6 @@ const writingMaterial: WritingMaterial = {
   genre: 'journal',
   tags: [],
   target_word_count: 150,
-  is_override: false,
   source: 'request',
 };
 
@@ -162,7 +161,6 @@ const writingMaterialRow: WritingMaterialRow = {
   genre: writingMaterial.genre,
   tags: writingMaterial.tags,
   target_word_count: writingMaterial.target_word_count,
-  is_override: writingMaterial.is_override,
   source: writingMaterial.source,
 };
 

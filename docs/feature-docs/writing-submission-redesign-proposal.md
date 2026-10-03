@@ -7,7 +7,7 @@
 > migrations, and Hermes runtime instructions still describe the current implementation.
 
 > Phases 1–2 update: [Writing submission contract](writing-submission-contract.md) now
-> resolves the edit guard, code format, version checks, API contracts, and final schema
+> resolves the edit guard, code format, API contracts, and final schema
 > migration. It takes precedence where this original proposal differs. Migration 0011
 > is prepared only; the user will execute migrations.
 
@@ -110,29 +110,27 @@ flowchart TD
     G -->|Yes| H[analyzed]
 ```
 
-The proposed persisted statuses are `not_analyzed` and `analyzed`. `not_analyzed` does
+The API derives `not_analyzed` or `analyzed` from whether `analysis` is null. `not_analyzed` does
 not mean an analysis job has been queued. The user may intentionally leave it that way.
 
 “Save and analyze now” still performs two distinct writes: first save the text, then save
 the analysis. A failure in the second step must not roll back or duplicate the submission.
 Retry using the existing submission code.
 
-A successful analysis writes all estimated metadata, `analysis`, `analyzed_at`, and
-`analysis_status = analyzed` together in one transaction. Partial or invalid feedback
-must not leave the submission looking analyzed. Do not hold a database transaction open
+A successful analysis writes all estimated metadata, `analysis`, and `analyzed_at`
+together in one transaction. The API then derives `analysis_status = analyzed`. Partial
+or invalid feedback must not leave the submission looking analyzed. Do not hold a database transaction open
 while Hermes generates feedback.
 
-Use the `revision` / `expected_revision` contract to reject feedback generated from an
-older text. Analyzed text is locked, but estimated metadata remains editable. Reanalysis
-and automatic revision history are deferred; see the finalized contract for conflict rules.
+Analyzed text is locked, while estimated metadata remains editable. Reanalysis is deferred.
 
 ## 5. Proposed database design
 
 ### 5.1 Existing settings and materials
 
-Keep `writing_settings` and `writing_materials`. Their current columns remain useful for
-prompt generation. Material `topic`, `genre`, `tags`, `level`, and `target_word_count`
-describe the requested exercise; they must not be copied into submission estimates as
+Keep `writing_settings` and `writing_materials`, removing material `is_override`.
+Save the requested criteria directly; requests do not change persistent defaults.
+Material `topic`, `genre`, `tags`, `level`, and `target_word_count` describe the requested exercise; they must not be copied into submission estimates as
 if they described the user's actual text.
 
 The material's `source` continues to distinguish `cron` from `request`. Free writing is
@@ -147,23 +145,22 @@ identified by its null `material_id`; it does not need a material or a new mater
 | `material_id` | `BIGINT` | Yes | FK to `writing_materials.id`; null for free writing |
 | `original_text` | `TEXT` | No | Exact text supplied by the user |
 | `word_count` | `INTEGER` | No | Backend-calculated word count |
-| `analysis_status` | `TEXT` | No | Stored generated value from `analysis`: `not_analyzed` or `analyzed` |
 | `estimated_topic` | `TEXT` | Yes | Default null; topic inferred from actual text |
 | `estimated_genre` | `TEXT` | Yes | Default null; genre inferred from actual text |
 | `estimated_tags` | `TEXT[]` | Yes | Default null; tags inferred from actual text |
 | `estimated_level` | `TEXT` | Yes | Default null; estimated CEFR level |
 | `analysis` | `JSONB` | Yes | Default null; structured feedback |
 | `analyzed_at` | `TIMESTAMPTZ` | Yes | Set on successful analysis by the application |
-| `revision` | `INTEGER` | No | Default 1; incremented explicitly by application updates |
 | `created_at` | `TIMESTAMPTZ` | No | Default `NOW()`; submission creation time |
 | `updated_at` | `TIMESTAMPTZ` | No | Default `NOW()`; last stored change |
 | `deleted_at` | `TIMESTAMPTZ` | Yes | Default null; soft deletion |
 
 Migration 0011 directly removes `submitted_at` and `submission_number` and requires
-a non-null submission code. The application is unused and Writing data is empty.
+a non-null submission code. API `analysis_status` is computed from `analysis`, with no
+stored status column. The application is unused and Writing data is empty.
 No `is_locked` field is needed: the service rejects text edits when stored analysis exists.
 There is no database guard function or update trigger. Application updates explicitly
-increment `revision` and refresh `updated_at`.
+refresh `updated_at`.
 
 ### 5.3 Constraints and invariants
 
@@ -172,7 +169,8 @@ increment `revision` and refresh `updated_at`.
   material is active when attaching a new submission.
 - `word_count > 0`. Reject blank/whitespace-only text without trimming or otherwise
   rewriting the stored `original_text`.
-- Generate `analysis_status` from the presence of `analysis`; clients cannot set it.
+- Compute API `analysis_status` from the presence of `analysis`; clients cannot set it.
+  There is no status column; collection filters use `analysis IS NULL` / `IS NOT NULL`.
 - `not_analyzed` requires SQL `NULL` for both `analysis` and `analyzed_at`. New successful
   analyses supply both through the application. The database requires both fields to be
   null or both present. If non-null, `analysis` must be a JSON object.
@@ -322,7 +320,6 @@ errors are defined in the finalized Writing submission contract.
 | Multiple responses to one material | Separate submission codes; same material FK; no durable attempt number |
 | Two submissions have the same creation time | Use `id` to keep ordering deterministic |
 | User edits metadata manually | Do not mark the submission analyzed merely because metadata is populated |
-| Text changes while feedback is being generated | Reject stale feedback using the expected revision |
 | User tries editing after analysis | Reject text edits; permit corrections to estimated metadata |
 
 ## 10. Migration and delivery plan
@@ -332,20 +329,20 @@ prepares the final schema without backfill or existing-row updates. Do not rewri
 migration 0006. The user executes migrations manually.
 
 1. Add required independent submission codes, nullable material links, estimated metadata,
-   analysis status, and analysis time. Relax non-null requirements on `estimated_level`
-   and `analysis` to allow saving first.
-2. Remove `submission_number`, `submitted_at`, and their dependent number constraint/index
-   in migration 0011. There are no old writer adapters, null-code exceptions, historical
-   link mappings, or later schema cleanup migrations.
+   and analysis time. Derive API analysis status from stored feedback. Relax non-null
+   requirements on `estimated_level` and `analysis` to allow saving first.
+2. Remove material `is_override`, submission `submission_number`/`submitted_at`, and the
+   dependent number constraint/index in migration 0011. There are no old writer adapters,
+   null-code exceptions, historical link mappings, or later schema cleanup migrations.
 3. Implement separate save/read/result-write workflows against this schema. Services
    enforce text locking, code immutability, and rejection of repeated analysis. Repository
-   updates explicitly increment revision and refresh `updated_at`.
+   updates explicitly refresh `updated_at`.
 4. Update Hermes and frontend routes/navigation to submission codes. Keep analysis
    Telegram-only and the web analysis button inactive for this release.
 
 Verification of the later application implementation should cover independent saves,
 optional analysis, atomic feedback persistence, exact text preservation, incorrect material
-references, ordering, failure/retry behavior, stale results, and edit guards. Schema
+references, ordering, failure/retry behavior, and edit guards. Schema
 verification covers required codes, removed columns, new fields, constraints, indexes,
 and empty-table rollback.
 
@@ -358,11 +355,10 @@ errors for the selected release scope.
 | --- | --- |
 | Post-analysis locking | Enforced in application code; text and derived word count lock, prompt association is creation-only, estimated metadata stays editable. |
 | Editing before analysis | Text and metadata may be edited; first AI result fills null estimates and preserves manually supplied values. |
-| Reanalysis and revisions | Deferred; existing feedback cannot be silently replaced through the new API. |
-| In-progress concurrency | Revision checks and short service-owned row-locking transactions; no database transaction during AI generation. |
+| Reanalysis | Deferred; existing feedback cannot be silently replaced through the new API. |
 | Web analysis CTA | Inactive button for now; direct Telegram analysis commands only. |
 | Analysis write authorization | Agent-only result writes; browser JWT alone does not authorize AI feedback writes. |
 | Submission code convention | `WS-YYYYMMDD-NNN`, Jakarta creation date, daily sequence including deleted rows. |
 | Material summaries | Saved and analyzed counts separately; `unsubmitted`, `submitted`, or `reviewed` as defined in the contract. |
 | Migration scope | Unused application and empty Writing data; prepare the final schema directly, removing obsolete columns and requiring codes. No compatibility phase. |
-| Override semantics | Existing level/length calculation is retained for this release. Broader topic/genre semantics remain outside phases 1–2. |
+| Custom requests | Store actual material criteria and source; remove `is_override`. One-off requests leave defaults unchanged. |
