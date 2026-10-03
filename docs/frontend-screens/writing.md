@@ -1,6 +1,6 @@
 # Writing Screen List
 
-> Status: List, settings, and API-backed known-code review screens implemented; browser-originated submission remains blocked by its request contract. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
+> Status: Existing screens require adaptation to the new Writing backend. Save/read/edit and analysis persistence APIs are implemented; frontend workflows and submission-code navigation are pending. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Writing screens.
 
 ## Scope
 
@@ -8,9 +8,9 @@ The [Writing submission redesign proposal](../feature-docs/writing-submission-re
 defines the next intended flow: independent free writing, saving before optional analysis,
 and submission-code navigation. The screen descriptions below remain the existing MVP
 baseline. The [Writing submission contract](../feature-docs/writing-submission-contract.md)
-now defines the next implementation: text locks after analysis while estimates remain
+defines the implemented backend contract: text locks after analysis while estimates remain
 editable. For this release, the web analysis button is inactive and analysis is requested
-only through a direct Telegram command. Implement save/read/edit before any future
+only through a direct Telegram command. The previous material-bound submission endpoints have been removed; use the new `/submissions` endpoints when adapting these screens. Implement save/read/edit before any future
 automatic web-to-Hermes analysis integration.
 
 Writing helps the user practise active English production with generated prompts and structured feedback. Persistent defaults control the routine level and word-count range. One-off requests may use another topic, genre, level, or target word count without changing the saved defaults.

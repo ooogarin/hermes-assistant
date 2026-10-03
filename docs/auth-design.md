@@ -74,7 +74,7 @@ Example: a login at 2026-10-01 12:00 UTC expires at 2026-10-02T12:00:00.000Z.
 | 400 | VALIDATION_ERROR | Malformed JSON or invalid fields |
 | 401 | INVALID_CREDENTIALS | Password mismatch |
 | 401 | UNAUTHENTICATED | Missing, malformed, invalid, or expired JWT; invalid Agent bearer |
-| 403 | FORBIDDEN | Missing or disallowed browser write Origin |
+| 403 | FORBIDDEN | Missing/disallowed browser write Origin or browser-only access to an Agent-only route |
 | 413 | PAYLOAD_TOO_LARGE | Login body exceeds 4 KiB |
 | 415 | UNSUPPORTED_MEDIA_TYPE | Login body is not JSON |
 | 429 | RATE_LIMITED | Login attempt allowance exhausted or verifier busy |
@@ -84,7 +84,7 @@ Never echo the password, token, hash, signing secret, framework exception text, 
 
 ## Request boundary
 
-Only the exact POST login/logout method and path pairs bypass prior authentication. Health endpoints remain public. On domain requests, an Authorization header selects Agent bearer authentication; an invalid bearer fails 401 without falling back to a cookie. Otherwise the middleware verifies the browser JWT. The status endpoint always requires a browser JWT.
+Only the exact POST login/logout method and path pairs bypass prior authentication. Health endpoints remain public. On domain requests, an Authorization header selects Agent bearer authentication; an invalid bearer fails 401 without falling back to a cookie. Otherwise the middleware verifies the browser JWT. The status endpoint always requires a browser JWT. The middleware records the validated mode as `auth_mode`. `PATCH /api/v1/writing/submissions/:code/analysis` uses the shared `requireAgent` route middleware: Agent bearer authentication is required, and browser JWT authentication alone returns `403 FORBIDDEN`. Ordinary Writing saves, edits, and reads accept either mode.
 
 Cookie-authenticated POST, PUT, PATCH, and DELETE requests require an allowed Origin. Login and logout require the same check even when unauthenticated. In development, the configured loopback host and its `localhost`/`127.0.0.1` alias are accepted on the same port; outside development, only the exact configured HTTPS origin is accepted. Missing, null, malformed, suffix-matching, and foreign origins fail. Safe GET, HEAD, and OPTIONS routes must not write data. SameSite=Lax, JSON-only login, and exact Origin checking protect the intended same-origin deployment against CSRF.
 

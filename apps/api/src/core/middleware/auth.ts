@@ -58,12 +58,16 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
           });
         }
 
+        context.set('auth_mode', 'agent');
+
         await next();
 
         return;
       }
 
       await requireWebJwt(resources, { token: readAuthCookie(context, resources.configuration) });
+
+      context.set('auth_mode', 'browser');
 
       if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
         await originMiddleware(context, next);
@@ -76,4 +80,16 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
       context.header('Cache-Control', 'private, no-store');
     }
   };
+};
+
+export const requireAgent: MiddlewareHandler<AppEnv> = async (context, next) => {
+  if (context.get('auth_mode') !== 'agent') {
+    return failureResponse({
+      context,
+      error: { code: 'FORBIDDEN', message: 'Agent authentication required', details: null },
+      statusCode: 403,
+    });
+  }
+
+  await next();
 };

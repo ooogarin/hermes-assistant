@@ -1,15 +1,10 @@
 # Writing — Independent Submissions and Optional Analysis
 
-> Date: 2026-10-03. Status: design proposal; not implemented.
-> This document records the agreed product direction and proposed implementation for Writing.
-> For future implementation, its agreed decisions supersede conflicting behavior in
-> [the original Writing design](writing-feature-design.md). Existing endpoints, database
-> migrations, and Hermes runtime instructions still describe the current implementation.
-
-> Phases 1–2 update: [Writing submission contract](writing-submission-contract.md) now
-> resolves the edit guard, code format, API contracts, and final schema
-> migration. It takes precedence where this original proposal differs. Migration 0011
-> is prepared only; the user will execute migrations.
+> Date: 2026-10-03. Status: agreed design; backend implemented, client integration pending.
+> Migration 0011 has been applied by the user. The
+> [Writing submission contract](writing-submission-contract.md) defines the implemented
+> schema, endpoint contracts, edit guards, and module ownership, and takes precedence
+> over this proposal. Hermes runtime instructions and frontend workflows remain to be adapted.
 
 ## 1. Purpose and decision status
 
@@ -33,7 +28,7 @@ The user confirmed that analyzed text is locked while all four `estimated_*` fie
 remain editable. The web analysis button remains inactive for this release; analysis
 is available through direct Telegram commands only.
 
-The finalized contract selects the implementation details for phases 1–2. Section 11
+The finalized contract specifies the implemented backend behavior. Section 11
 summarizes those decisions; the broader flow below remains the design context.
 
 ## 2. Concepts and ownership
@@ -240,13 +235,12 @@ Topic/genre estimates remain top-level submission columns for discovery; they ar
 duplicated inside the analysis JSON. Continue offering a concise feedback summary first
 in Telegram and deliver the full corrected text on request.
 
-## 7. Proposed API surface
+## 7. API surface
 
-All routes below are under `/api/v1/writing`. These are proposed contracts, not existing
-endpoints. Use snake_case, Zod input validation, the existing response/error envelopes,
+All routes below are implemented under `/api/v1/writing`. Use snake_case, Zod input validation, the existing response/error envelopes,
 and the route → validator → handler → service → repository boundary.
 
-| Method / path | Purpose | Status of proposal |
+| Method / path | Purpose | Behavior |
 | --- | --- | --- |
 | `GET/PATCH /settings` | Read/update prompt defaults | Keep existing responsibility |
 | `POST /materials` | Save a Hermes-generated prompt | Keep existing responsibility |
@@ -272,7 +266,7 @@ For prompted writing, provide a material code such as `WR-20261003-001`. Omissio
 `material_code` means free writing as well. The API must not choose a
 material implicitly. Saving does not require estimates or analysis from the caller.
 
-The proposed analysis write accepts all four `estimated_*` fields and the complete
+The analysis write accepts all four `estimated_*` fields and the complete
 `analysis` object. The backend sets status and timestamps; callers do not set those
 bookkeeping fields directly. This endpoint stores generated results; it does not invoke AI.
 
@@ -322,31 +316,31 @@ errors are defined in the finalized Writing submission contract.
 | User edits metadata manually | Do not mark the submission analyzed merely because metadata is populated |
 | User tries editing after analysis | Reject text edits; permit corrections to estimated metadata |
 
-## 10. Migration and delivery plan
+## 10. Delivery status
 
 The application has not been used and Writing data is empty. Migration 0011 directly
 prepares the final schema without backfill or existing-row updates. Do not rewrite applied
-migration 0006. The user executes migrations manually.
+migration 0006. The user has applied migration 0011; backend development does not execute migrations.
 
-1. Add required independent submission codes, nullable material links, estimated metadata,
+1. Completed: add required independent submission codes, nullable material links, estimated metadata,
    and analysis time. Derive API analysis status from stored feedback. Relax non-null
    requirements on `estimated_level` and `analysis` to allow saving first.
-2. Remove material `is_override`, submission `submission_number`/`submitted_at`, and the
+2. Completed: remove material `is_override`, submission `submission_number`/`submitted_at`, and the
    dependent number constraint/index in migration 0011. There are no old writer adapters,
    null-code exceptions, historical link mappings, or later schema cleanup migrations.
-3. Implement separate save/read/result-write workflows against this schema. Services
+3. Completed: implement separate save/read/result-write workflows against this schema. Services
    enforce text locking, code immutability, and rejection of repeated analysis. Repository
    updates explicitly refresh `updated_at`.
-4. Update Hermes and frontend routes/navigation to submission codes. Keep analysis
+4. Pending: update Hermes and frontend routes/navigation to submission codes. Keep analysis
    Telegram-only and the web analysis button inactive for this release.
 
-Verification of the later application implementation should cover independent saves,
+Application verification covers independent saves,
 optional analysis, atomic feedback persistence, exact text preservation, incorrect material
 references, ordering, failure/retry behavior, and edit guards. Schema
 verification covers required codes, removed columns, new fields, constraints, indexes,
 and empty-table rollback.
 
-## 11. Decision resolution for phases 1–2
+## 11. Agreed decisions
 
 The [finalized contract](writing-submission-contract.md) provides exact rules and safe
 errors for the selected release scope.

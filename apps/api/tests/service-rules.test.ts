@@ -24,10 +24,15 @@ import type {
   WritingMaterial,
   WritingMaterialListRow,
   WritingMaterialRow,
+} from '../src/modules/writing/writing-material/writing-material.types';
+import type { WritingSettings, WritingSettingsRow } from '../src/modules/writing/writing-setting/writing-setting.types';
+import type {
+  CreateWritingSubmissionPayload,
+  SaveWritingAnalysisPayload,
+  UpdateWritingSubmissionPayload,
   WritingSubmission,
   WritingSubmissionRow,
-} from '../src/modules/writing/writing.types';
-import type { WritingSettings, WritingSettingsRow } from '../src/modules/writing/writing-setting/writing-setting.types';
+} from '../src/modules/writing/writing-submission/writing-submission.types';
 
 const grammarQuestion: GrammarQuestion = {
   question_number: 1,
@@ -137,12 +142,19 @@ const writingSettings: WritingSettings = {
 };
 
 const writingSubmission: WritingSubmission = {
-  submission_number: 1,
+  code: 'WS-20260905-001',
+  material_code: writingMaterial.code,
   original_text: 'I go yesterday.',
   word_count: 3,
+  estimated_topic: 'Work',
+  estimated_genre: 'journal',
+  estimated_tags: ['work'],
   estimated_level: 'A1',
+  analysis_status: 'analyzed',
   analysis: writingAnalysis,
-  submitted_at: '2026-09-05T10:00:00.000Z',
+  analyzed_at: '2026-09-05T10:00:00.000Z',
+  created_at: '2026-09-05T10:00:00.000Z',
+  updated_at: '2026-09-05T10:00:00.000Z',
 };
 
 const writingSettingsRow: WritingSettingsRow = {
@@ -154,6 +166,7 @@ const writingSettingsRow: WritingSettingsRow = {
 };
 
 const writingMaterialRow: WritingMaterialRow = {
+  id: 1,
   code: writingMaterial.code,
   topic: writingMaterial.topic,
   prompt_text: writingMaterial.prompt_text,
@@ -164,14 +177,7 @@ const writingMaterialRow: WritingMaterialRow = {
   source: writingMaterial.source,
 };
 
-const writingSubmissionRow: WritingSubmissionRow = {
-  submission_number: writingSubmission.submission_number,
-  original_text: writingSubmission.original_text,
-  word_count: writingSubmission.word_count,
-  estimated_level: writingSubmission.estimated_level,
-  analysis: writingSubmission.analysis,
-  submitted_at: writingSubmission.submitted_at,
-};
+const writingSubmissionRow: WritingSubmissionRow = { ...writingSubmission };
 
 let financeCategories: Array<{ id: number; code: string; name: string; description: string; type: 'expense' }> = [];
 let financeDailySummaryResult: FinanceDailySummaryRow[] = [];
@@ -196,6 +202,10 @@ let writingSubmissionResult: WritingSubmissionRow | null = writingSubmissionRow;
 let writingListResult: WritingMaterialListRow[] = [];
 let writingCountResult: WritingCountRow = { total: 0 };
 let writingGetMaterialCallCount = 0;
+let writingMaterialResult: WritingMaterialRow | null = writingMaterialRow;
+let writingInsertPayload: CreateWritingSubmissionPayload | null = null;
+let writingUpdatePayload: UpdateWritingSubmissionPayload | null = null;
+let writingAnalysisPayload: SaveWritingAnalysisPayload | null = null;
 const fakeTrx = {} as DatabaseReservedConnection;
 
 const toGrammarSessionRow = (session: GrammarSession): GrammarSessionRow => ({
@@ -328,16 +338,43 @@ mock.module('../src/modules/writing/writing-setting/writing-setting.repository',
   updateOne: async () => writingSettingsResult,
 }));
 
-mock.module('../src/modules/writing/writing.repository', () => ({
+mock.module('../src/modules/writing/writing-material/writing-material.repository', () => ({
   getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
   insertOne: async () => writingMaterialRow,
   getOneByCode: async () => {
     writingGetMaterialCallCount += 1;
-    return writingMaterialRow;
+    return writingMaterialResult;
   },
   getAll: async () => writingListResult,
   countAll: async () => writingCountResult,
-  getOneSubmissionByCodeAndNumber: async () => writingSubmissionResult,
+}));
+
+mock.module('../src/modules/writing/writing-submission/writing-submission.repository', () => ({
+  getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
+  insertOne: async (code: string, input: CreateWritingSubmissionPayload) => {
+    writingInsertPayload = input;
+    return {
+      ...writingSubmissionRow,
+      code,
+      ...input,
+      estimated_topic: null,
+      estimated_genre: null,
+      estimated_tags: null,
+      estimated_level: null,
+      analysis: null,
+      analyzed_at: null,
+    };
+  },
+  getOneByCode: async () => writingSubmissionResult,
+  getOneByCodeForUpdate: async () => writingSubmissionResult,
+  updateOne: async (_code: string, _material_code: string | null, input: UpdateWritingSubmissionPayload) => {
+    writingUpdatePayload = input;
+    return { ...writingSubmissionRow, ...input };
+  },
+  updateOneAnalysis: async (_code: string, _material_code: string | null, input: SaveWritingAnalysisPayload) => {
+    writingAnalysisPayload = input;
+    return { ...writingSubmissionRow, ...input };
+  },
 }));
 
 const financeService = await import('../src/modules/finance/finance.service');
@@ -347,7 +384,8 @@ const notesService = await import('../src/modules/notes/notes.service');
 const readingSettingService = await import('../src/modules/reading/reading-setting/reading-setting.service');
 const readingService = await import('../src/modules/reading/reading.service');
 const writingSettingService = await import('../src/modules/writing/writing-setting/writing-setting.service');
-const writingService = await import('../src/modules/writing/writing.service');
+const writingMaterialService = await import('../src/modules/writing/writing-material/writing-material.service');
+const writingSubmissionService = await import('../src/modules/writing/writing-submission/writing-submission.service');
 
 beforeEach(() => {
   financeCategories = [];
@@ -373,6 +411,10 @@ beforeEach(() => {
   writingListResult = [];
   writingCountResult = { total: 0 };
   writingGetMaterialCallCount = 0;
+  writingMaterialResult = writingMaterialRow;
+  writingInsertPayload = null;
+  writingUpdatePayload = null;
+  writingAnalysisPayload = null;
 });
 
 test('finance rejects a category that does not match the transaction type', async () => {
@@ -447,7 +489,7 @@ test('create flows return the transaction-local result without a post-commit rea
     questions: [{ question_text: 'Who visits?', expected_answer: 'Mira.' }],
     target_question_count: 1,
   });
-  const createdWritingMaterial = await writingService.createMaterial({
+  const createdWritingMaterial = await writingMaterialService.createMaterial({
     topic: writingMaterial.topic,
     prompt_text: writingMaterial.prompt_text,
     level: writingMaterial.level,
@@ -521,7 +563,8 @@ test('reading and writing services compose list responses from repository rows',
       tags: writingMaterial.tags,
       source: writingMaterial.source,
       submission_count: '2',
-      latest_submission_number: '2',
+      analyzed_submission_count: '1',
+      latest_submission_code: 'WS-20260905-002',
       created_at: '2026-09-05T10:00:00.000Z',
     },
   ];
@@ -530,7 +573,7 @@ test('reading and writing services compose list responses from repository rows',
   await expect(readingService.listMaterials({ limit: 100, sort: 'newest' })).resolves.toEqual({
     items: readingListResult.map((row) => ({ ...row, created_at: String(row.created_at) })),
   });
-  await expect(writingService.listMaterials({ page: 2, limit: 20, sort: 'newest' })).resolves.toEqual({
+  await expect(writingMaterialService.listMaterials({ page: 2, limit: 20, sort: 'newest' })).resolves.toEqual({
     items: [
       {
         code: writingMaterial.code,
@@ -543,7 +586,9 @@ test('reading and writing services compose list responses from repository rows',
         source: writingMaterial.source,
         status: 'reviewed',
         submission_count: 2,
-        latest_submission_number: 2,
+        analyzed_submission_count: 1,
+        unanalyzed_submission_count: 1,
+        latest_submission_code: 'WS-20260905-002',
         created_at: '2026-09-05T10:00:00.000Z',
       },
     ],
@@ -746,8 +791,147 @@ test('writing settings keep the default word count inside the configured range',
 });
 
 test('writing exposes corrected text without rebuilding the analysis', async () => {
-  await expect(writingService.getCorrectedText('WR-20260905-001', 1)).resolves.toEqual({
-    submission_number: 1,
+  await expect(writingSubmissionService.getCorrectedText(writingSubmission.code)).resolves.toEqual({
+    code: writingSubmission.code,
     corrected_text: writingAnalysis.corrected_text,
+  });
+});
+
+test('writing saves free and prompted submissions without analysis', async () => {
+  const original_text = '  I write freely.\n';
+  const free = await writingSubmissionService.createSubmission({ original_text });
+
+  expect(free).toMatchObject({
+    original_text,
+    word_count: 3,
+    material_code: null,
+    analysis_status: 'not_analyzed',
+    estimated_topic: null,
+    estimated_genre: null,
+    estimated_tags: null,
+    estimated_level: null,
+    analysis: null,
+    analyzed_at: null,
+  });
+  expect(free.code).toMatch(/^WS-\d{8}-001$/);
+  expect(writingGetMaterialCallCount).toBe(0);
+  expect(writingInsertPayload).toEqual({ material_id: null, material_code: null, original_text, word_count: 3 });
+
+  const prompted = await writingSubmissionService.createSubmission({
+    material_code: writingMaterial.code,
+    original_text,
+  });
+
+  expect(prompted.material_code).toBe(writingMaterial.code);
+  expect(writingInsertPayload?.material_id).toBe(1);
+  expect(writingGetMaterialCallCount).toBe(1);
+  expect(committedTransactionCount).toBe(2);
+});
+
+test('writing rejects an inactive material before inserting a submission', async () => {
+  writingMaterialResult = null;
+
+  await expect(
+    writingSubmissionService.createSubmission({ material_code: writingMaterial.code, original_text: 'My draft.' }),
+  ).rejects.toMatchObject({ statusCode: 404, code: 'WRITING_MATERIAL_NOT_FOUND' });
+  expect(writingInsertPayload).toBeNull();
+  expect(rolledBackTransactionCount).toBe(1);
+});
+
+test('writing rejects the entire text and metadata edit after analysis', async () => {
+  await expect(
+    writingSubmissionService.updateSubmission(writingSubmission.code, {
+      original_text: writingSubmission.original_text,
+      estimated_topic: 'Sports',
+    }),
+  ).rejects.toMatchObject({ statusCode: 409, code: 'WRITING_SUBMISSION_TEXT_LOCKED' });
+
+  expect(writingUpdatePayload).toBeNull();
+  expect(committedTransactionCount).toBe(0);
+  expect(rolledBackTransactionCount).toBe(1);
+});
+
+test('writing permits metadata corrections after analysis without changing feedback', async () => {
+  const result = await writingSubmissionService.updateSubmission(writingSubmission.code, { estimated_tags: [] });
+
+  expect(writingUpdatePayload).toEqual({ estimated_tags: [], word_count: undefined });
+  expect(result.analysis).toEqual(writingAnalysis);
+  expect(result.analyzed_at).toBe(writingSubmission.analyzed_at);
+  expect(result.estimated_tags).toEqual([]);
+  expect(committedTransactionCount).toBe(1);
+});
+
+test('writing recalculates word count while preserving edited draft text', async () => {
+  writingSubmissionResult = { ...writingSubmissionRow, analysis: null, analyzed_at: null };
+  const original_text = '  My revised draft has five words.\n';
+  const result = await writingSubmissionService.updateSubmission(writingSubmission.code, { original_text });
+
+  expect(writingUpdatePayload).toEqual({ original_text, word_count: 6 });
+  expect(result.original_text).toBe(original_text);
+  expect(result.word_count).toBe(6);
+});
+
+const writingAnalysisInput = {
+  estimated_topic: 'Work',
+  estimated_genre: 'journal',
+  estimated_tags: ['work'],
+  estimated_level: 'A1' as const,
+  analysis: writingAnalysis,
+};
+
+test('writing rejects repeated analysis without replacing existing feedback', async () => {
+  await expect(
+    writingSubmissionService.saveAnalysis(writingSubmission.code, writingAnalysisInput),
+  ).rejects.toMatchObject({ statusCode: 409, code: 'WRITING_SUBMISSION_ALREADY_ANALYZED' });
+
+  expect(writingAnalysisPayload).toBeNull();
+  expect(rolledBackTransactionCount).toBe(1);
+});
+
+test('writing validates prompt adherence against the saved material association', async () => {
+  writingSubmissionResult = { ...writingSubmissionRow, material_code: null, analysis: null, analyzed_at: null };
+
+  await expect(
+    writingSubmissionService.saveAnalysis(writingSubmission.code, writingAnalysisInput),
+  ).rejects.toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR' });
+  expect(writingAnalysisPayload).toBeNull();
+
+  await writingSubmissionService.saveAnalysis(writingSubmission.code, {
+    ...writingAnalysisInput,
+    analysis: { ...writingAnalysis, prompt_adherence: null },
+  });
+
+  expect(writingAnalysisPayload?.analysis.prompt_adherence).toBeNull();
+  expect(committedTransactionCount).toBe(1);
+
+  writingSubmissionResult = { ...writingSubmissionRow, analysis: null, analyzed_at: null };
+
+  await expect(
+    writingSubmissionService.saveAnalysis(writingSubmission.code, {
+      ...writingAnalysisInput,
+      analysis: { ...writingAnalysis, prompt_adherence: null },
+    }),
+  ).rejects.toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR' });
+});
+
+test('writing returns stable errors for missing submissions and unavailable corrected text', async () => {
+  writingSubmissionResult = null;
+
+  await expect(writingSubmissionService.getSubmission(writingSubmission.code)).rejects.toMatchObject({
+    statusCode: 404,
+    code: 'WRITING_SUBMISSION_NOT_FOUND',
+  });
+  await expect(
+    writingSubmissionService.updateSubmission(writingSubmission.code, { estimated_topic: 'Sports' }),
+  ).rejects.toMatchObject({ statusCode: 404, code: 'WRITING_SUBMISSION_NOT_FOUND' });
+  await expect(
+    writingSubmissionService.saveAnalysis(writingSubmission.code, writingAnalysisInput),
+  ).rejects.toMatchObject({ statusCode: 404, code: 'WRITING_SUBMISSION_NOT_FOUND' });
+
+  writingSubmissionResult = { ...writingSubmissionRow, analysis: null, analyzed_at: null };
+
+  await expect(writingSubmissionService.getCorrectedText(writingSubmission.code)).rejects.toMatchObject({
+    statusCode: 409,
+    code: 'WRITING_SUBMISSION_NOT_ANALYZED',
   });
 });

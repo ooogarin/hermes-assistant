@@ -90,7 +90,7 @@ knowing the internal spelling.
 
 See [learning list toolbar](../../apps/web/src/components/english/learning-list-toolbar.tsx),
 [reading.validator.ts](../../apps/api/src/modules/reading/reading.validator.ts), and
-[writing.validator.ts](../../apps/api/src/modules/writing/writing.validator.ts).
+[writing-material.validator.ts](../../apps/api/src/modules/writing/writing-material/writing-material.validator.ts).
 
 ### P1 — CEFR and Grammar reporting fields are too permissive
 

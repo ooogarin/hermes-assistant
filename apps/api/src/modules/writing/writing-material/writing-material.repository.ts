@@ -1,24 +1,22 @@
-import { getDatabaseClient } from '../../core/database/client';
-import type { DatabaseReservedConnection } from '../../core/database/database.types';
+import { getDatabaseClient } from '../../../core/database/client';
+import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type {
   CreateWritingMaterialPayload,
-  CreateWritingSubmissionPayload,
   ListWritingMaterialsQuery,
   WritingCountRow,
   WritingMaterialListRow,
   WritingMaterialRow,
   WritingSequenceRow,
-  WritingSubmissionRow,
-} from './writing.types';
+} from './writing-material.types';
 
 const writingCodeLockNamespace = 173_205_080;
-const writingSubmissionLockNamespace = 223_606_797;
 
 export const getLastSequenceByDateForUpdate = async (
   dateKey: number,
   dateSegment: string,
   trx: DatabaseReservedConnection,
 ): Promise<WritingSequenceRow> => {
+  // Serialize daily MAX + 1 allocation; include deleted rows so public codes are never reused.
   await trx`
     SELECT
       pg_advisory_xact_lock(${writingCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
@@ -65,6 +63,7 @@ export const insertOne = async (
       ${input.source}::writing_source
     )
     RETURNING
+      id,
       code,
       topic,
       prompt_text,
@@ -82,11 +81,15 @@ export const insertOne = async (
   return row;
 };
 
-export const getOneByCode = async (code: string): Promise<WritingMaterialRow | null> => {
-  const database = getDatabaseClient();
+export const getOneByCode = async (
+  code: string,
+  trx?: DatabaseReservedConnection,
+): Promise<WritingMaterialRow | null> => {
+  const database = trx ?? getDatabaseClient();
 
   const [row] = await database<WritingMaterialRow[]>`
     SELECT
+      id,
       code,
       topic,
       prompt_text,
@@ -130,10 +133,20 @@ export const getAll = async (input: ListWritingMaterialsQuery): Promise<WritingM
         ) AS submission_count,
         (
           SELECT
-            MAX(s.submission_number)
+            COUNT(*)::INTEGER
+          FROM writing_submissions s
+          WHERE s.material_id = m.id AND s.deleted_at IS NULL AND s.analysis IS NOT NULL
+        ) AS analyzed_submission_count,
+        (
+          SELECT
+            s.code
           FROM writing_submissions s
           WHERE s.material_id = m.id AND s.deleted_at IS NULL
-        ) AS latest_submission_number
+          ORDER BY
+            s.created_at DESC,
+            s.id DESC
+          LIMIT 1
+        ) AS latest_submission_code
       FROM writing_materials m
       WHERE m.deleted_at IS NULL
     )
@@ -147,7 +160,8 @@ export const getAll = async (input: ListWritingMaterialsQuery): Promise<WritingM
       tags,
       source,
       submission_count,
-      latest_submission_number,
+      analyzed_submission_count,
+      latest_submission_code,
       created_at
     FROM material_summary
     WHERE (${searchPattern}::TEXT IS NULL OR (
@@ -161,7 +175,8 @@ export const getAll = async (input: ListWritingMaterialsQuery): Promise<WritingM
       AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
       AND (
         ${input.status}::TEXT IS NULL
-        OR (${input.status}::TEXT = 'reviewed' AND submission_count > 0)
+        OR (${input.status}::TEXT = 'reviewed' AND analyzed_submission_count > 0)
+        OR (${input.status}::TEXT = 'submitted' AND submission_count > 0 AND analyzed_submission_count = 0)
         OR (${input.status}::TEXT = 'unsubmitted' AND submission_count = 0)
       )
     ORDER BY
@@ -195,7 +210,13 @@ export const countAll = async (input: ListWritingMaterialsQuery): Promise<Writin
             COUNT(*)::INTEGER
           FROM writing_submissions s
           WHERE s.material_id = m.id AND s.deleted_at IS NULL
-        ) AS submission_count
+        ) AS submission_count,
+        (
+          SELECT
+            COUNT(*)::INTEGER
+          FROM writing_submissions s
+          WHERE s.material_id = m.id AND s.deleted_at IS NULL AND s.analysis IS NOT NULL
+        ) AS analyzed_submission_count
       FROM writing_materials m
       WHERE m.deleted_at IS NULL
     )
@@ -213,7 +234,8 @@ export const countAll = async (input: ListWritingMaterialsQuery): Promise<Writin
       AND (${input.genre}::TEXT IS NULL OR genre = ${input.genre})
       AND (
         ${input.status}::TEXT IS NULL
-        OR (${input.status}::TEXT = 'reviewed' AND submission_count > 0)
+        OR (${input.status}::TEXT = 'reviewed' AND analyzed_submission_count > 0)
+        OR (${input.status}::TEXT = 'submitted' AND submission_count > 0 AND analyzed_submission_count = 0)
         OR (${input.status}::TEXT = 'unsubmitted' AND submission_count = 0)
       )
   `;
@@ -223,83 +245,4 @@ export const countAll = async (input: ListWritingMaterialsQuery): Promise<Writin
   }
 
   return count;
-};
-
-export const insertOneSubmissionByCode = async (
-  code: string,
-  input: CreateWritingSubmissionPayload,
-  word_count: number,
-  trx: DatabaseReservedConnection,
-): Promise<WritingSubmissionRow | null> => {
-  // Submission numbers are scoped to a material, so serialize the MAX + 1 lookup for the same code.
-  await trx`
-    SELECT
-      pg_advisory_xact_lock(${writingSubmissionLockNamespace}::INTEGER, hashtext(${code}))
-  `;
-
-  const [row] = await trx<WritingSubmissionRow[]>`
-    WITH target AS (
-      SELECT
-        id
-      FROM writing_materials
-      WHERE code = ${code}
-        AND deleted_at IS NULL
-    ), next_submission AS (
-      SELECT
-        COALESCE(MAX(submission_number), 0) + 1 AS submission_number
-      FROM writing_submissions
-      WHERE material_id = (
-        SELECT
-          id
-        FROM target
-      )
-    )
-    INSERT INTO writing_submissions (
-      material_id,
-      submission_number,
-      original_text,
-      word_count,
-      estimated_level,
-      analysis
-    )
-    SELECT
-      target.id,
-      next_submission.submission_number,
-      ${input.original_text},
-      ${word_count},
-      ${input.estimated_level},
-      ${JSON.stringify(input.analysis)}::JSONB
-    FROM target, next_submission
-    RETURNING
-      submission_number,
-      original_text,
-      word_count,
-      estimated_level,
-      analysis,
-      submitted_at
-  `;
-
-  return row === undefined ? null : row;
-};
-
-export const getOneSubmissionByCodeAndNumber = async (
-  code: string,
-  submission_number: number,
-): Promise<WritingSubmissionRow | null> => {
-  const database = getDatabaseClient();
-
-  const [row] = await database<WritingSubmissionRow[]>`
-    SELECT
-      s.submission_number,
-      s.original_text,
-      s.word_count,
-      s.estimated_level,
-      s.analysis,
-      s.submitted_at
-    FROM writing_submissions s
-    JOIN writing_materials m ON m.id = s.material_id
-    WHERE m.code = ${code} AND m.deleted_at IS NULL AND s.submission_number = ${submission_number} AND s.deleted_at IS NULL
-  `;
-
-  return row === undefined ? null : row;
 };
