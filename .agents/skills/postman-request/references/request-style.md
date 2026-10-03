@@ -37,7 +37,9 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 
 ## JSON bodies
 
-- Use Postman raw JSON mode and set the language to JSON.
+- Every request body you create or adjust must be stored in Postman's Body as raw JSON. Keep the payload as syntactically valid JSON text; do not leave it as a JavaScript object or put it in query parameters, headers, form-data, or URL-encoded fields.
+- With Postman MCP mutation tools, use their raw-body fields (for example, `dataMode: "raw"` and `rawModeData`) and set the raw language to JSON when the tool exposes that option. Do not assume the tool accepts a native `body` object; follow its actual schema.
+- Leave Body empty for endpoints that do not accept a body. Do not invent a payload to fill the Body tab.
 - Use Hermes `snake_case` field names exactly as defined by the Zod schema.
 - Use realistic but unmistakably sample values. IDs and codes must match the validated shape.
 - Use one or two items in arrays and nested collections.
@@ -93,16 +95,8 @@ Use these only when no suitable Hermes request exists in the target or sibling f
   "name": "Create",
   "method": "POST",
   "url": "{{DOMAIN}}/api/v1/notes",
-  "body": {
-    "title": "PostgreSQL advisory locks",
-    "content": "Advisory locks can serialize scoped number allocation.",
-    "type": "fact",
-    "category": "Tech/Programming",
-    "source": "PostgreSQL documentation",
-    "source_context": "Concurrency control",
-    "source_reference": "Chapter 13",
-    "tags": ["postgres", "concurrency"]
-  }
+  "dataMode": "raw",
+  "rawModeData": "{\n  \"title\": \"PostgreSQL advisory locks\",\n  \"content_text\": \"Transaction-level advisory locks can coordinate application work.\",\n  \"type\": \"fact\",\n  \"category\": \"Tech/Programming\",\n  \"source_name\": \"PostgreSQL Documentation\",\n  \"source_url\": \"https://www.postgresql.org/docs/current/explicit-locking.html\",\n  \"tags\": [\"postgres\", \"concurrency\"]\n}"
 }
 ```
 
@@ -116,10 +110,8 @@ Use these only when no suitable Hermes request exists in the target or sibling f
   "pathVariables": {
     "code": "NT-20260905-001"
   },
-  "body": {
-    "title": "PostgreSQL advisory lock patterns",
-    "tags": ["postgres", "concurrency"]
-  }
+  "dataMode": "raw",
+  "rawModeData": "{\n  \"title\": \"PostgreSQL advisory lock patterns\",\n  \"content_text\": \"Transaction-level advisory locks coordinate application work.\",\n  \"tags\": [\"postgres\", \"concurrency\"]\n}"
 }
 ```
 
