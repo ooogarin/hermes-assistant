@@ -1,4 +1,4 @@
-import type { WritingAnalysis } from '../../src/modules/writing/writing.types';
+import type { WritingAnalysis } from '../../src/modules/writing/writing-submission/writing-submission.types';
 
 export const writingAnalysis: WritingAnalysis = {
   summary: {
@@ -33,13 +33,9 @@ export const writingAnalysis: WritingAnalysis = {
     feedback: 'The draft has a clear sequence.',
     suggestions: ['Add a concluding sentence.'],
   },
-  topic_adherence: {
+  prompt_adherence: {
     status: 'aligned',
-    notes: 'The response addresses the assigned topic.',
-  },
-  genre_adherence: {
-    status: 'aligned',
-    notes: 'The tone matches a journal entry.',
+    notes: 'The response follows the assigned topic and genre.',
   },
   next_steps: ['Review the simple past tense.'],
 };

@@ -26,9 +26,13 @@ const protectedPaths = [
   '/english/reading/:code/expected-answers',
   '/english/writing',
   '/english/writing/settings',
-  '/english/writing/:code',
-  '/english/writing/:code/submissions/:submissionNumber',
-  '/english/writing/:code/submissions/:submissionNumber/corrected-text',
+  '/english/writing/new',
+  '/english/writing/materials',
+  '/english/writing/materials/:code',
+  '/english/writing/submissions/:code',
+  '/english/writing/submissions/:code/edit',
+  '/english/writing/submissions/:code/feedback',
+  '/english/writing/submissions/:code/corrected-text',
 ];
 
 export const safeReturnTo = (value: string | null): string => {

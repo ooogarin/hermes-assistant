@@ -12,7 +12,8 @@ import * as grammarRepository from '../src/modules/grammar/grammar.repository';
 import * as grammarService from '../src/modules/grammar/grammar.service';
 import * as junkService from '../src/modules/junk/junk.service';
 import * as readingService from '../src/modules/reading/reading.service';
-import * as writingService from '../src/modules/writing/writing.service';
+import * as writingMaterialService from '../src/modules/writing/writing-material/writing-material.service';
+import * as writingSubmissionService from '../src/modules/writing/writing-submission/writing-submission.service';
 import { writingAnalysis } from './fixtures/writing';
 import { createTestDatabaseClient, hasTestDatabaseUrl, resetTestDatabase } from './helpers/database';
 import type { DatabaseClient, DatabaseReservedConnection } from '../src/core/database/database.types';
@@ -386,8 +387,8 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     ]);
   });
 
-  test('persists structured writing feedback and serializes concurrent draft numbers', async () => {
-    const material = await writingService.createMaterial({
+  test('saves independent submissions and persists structured writing feedback', async () => {
+    const material = await writingMaterialService.createMaterial({
       topic: 'My work week',
       prompt_text: 'Describe your work experience this week.',
       level: 'A1',
@@ -400,27 +401,35 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     expect(material.code).toMatch(/^WR-\d{8}-001$/);
 
     const createDraft = (original_text: string) =>
-      writingService.createSubmission(material.code, {
-        original_text,
-        estimated_level: 'A1',
-        analysis: writingAnalysis,
-      });
+      writingSubmissionService.createSubmission({ material_code: material.code, original_text });
     const drafts = await Promise.all([
       createDraft('I went to the office yesterday.'),
       createDraft('Yesterday I worked from the office.'),
     ]);
 
-    expect(drafts.map(({ submission_number }) => submission_number).sort()).toEqual([1, 2]);
+    expect(drafts.map(({ code }) => code.split('-')[2]).sort()).toEqual(['001', '002']);
     expect(drafts.map(({ word_count }) => word_count)).toEqual([6, 6]);
 
-    const firstDraft = await writingService.getSubmission(material.code, 1);
+    const draft = drafts[0];
+
+    if (draft === undefined) {
+      throw new Error('Expected a saved writing submission.');
+    }
+
+    const firstDraft = await writingSubmissionService.saveAnalysis(draft.code, {
+      estimated_topic: 'Work',
+      estimated_genre: 'journal',
+      estimated_tags: ['work'],
+      estimated_level: 'A1',
+      analysis: writingAnalysis,
+    });
     expect(firstDraft.analysis).toEqual(writingAnalysis);
-    expect(await writingService.getCorrectedText(material.code, 1)).toEqual({
-      submission_number: 1,
+    expect(await writingSubmissionService.getCorrectedText(firstDraft.code)).toEqual({
+      code: firstDraft.code,
       corrected_text: writingAnalysis.corrected_text,
     });
     await expect(
-      writingService.listMaterials({
+      writingMaterialService.listMaterials({
         q: 'WORK',
         status: 'reviewed',
         page: 1,
@@ -428,8 +437,149 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         sort: 'newest',
       }),
     ).resolves.toMatchObject({
-      items: [{ code: material.code, status: 'reviewed', submission_count: 2, latest_submission_number: 2 }],
+      items: [
+        {
+          code: material.code,
+          status: 'reviewed',
+          submission_count: 2,
+          analyzed_submission_count: 1,
+          unanalyzed_submission_count: 1,
+        },
+      ],
       meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
     });
+  });
+
+  test('preserves free-writing metadata, text locks, and literal collection search', async () => {
+    const original_text = '  I improved 10%_\\ today.\n';
+    const free = await writingSubmissionService.createSubmission({ original_text });
+
+    expect(free).toMatchObject({
+      original_text,
+      material_code: null,
+      analysis: null,
+      analyzed_at: null,
+      estimated_topic: null,
+      estimated_genre: null,
+      estimated_tags: null,
+      estimated_level: null,
+    });
+    expect(await writingSubmissionService.getSubmission(free.code)).toEqual(free);
+
+    const draft = await writingSubmissionService.updateSubmission(free.code, {
+      original_text: '  My sports journal improved 10%_\\ today.\n',
+      estimated_topic: 'Sports',
+      estimated_tags: [],
+    });
+
+    expect(draft.original_text).toBe('  My sports journal improved 10%_\\ today.\n');
+    expect(draft.word_count).toBe(6);
+    expect(draft.analysis_status).toBe('not_analyzed');
+
+    const analysisInput = {
+      estimated_topic: 'AI topic',
+      estimated_genre: 'journal',
+      estimated_tags: ['AI tag'],
+      estimated_level: 'B1' as const,
+      analysis: { ...writingAnalysis, prompt_adherence: null },
+    };
+    const analyzed = await writingSubmissionService.saveAnalysis(free.code, analysisInput);
+
+    expect(analyzed).toMatchObject({
+      estimated_topic: 'Sports',
+      estimated_genre: 'journal',
+      estimated_tags: [],
+      estimated_level: 'B1',
+      analysis_status: 'analyzed',
+      analysis: analysisInput.analysis,
+    });
+    expect(analyzed.analyzed_at).not.toBeNull();
+
+    await expect(
+      writingSubmissionService.updateSubmission(free.code, {
+        original_text: draft.original_text,
+        estimated_topic: 'Blocked',
+      }),
+    ).rejects.toMatchObject({ code: 'WRITING_SUBMISSION_TEXT_LOCKED' });
+    await expect(writingSubmissionService.saveAnalysis(free.code, analysisInput)).rejects.toMatchObject({
+      code: 'WRITING_SUBMISSION_ALREADY_ANALYZED',
+    });
+
+    const corrected = await writingSubmissionService.updateSubmission(free.code, {
+      estimated_topic: 'User correction',
+      estimated_level: 'B2',
+    });
+
+    expect(corrected.analysis).toEqual(analyzed.analysis);
+    expect(corrected.analyzed_at).toBe(analyzed.analyzed_at);
+    expect(corrected.original_text).toBe(draft.original_text);
+
+    await writingSubmissionService.createSubmission({ original_text: 'I improved 10ab today.' });
+
+    const results = await writingSubmissionService.listSubmissions({
+      q: '10%_\\',
+      writing_type: 'free',
+      analysis_status: 'analyzed',
+      page: 1,
+      limit: 20,
+      sort: 'newest',
+    });
+
+    expect(results.items).toHaveLength(1);
+    expect(results.items[0]?.code).toBe(free.code);
+    expect(results.items[0]).not.toHaveProperty('analysis');
+    expect(results.items[0]).not.toHaveProperty('original_text');
+    expect(results.meta.total).toBe(1);
+  });
+
+  test('derives material statuses and hides deleted submissions and parents', async () => {
+    const material = await writingMaterialService.createMaterial({
+      topic: 'Sports',
+      prompt_text: 'Describe your exercise routine.',
+      level: 'A1',
+      genre: 'journal',
+      tags: ['exercise'],
+      target_word_count: 150,
+      source: 'cron',
+    });
+    const query = { page: 1, limit: 20, sort: 'newest' as const };
+
+    expect((await writingMaterialService.listMaterials({ ...query, status: 'unsubmitted' })).meta.total).toBe(1);
+
+    const prompted = await writingSubmissionService.createSubmission({
+      material_code: material.code,
+      original_text: 'I run every day.',
+    });
+    const free = await writingSubmissionService.createSubmission({ original_text: 'I write without a prompt.' });
+
+    expect((await writingMaterialService.listMaterials({ ...query, status: 'submitted' })).items[0]).toMatchObject({
+      status: 'submitted',
+      submission_count: 1,
+      analyzed_submission_count: 0,
+      unanalyzed_submission_count: 1,
+      latest_submission_code: prompted.code,
+    });
+    expect((await writingMaterialService.listMaterials({ ...query, status: 'reviewed' })).meta.total).toBe(0);
+
+    const databaseClient = getDatabase();
+
+    await databaseClient`UPDATE writing_materials SET deleted_at = NOW() WHERE code = ${material.code}`;
+
+    await expect(writingSubmissionService.getSubmission(prompted.code)).rejects.toMatchObject({
+      code: 'WRITING_SUBMISSION_NOT_FOUND',
+    });
+    expect((await writingSubmissionService.listSubmissions(query)).items.map(({ code }) => code)).toEqual([free.code]);
+    expect((await writingSubmissionService.listSubmissions(query)).meta.total).toBe(1);
+
+    await databaseClient`UPDATE writing_submissions SET deleted_at = NOW() WHERE code = ${free.code}`;
+
+    expect((await writingSubmissionService.listSubmissions(query)).meta.total).toBe(0);
+    await expect(writingSubmissionService.getSubmission(free.code)).rejects.toMatchObject({
+      code: 'WRITING_SUBMISSION_NOT_FOUND',
+    });
+
+    const next = await writingSubmissionService.createSubmission({ original_text: 'Another free draft.' });
+
+    expect(next.code.split('-')[2]).toBe('003');
   });
 });
