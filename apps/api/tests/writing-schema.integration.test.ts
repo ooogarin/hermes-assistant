@@ -6,7 +6,6 @@ import {
   migrateDatabase,
   rollbackLatestMigration,
 } from '../src/core/database/migration-runner';
-import { writingAnalysis } from './fixtures/writing';
 import { createTestDatabaseClient, hasTestDatabaseUrl, resetTestDatabase } from './helpers/database';
 import type { DatabaseClient } from '../src/core/database/database.types';
 
@@ -15,9 +14,8 @@ const writingMigrationName = '0011_prepare_independent_writing_submissions.ts';
 const originalText = '\n  I go yesterday.\n';
 
 type SubmissionRow = {
-  code: string | null;
+  code: string;
   material_id: number | null;
-  submission_number: number | null;
   original_text: string;
   word_count: number;
   estimated_topic: string | null;
@@ -35,7 +33,6 @@ const getSubmission = async (database: DatabaseClient, code: string): Promise<Su
     SELECT
       code,
       material_id,
-      submission_number,
       original_text,
       word_count,
       estimated_topic,
@@ -136,7 +133,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     }
   });
 
-  test('allows free and prompted text to be saved without feedback or a legacy number', async () => {
+  test('allows free and prompted text to be saved before analysis', async () => {
     const databaseClient = getDatabase();
 
     await applyMigration();
@@ -159,7 +156,6 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     for (const code of ['WS-20261003-003', 'WS-20261003-004']) {
       expect(await getSubmission(databaseClient, code)).toMatchObject({
         code,
-        submission_number: null,
         original_text: originalText,
         estimated_topic: null,
         estimated_genre: null,
@@ -189,37 +185,70 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
       analysis_status: 'not_analyzed',
       revision: 2,
     });
+
+    const feedback = { corrected_text: 'I went yesterday.', prompt_adherence: null };
+
+    await databaseClient`
+      UPDATE writing_submissions
+      SET
+        analysis = ${JSON.stringify(feedback)}::JSONB,
+        analyzed_at = NOW(),
+        estimated_genre = 'journal',
+        estimated_tags = ARRAY['daily life'],
+        estimated_level = 'A1',
+        revision = revision + 1,
+        updated_at = NOW()
+      WHERE code = 'WS-20261003-003'
+    `;
+
+    expect(await getSubmission(databaseClient, 'WS-20261003-003')).toMatchObject({
+      estimated_topic: 'User topic',
+      analysis: feedback,
+      analysis_status: 'analyzed',
+      analyzed_at: expect.any(Date),
+      revision: 3,
+    });
   });
 
-  test('keeps the existing analyzed-submission insert contract working during transition', async () => {
+  test('requires submission codes and removes obsolete columns and the number index', async () => {
     const databaseClient = getDatabase();
 
     await applyMigration();
 
-    const rows = await databaseClient<Array<{ code: null; analysis_status: string; analyzed_at: null }>>`
-      INSERT INTO writing_submissions (
-        material_id,
-        submission_number,
-        original_text,
-        word_count,
-        estimated_level,
-        analysis
-      )
+    const columns = await databaseClient<Array<{ column_name: string; is_nullable: string }>>`
       SELECT
-        id,
-        4,
-        ${originalText},
-        3,
-        'A1',
-        ${JSON.stringify(writingAnalysis)}::JSONB
-      FROM writing_materials
-      RETURNING
-        code,
-        analysis_status,
-        analyzed_at
+        column_name,
+        is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = CURRENT_SCHEMA()
+        AND table_name = 'writing_submissions'
+        AND column_name IN ('code', 'submission_number', 'submitted_at')
     `;
 
-    expect(rows).toEqual([{ code: null, analysis_status: 'analyzed', analyzed_at: null }]);
+    expect(columns).toEqual([{ column_name: 'code', is_nullable: 'NO' }]);
+
+    const oldIndexes = await databaseClient<Array<{ indexname: string }>>`
+      SELECT
+        indexname
+      FROM pg_indexes
+      WHERE schemaname = CURRENT_SCHEMA()
+        AND indexname = 'idx_writing_submissions_material'
+    `;
+
+    expect(oldIndexes).toHaveLength(0);
+
+    await expect(
+      Promise.resolve(databaseClient`
+        INSERT INTO writing_submissions (
+          original_text,
+          word_count
+        )
+        VALUES (
+          'Text',
+          1
+        )
+      `),
+    ).rejects.toMatchObject({ errno: '23502' });
   });
 
   test('enforces unique deleted codes, nonblank text, JSON object feedback and valid analysis timestamps', async () => {
@@ -242,33 +271,41 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     const invalidWrites = [
       () => databaseClient`
         INSERT INTO writing_submissions (
+          code,
           original_text,
           word_count
         )
         VALUES (
+          'WS-20261003-010',
           '  ',
           1
         )
       `,
       () => databaseClient`
         INSERT INTO writing_submissions (
+          code,
           original_text,
           word_count,
-          analysis
+          analysis,
+          analyzed_at
         )
         VALUES (
+          'WS-20261003-011',
           'Text',
           1,
-          'null'::JSONB
+          'null'::JSONB,
+          NOW()
         )
       `,
       () => databaseClient`
         INSERT INTO writing_submissions (
+          code,
           original_text,
           word_count,
           analyzed_at
         )
         VALUES (
+          'WS-20261003-012',
           'Text',
           1,
           NOW()
@@ -276,14 +313,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
       `,
       () => databaseClient`
         INSERT INTO writing_submissions (
+          code,
           original_text,
           word_count,
-          submission_number
+          analysis
         )
         VALUES (
+          'WS-20261003-013',
           'Text',
           1,
-          1
+          '{}'::JSONB
         )
       `,
     ];
@@ -312,33 +351,19 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     expect(await applyMigration()).toEqual([writingMigrationName]);
   });
 
-  test('refuses a destructive rollback when free writing or new metadata exists', async () => {
+  test('refuses rollback after any submission is saved', async () => {
     const databaseClient = getDatabase();
     const migrations = await getMigrations();
+    const code = 'WS-20261003-002';
 
     await applyMigration();
-    await insertPendingSubmission(databaseClient, 'WS-20261003-002');
-    await databaseClient`
-      UPDATE writing_submissions
-      SET
-        estimated_topic = 'Corrected topic'
-      WHERE code = 'WS-20261003-002'
-    `;
+    await insertPendingSubmission(databaseClient, code);
 
-    await expect(rollbackLatestMigration(databaseClient, migrations)).rejects.toMatchObject({ errno: '55000' });
+    await expect(rollbackLatestMigration(databaseClient, migrations)).rejects.toThrow(
+      'Writing rollback requires an empty writing_submissions table.',
+    );
 
-    expect((await getSubmission(databaseClient, 'WS-20261003-002'))?.estimated_topic).toBe('Corrected topic');
-
-    await databaseClient`
-      UPDATE writing_submissions
-      SET
-        estimated_topic = NULL
-      WHERE code = 'WS-20261003-002'
-    `;
-    await insertPendingSubmission(databaseClient, 'WS-20261003-003');
-
-    await expect(rollbackLatestMigration(databaseClient, migrations)).rejects.toMatchObject({ errno: '55000' });
-    expect((await getSubmission(databaseClient, 'WS-20261003-003'))?.original_text).toBe(originalText);
+    expect((await getSubmission(databaseClient, code))?.original_text).toBe(originalText);
     expect(await getMigrationStatus(databaseClient, migrations)).toContainEqual({
       name: writingMigrationName,
       status: 'applied',

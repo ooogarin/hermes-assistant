@@ -22,7 +22,7 @@ Read the relevant document before changing code or defining a feature.
 | [frontend-screens/writing.md](frontend-screens/writing.md) | Writing screen list, settings, data needs, and implementation order |
 | [feature-docs/](feature-docs/) | Product and domain designs |
 | [feature-docs/writing-submission-redesign-proposal.md](feature-docs/writing-submission-redesign-proposal.md) | Proposed Writing flows, optional analysis, free writing, database/API design, migration, and open decisions |
-| [feature-docs/writing-submission-contract.md](feature-docs/writing-submission-contract.md) | Writing phases 1–2: finalized edit guard/API contracts, prepared migration, compatibility, and manual execution |
+| [feature-docs/writing-submission-contract.md](feature-docs/writing-submission-contract.md) | Writing phases 1–2: finalized edit guard/API contracts, prepared final-schema migration and manual execution |
 | [audits/data-taxonomy-and-discovery-audit-2026-09-16.md](audits/data-taxonomy-and-discovery-audit-2026-09-16.md) | Deferred audit of categories, tags, search, and filtering across domain modules |
 
 `feature-docs/` is the source of truth for domain behavior. Cross-cutting technical decisions belong in the documents above.

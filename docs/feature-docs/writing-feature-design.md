@@ -12,7 +12,7 @@ This document focuses on the Writing sub-skill in Hermes English Learning. Writi
 
 > Phases 1–2 update: [Writing submission contract](writing-submission-contract.md) defines
 > the text-only post-analysis lock, editable estimates, Telegram-only analysis requests,
-> finalized API contracts, and a prepared transitional migration. Migration execution is
+> finalized API contracts, and a prepared migration to the final schema. Migration execution is
 > reserved for the user; new API/FE workflows are not implemented yet.
 
 ---

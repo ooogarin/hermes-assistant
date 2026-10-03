@@ -7,8 +7,8 @@
 > migrations, and Hermes runtime instructions still describe the current implementation.
 
 > Phases 1–2 update: [Writing submission contract](writing-submission-contract.md) now
-> resolves the edit guard, code format, version checks, API contracts, and migration
-> transition. It takes precedence where this original proposal differs. Migration 0011
+> resolves the edit guard, code format, version checks, API contracts, and final schema
+> migration. It takes precedence where this original proposal differs. Migration 0011
 > is prepared only; the user will execute migrations.
 
 ## 1. Purpose and decision status
@@ -143,7 +143,7 @@ identified by its null `material_id`; it does not need a material or a new mater
 | Column | PostgreSQL type | Nullable | Default / meaning |
 | --- | --- | --- | --- |
 | `id` | `BIGSERIAL` | No | Internal primary key |
-| `code` | `TEXT` | No | Unique public submission identifier; e.g. `WS-20261003-001`; temporarily nullable during migration |
+| `code` | `TEXT` | No | Unique public submission identifier; e.g. `WS-20261003-001` |
 | `material_id` | `BIGINT` | Yes | FK to `writing_materials.id`; null for free writing |
 | `original_text` | `TEXT` | No | Exact text supplied by the user |
 | `word_count` | `INTEGER` | No | Backend-calculated word count |
@@ -159,8 +159,8 @@ identified by its null `material_id`; it does not need a material or a new mater
 | `updated_at` | `TIMESTAMPTZ` | No | Default `NOW()`; last stored change |
 | `deleted_at` | `TIMESTAMPTZ` | Yes | Default null; soft deletion |
 
-There is no `submitted_at` or `submission_number` in the final target schema. Migration
-0011 retains both during compatibility, and temporarily permits null codes for old writers.
+Migration 0011 directly removes `submitted_at` and `submission_number` and requires
+a non-null submission code. The application is unused and Writing data is empty.
 No `is_locked` field is needed: the service rejects text edits when stored analysis exists.
 There is no database guard function or update trigger. Application updates explicitly
 increment `revision` and refresh `updated_at`.
@@ -174,7 +174,8 @@ increment `revision` and refresh `updated_at`.
   rewriting the stored `original_text`.
 - Generate `analysis_status` from the presence of `analysis`; clients cannot set it.
 - `not_analyzed` requires SQL `NULL` for both `analysis` and `analyzed_at`. New successful
-  analyses supply both through the application. If non-null, `analysis` must be a JSON object.
+  analyses supply both through the application. The database requires both fields to be
+  null or both present. If non-null, `analysis` must be a JSON object.
 - Validate the complete nested feedback structure with Zod. A JSON object check alone
   does not establish that an analysis is valid.
 - New successful analyses supply all four `estimated_*` fields. Keep them nullable for
@@ -326,30 +327,27 @@ errors are defined in the finalized Writing submission contract.
 
 ## 10. Migration and delivery plan
 
-Writing data is assumed empty. Prepare migration 0011 without backfill, existing-row
-updates, or historical-feedback conversion. Do not rewrite applied migration 0006.
-The user executes migrations manually.
+The application has not been used and Writing data is empty. Migration 0011 directly
+prepares the final schema without backfill or existing-row updates. Do not rewrite applied
+migration 0006. The user executes migrations manually.
 
-1. Add independent submission codes, nullable material links, estimated metadata, analysis
-   status, and analysis time. Relax current non-null requirements on `estimated_level`
+1. Add required independent submission codes, nullable material links, estimated metadata,
+   analysis status, and analysis time. Relax non-null requirements on `estimated_level`
    and `analysis` to allow saving first.
-2. Retain legacy columns and nullable codes temporarily because the current API still
-   uses its original insert contract. Coordinate the new API, Hermes, and frontend
-   cutover while Writing data is still empty; avoid populating it through old writers.
-3. Implement separate save/read/result-write workflows. Services enforce text locking,
-   code immutability, and rejection of repeated analysis. Repository updates explicitly
-   increment revision and refresh `updated_at`; there is no database update trigger.
-4. At cutover, require non-null codes and remove `submission_number` and `submitted_at`.
-   Update routes and navigation to submission codes. No historical link mapping or
-   feedback-format adapter is needed for this clean-data rollout.
-5. Keep analysis Telegram-only and the web analysis button inactive for this release.
-   Update frontend/domain descriptions with the implemented contracts.
+2. Remove `submission_number`, `submitted_at`, and their dependent number constraint/index
+   in migration 0011. There are no old writer adapters, null-code exceptions, historical
+   link mappings, or later schema cleanup migrations.
+3. Implement separate save/read/result-write workflows against this schema. Services
+   enforce text locking, code immutability, and rejection of repeated analysis. Repository
+   updates explicitly increment revision and refresh `updated_at`.
+4. Update Hermes and frontend routes/navigation to submission codes. Keep analysis
+   Telegram-only and the web analysis button inactive for this release.
 
-If Writing data is populated before cutover, revisit the migration plan first. Verification
-of the later implementation should cover independent saves, optional analysis, atomic
-feedback persistence, exact text preservation, incorrect material references, ordering,
-failure/retry behavior, stale results, and application edit guards. Schema verification
-covers new fields, constraints, indexes, and safe rollback.
+Verification of the later application implementation should cover independent saves,
+optional analysis, atomic feedback persistence, exact text preservation, incorrect material
+references, ordering, failure/retry behavior, stale results, and edit guards. Schema
+verification covers required codes, removed columns, new fields, constraints, indexes,
+and empty-table rollback.
 
 ## 11. Decision resolution for phases 1–2
 
@@ -366,5 +364,5 @@ errors for the selected release scope.
 | Analysis write authorization | Agent-only result writes; browser JWT alone does not authorize AI feedback writes. |
 | Submission code convention | `WS-YYYYMMDD-NNN`, Jakarta creation date, daily sequence including deleted rows. |
 | Material summaries | Saved and analyzed counts separately; `unsubmitted`, `submitted`, or `reviewed` as defined in the contract. |
-| Migration compatibility | Assume empty Writing data; no backfill or data updates. Retain columns needed by the current API until coordinated cutover. |
+| Migration scope | Unused application and empty Writing data; prepare the final schema directly, removing obsolete columns and requiring codes. No compatibility phase. |
 | Override semantics | Existing level/length calculation is retained for this release. Broader topic/genre semantics remain outside phases 1–2. |

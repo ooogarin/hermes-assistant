@@ -6,7 +6,7 @@
 
 This document refines the [Writing redesign proposal](writing-submission-redesign-proposal.md).
 It takes precedence over that proposal where implementation details differ. The original
-[Writing design](writing-feature-design.md) remains the legacy implementation reference.
+[Writing design](writing-feature-design.md) describes the previous implementation pending phase 3.
 
 ## 1. Decisions and scope
 
@@ -35,8 +35,10 @@ Implementation conventions selected for this release:
   existing-row updates, or historical-data conversion.
 - Enforce text locking, analysis immutability, and code immutability in application code.
   Do not create a database guard function or update trigger.
-- Use an additive migration now. Remove legacy columns only after a coordinated API,
-  Hermes, and FE cutover. The current API must continue to insert legacy submissions.
+- The application has not been used and Writing data is empty. Migration 0011 directly
+  prepares the final schema: remove `submission_number` and `submitted_at`, require
+  submission codes, and remove the old number-based index/unique constraint. There is
+  no compatibility phase or later schema cutover.
 
 Reanalysis, automatic revision history, and an automatic web-to-Hermes integration are
 outside this release. A repeated result write must not silently replace existing
@@ -104,14 +106,14 @@ column. Direct SQL updates do not enforce the text lock or advance revision auto
 The service guards and their HTTP 409 responses are phase 3 work, not implemented in
 phases 1–2.
 
-## 3. Prepared schema versus final schema
+## 3. Prepared final schema
 
 Migration: `apps/api/migrations/0011_prepare_independent_writing_submissions.ts`.
 
 | Column | Prepared database schema | Final API contract |
 | --- | --- | --- |
 | `id` | Existing `BIGSERIAL` primary key | Internal only |
-| `code` | Nullable `TEXT UNIQUE` for current API compatibility; no backfill | Every new-contract submission has a non-null `WS-...` code |
+| `code` | `TEXT NOT NULL UNIQUE` | Every submission has a `WS-...` code |
 | `material_id` | Nullable existing FK | `material_code` or null externally |
 | `original_text` | Existing text plus nonblank check | Required, exact user text |
 | `word_count` | Existing positive integer | Backend-calculated |
@@ -126,22 +128,17 @@ Migration: `apps/api/migrations/0011_prepare_independent_writing_submissions.ts`
 | `created_at` | Existing timestamp | Sole submission creation timestamp |
 | `updated_at` | Existing timestamp, explicitly refreshed by application writes | Last change, including metadata correction |
 | `deleted_at` | Existing nullable timestamp | Soft delete |
-| `submission_number` | Retained, now nullable; existing unique pair retained | Legacy compatibility only; removed at cutover |
-| `submitted_at` | Retained for current API compatibility | Legacy compatibility only; removed at cutover |
 
-The transitional nullable `code` is deliberate: current repository inserts do not supply
-one. Retaining the legacy columns keeps the existing API compatible while phases 1–2
-prepare the schema. This does not introduce a historical-data migration requirement.
-Coordinate the later cutover while Writing data is still empty; do not populate Writing
-through old writers between preparation and cutover. Future service code allocates codes
-while holding a dedicated transaction advisory lock.
+Migration 0011 removes `submission_number`, `submitted_at`, and their dependent number
+constraint and index. Service code allocates submission codes while holding a dedicated
+transaction advisory lock. Material codes remain in `writing_materials`.
 
 Indexes: unique code across all rows; active `(created_at DESC, id DESC)`; active material
-`(material_id, created_at DESC, id DESC)`. The old material/number index remains during
-compatibility. No tag/search/status index is added without a query-plan need.
+`(material_id, created_at DESC, id DESC)`. No tag/search/status index is added without a
+query-plan need.
 
-The database rejects a non-null analysis time without an analysis object. The new
-result-write service must supply all estimated metadata and `analyzed_at` atomically.
+`analysis` and `analyzed_at` are either both null or both present. The result-write service
+must supply all estimated metadata and `analyzed_at` atomically.
 
 ## 4. Finalized API contracts for phase 3
 
@@ -168,7 +165,7 @@ on initial creation. Return the complete saved submission with `revision = 1`.
 `GET /submissions/:code` → `200`. Return `code`, nullable `material_code`, `original_text`,
 `word_count`, all four nullable `estimated_*` fields, `analysis_status`, nullable `analysis`,
 nullable `analyzed_at`, `created_at`, `updated_at`, and `revision`.
-Do not expose internal IDs or the legacy number/timestamp.
+Do not expose internal IDs.
 
 `GET /submissions/:code/corrected-text` → `200` with `{ code, corrected_text }`, or
 `409 WRITING_SUBMISSION_NOT_ANALYZED` when no feedback exists.
@@ -197,8 +194,7 @@ For material lists, retain `unsubmitted` for zero active submissions. Add `submi
 for one or more saved submissions with no analysis; `reviewed` means at least one active
 analyzed submission. Return `submission_count`, `analyzed_submission_count`,
 `unanalyzed_submission_count`, and `latest_submission_code`. Counts expose mixed states
-even when the material is reviewed. Latest means creation order, not the highest legacy
-number or the most recent analysis time.
+even when the material is reviewed. Determine the latest submission by `(created_at, id)`.
 
 ### User edits
 
@@ -269,28 +265,21 @@ The runner applies all pending migrations in sequence, not just Writing. Review 
 status before running it. Migration 0011 assumes empty Writing data and performs no
 backfill, data updates, or feedback conversion.
 
-Before enabling the new API later:
+Migration 0011 prepares the final schema directly. Phase 3 implements the API using this
+schema; phases 4–5 update Hermes and the frontend to submission-code navigation. There
+is no historical link mapping, old writer adapter, or later cleanup migration.
 
-1. Upgrade every submission writer to allocate a code and use the new save/analysis
-   contracts. Implement the service guards, revision increment, and timestamp updates.
-2. Coordinate the API, Hermes, and frontend cutover while Writing data is still empty.
-   Add `code NOT NULL` and remove `submission_number` and `submitted_at` in the cutover
-   migration once every writer uses the new contract.
-3. Replace material-code/number routes and navigation with submission codes. Historical
-   link mapping, feedback format adapters, and code backfills are outside this clean-data
-   rollout. If data is populated before cutover, revisit the migration plan first.
-
-Rollback preflight takes a table lock and refuses rollback if submissions have an assigned
-code, cannot fit the old schema, or contain new metadata/analysis timestamps. This is a one-time migration
-safeguard against data loss, not a persisted guard on application updates. It performs no
-backfill or data conversion. Rolling back the empty schema restores the original columns
-and constraints.
+Rollback takes a table lock and checks in migration TypeScript that `writing_submissions`
+is empty. It refuses rollback after any submission has been saved, preserving its data
+and public identity. On an empty table, it restores the prior schema, including the
+removed columns and index. This is a one-time rollback safeguard, not an application
+update guard or a database function/trigger.
 
 ## 6. Verification and later work
 
-The prepared PostgreSQL suite covers free/prompted unanalyzed saves, current writer
-compatibility, deleted-code uniqueness, schema constraints, empty-schema rollback, and
-refusal of a destructive rollback. Backfill and database-trigger tests are removed.
+The prepared PostgreSQL suite covers removal of obsolete columns, required submission
+codes, free/prompted unanalyzed saves, deleted-code uniqueness, schema constraints,
+empty-schema rollback, and refusal of rollback after submissions exist.
 Service locking, stale-result rejection, revision increments, and timestamp updates need
 application-level coverage when implemented in phase 3.
 

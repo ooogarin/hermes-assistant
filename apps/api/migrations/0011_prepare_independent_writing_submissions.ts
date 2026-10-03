@@ -2,13 +2,16 @@ import type { DatabaseTransaction } from '../src/core/database/database.types';
 
 export const up = async (trx: DatabaseTransaction): Promise<void> => {
   // Writing data is assumed empty; this migration only changes the schema.
+  await trx`DROP INDEX idx_writing_submissions_material`;
+
   await trx`
     ALTER TABLE writing_submissions
     ALTER COLUMN material_id DROP NOT NULL,
-    ALTER COLUMN submission_number DROP NOT NULL,
+    DROP COLUMN submission_number,
+    DROP COLUMN submitted_at,
     ALTER COLUMN estimated_level DROP NOT NULL,
     ALTER COLUMN analysis DROP NOT NULL,
-    ADD COLUMN code TEXT,
+    ADD COLUMN code TEXT NOT NULL,
     ADD COLUMN estimated_topic TEXT,
     ADD COLUMN estimated_genre TEXT,
     ADD COLUMN estimated_tags TEXT[],
@@ -19,16 +22,17 @@ export const up = async (trx: DatabaseTransaction): Promise<void> => {
     ) STORED NOT NULL,
     ADD CONSTRAINT uq_writing_submissions_code UNIQUE (code),
     ADD CONSTRAINT chk_writing_submissions_code
-      CHECK (code IS NULL OR code ~ '^WS-[0-9]{8}-[0-9]{3,}$'),
+      CHECK (code ~ '^WS-[0-9]{8}-[0-9]{3,}$'),
     ADD CONSTRAINT chk_writing_submissions_revision CHECK (revision > 0),
     ADD CONSTRAINT chk_writing_submissions_original_text
       CHECK (original_text ~ '[^[:space:]]'),
     ADD CONSTRAINT chk_writing_submissions_analysis_object
       CHECK (analysis IS NULL OR JSONB_TYPEOF(analysis) = 'object'),
     ADD CONSTRAINT chk_writing_submissions_analysis_time
-      CHECK (analyzed_at IS NULL OR analysis IS NOT NULL),
-    ADD CONSTRAINT chk_writing_submissions_legacy_number
-      CHECK (submission_number IS NULL OR material_id IS NOT NULL)
+      CHECK (
+        (analysis IS NULL AND analyzed_at IS NULL)
+        OR (analysis IS NOT NULL AND analyzed_at IS NOT NULL)
+      )
   `;
 
   await trx`
@@ -44,40 +48,25 @@ export const up = async (trx: DatabaseTransaction): Promise<void> => {
 };
 
 export const down = async (trx: DatabaseTransaction): Promise<void> => {
-  // Block concurrent writes while checking whether the old schema can represent every row.
+  // Rollback restores removed columns only while the submissions table is empty.
   await trx`LOCK TABLE writing_submissions IN ACCESS EXCLUSIVE MODE`;
 
-  await trx`
-    DO $$
-    BEGIN
-      IF EXISTS (
-        SELECT
-          1
-        FROM writing_submissions
-        WHERE code IS NOT NULL
-          OR material_id IS NULL
-          OR submission_number IS NULL
-          OR estimated_level IS NULL
-          OR analysis IS NULL
-          OR estimated_topic IS NOT NULL
-          OR estimated_genre IS NOT NULL
-          OR estimated_tags IS NOT NULL
-          OR analyzed_at IS NOT NULL
-      ) THEN
-        RAISE EXCEPTION USING
-          ERRCODE = '55000',
-          MESSAGE = 'Writing rollback requires preserving submissions that cannot fit the legacy schema';
-      END IF;
-    END;
-    $$
+  const rows = await trx<Array<{ id: number }>>`
+    SELECT
+      id
+    FROM writing_submissions
+    LIMIT 1
   `;
+
+  if (rows.length > 0) {
+    throw new Error('Writing rollback requires an empty writing_submissions table.');
+  }
 
   await trx`DROP INDEX idx_writing_submissions_active_material_created`;
   await trx`DROP INDEX idx_writing_submissions_active_created`;
 
   await trx`
     ALTER TABLE writing_submissions
-    DROP CONSTRAINT chk_writing_submissions_legacy_number,
     DROP CONSTRAINT chk_writing_submissions_analysis_time,
     DROP CONSTRAINT chk_writing_submissions_analysis_object,
     DROP CONSTRAINT chk_writing_submissions_original_text,
@@ -93,7 +82,15 @@ export const down = async (trx: DatabaseTransaction): Promise<void> => {
     DROP COLUMN code,
     ALTER COLUMN analysis SET NOT NULL,
     ALTER COLUMN estimated_level SET NOT NULL,
-    ALTER COLUMN submission_number SET NOT NULL,
-    ALTER COLUMN material_id SET NOT NULL
+    ALTER COLUMN material_id SET NOT NULL,
+    ADD COLUMN submission_number INTEGER NOT NULL CHECK (submission_number > 0),
+    ADD COLUMN submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD UNIQUE (material_id, submission_number)
+  `;
+
+  await trx`
+    CREATE INDEX idx_writing_submissions_material
+    ON writing_submissions (material_id, submission_number)
+    WHERE deleted_at IS NULL
   `;
 };
