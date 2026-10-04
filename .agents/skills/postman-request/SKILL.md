@@ -22,7 +22,7 @@ Read [references/request-style.md](references/request-style.md) before construct
 - Use the Postman environment named `Hermes` for `DOMAIN` and `INTERNAL_API_KEY`. Do not add collection-level environment variables that duplicate those values, and never place a real secret in the collection.
 - Put shared authentication on the nearest supported parent folder. Requests must not define their own auth or headers. Raw JSON bodies rely on Postman's generated content type header.
 - For every request body you create or modify, put the payload in Postman's Body as raw JSON. Store a syntactically valid JSON document, not a JavaScript object, and set the raw language to JSON when the mutation tool exposes that option. Map this to the tool's raw-body fields (for example, `dataMode: "raw"` and `rawModeData`). Never put a body payload in query parameters, headers, form-data, or URL-encoded fields. Leave Body empty when the endpoint has no request body; do not invent one.
-- Do not create documentation pages, documentation sections, request descriptions, saved examples, test scripts, or pre-request scripts unless the user explicitly asks for them.
+- Treat request descriptions as documentation. Do not create or edit documentation pages, documentation sections, request descriptions, saved examples, test scripts, pre-request scripts, or standalone helper scripts unless the user explicitly asks for those artifacts. A request to add, sync, refresh, or clean Postman requests does not by itself authorize docs or scripts.
 - If the available Postman mutation API cannot set folder-level auth, use the nearest supported parent scope as a safe fallback and report that limitation; never put auth on every request.
 
 ## Preflight

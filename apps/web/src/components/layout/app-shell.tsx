@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Feather, LogOut, Menu, X } from 'lucide-react';
+import { ChevronDown, Feather, LogOut, Menu, PanelLeft, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/auth/auth-context';
@@ -17,16 +17,18 @@ type NavigationProps = {
 const sidebarStorageKey = 'hermes-sidebar-expanded';
 
 const NavigationLabel = ({ collapsed, label }: { collapsed: boolean; label: string }) => (
-  <span className={classNames('min-w-0 flex-1 truncate', collapsed && 'sr-only')}>{label}</span>
+  <span className='sidebar-label' data-collapsed={collapsed}>
+    {label}
+  </span>
 );
 
 const navItemClassName =
-  (collapsed: boolean) =>
+  (child = false) =>
   ({ isActive }: { isActive: boolean }): string =>
     classNames(
-      'relative flex min-h-12 items-center rounded-control text-sm font-medium transition-colors',
-      collapsed ? 'justify-center px-3' : 'gap-3 px-4',
-      isActive ? 'bg-primary-subtle text-primary' : 'text-ink hover:bg-surface-subtle',
+      'sidebar-nav-row rounded-control text-sm font-medium',
+      child && 'sidebar-nav-child',
+      isActive ? 'sidebar-nav-active text-white' : 'text-ink hover:bg-surface-subtle',
     );
 
 const NavigationGroup = ({
@@ -42,7 +44,9 @@ const NavigationGroup = ({
   const Icon = item.icon;
 
   useEffect(() => {
-    if (groupIsActive) setExpanded(true);
+    if (groupIsActive) {
+      setExpanded(true);
+    }
   }, [groupIsActive]);
 
   const toggle = () => {
@@ -55,43 +59,40 @@ const NavigationGroup = ({
   };
 
   return (
-    <li>
+    <li className='flow-root'>
       <button
         type='button'
         className={classNames(
-          'relative flex min-h-12 w-full items-center rounded-control text-left text-sm font-medium transition-colors',
-          collapsed ? 'justify-center px-3' : 'gap-3 px-4',
+          'sidebar-nav-row rounded-control text-left text-sm font-medium',
           groupIsActive ? 'text-primary' : 'text-ink hover:bg-surface-subtle',
         )}
-        aria-controls={collapsed ? undefined : regionId}
-        aria-expanded={collapsed ? undefined : expanded}
+        aria-controls={expanded ? regionId : undefined}
+        aria-expanded={expanded}
         aria-label={collapsed ? item.label : undefined}
         onClick={toggle}
       >
         <Icon aria-hidden='true' size={21} strokeWidth={1.8} />
         <NavigationLabel collapsed={collapsed} label={item.label} />
-        {collapsed ? null : (
+        <span className='sidebar-label ml-auto' data-collapsed={collapsed}>
           <ChevronDown
             aria-hidden='true'
-            className={classNames('transition-transform', expanded && 'rotate-180')}
+            className={classNames('sidebar-chevron', expanded && 'rotate-180')}
             size={17}
           />
-        )}
+        </span>
       </button>
-      {!collapsed && expanded ? (
-        <ul id={regionId} className='ml-6 border-l border-border py-1 pl-3'>
+      {expanded ? (
+        <ul id={regionId} className='sidebar-submenu' data-collapsed={collapsed}>
           {item.children?.map((child) => (
             <li key={child.to}>
-              <NavLink className={navItemClassName(false)} to={child.to} onClick={onNavigate}>
-                {({ isActive }) => (
-                  <>
-                    <span
-                      className={classNames('size-1.5 rounded-full', isActive ? 'bg-primary' : 'bg-border-strong')}
-                      aria-hidden='true'
-                    />
-                    {child.label}
-                  </>
-                )}
+              <NavLink
+                aria-label={collapsed ? child.label : undefined}
+                className={navItemClassName(true)}
+                to={child.to}
+                onClick={onNavigate}
+              >
+                <span className='sidebar-dot' aria-hidden='true' />
+                <NavigationLabel collapsed={collapsed} label={child.label} />
               </NavLink>
             </li>
           ))}
@@ -122,7 +123,7 @@ const Navigation = ({ collapsed = false, onExpand, onNavigate }: NavigationProps
           <li key={item.label}>
             <NavLink
               aria-label={collapsed ? item.label : undefined}
-              className={navItemClassName(collapsed)}
+              className={navItemClassName()}
               to={item.to ?? '/'}
               end={item.to === '/'}
               onClick={onNavigate}
@@ -138,9 +139,9 @@ const Navigation = ({ collapsed = false, onExpand, onNavigate }: NavigationProps
 );
 
 const Brand = ({ collapsed = false }: { collapsed?: boolean }) => (
-  <div className={classNames('flex items-center text-primary', collapsed ? 'justify-center' : 'gap-2.5')}>
+  <div className='flex items-center gap-2.5 whitespace-nowrap text-primary'>
     <Feather aria-hidden='true' className='shrink-0' size={28} strokeWidth={1.8} />
-    <span className={classNames('font-display text-3xl font-semibold tracking-tight', collapsed && 'sr-only')}>
+    <span className='sidebar-label font-display text-3xl font-semibold tracking-tight' data-collapsed={collapsed}>
       Hermes
     </span>
   </div>
@@ -172,10 +173,7 @@ const LogoutAction = ({ collapsed = false, onError }: { collapsed?: boolean; onE
     <div className='border-t border-border pt-4'>
       <button
         type='button'
-        className={classNames(
-          'flex min-h-12 w-full items-center rounded-control text-sm font-medium text-ink hover:bg-surface-subtle',
-          collapsed ? 'justify-center' : 'gap-3 px-4',
-        )}
+        className='sidebar-nav-row rounded-control text-sm font-medium text-ink hover:bg-surface-subtle'
         aria-label={collapsed ? 'Keluar' : undefined}
         aria-busy={pending || undefined}
         disabled={pending}
@@ -183,7 +181,7 @@ const LogoutAction = ({ collapsed = false, onError }: { collapsed?: boolean; onE
         onClick={() => void handleLogout()}
       >
         <LogOut aria-hidden='true' size={21} strokeWidth={1.8} />
-        {collapsed ? null : pending ? 'Mengeluarkan…' : 'Keluar'}
+        <NavigationLabel collapsed={collapsed} label={pending ? 'Mengeluarkan…' : 'Keluar'} />
       </button>
       {error ? (
         <p className='mt-2 text-xs text-danger' role='alert'>
@@ -204,21 +202,21 @@ const DesktopSidebar = ({ expanded, onExpandedChange }: DesktopSidebarProps) => 
     <aside
       className={classNames(
         'fixed inset-y-0 left-0 z-30 hidden border-r border-border bg-surface',
-        'transition-[width] duration-200 ease-out motion-reduce:transition-none lg:block',
+        'app-sidebar lg:block',
         expanded ? 'w-(--sidebar-width)' : 'w-(--sidebar-collapsed-width)',
       )}
     >
       <button
         type='button'
-        className='absolute -right-3 top-7 z-20 grid size-7 place-items-center rounded-full border border-border bg-surface text-ink shadow-sm transition-colors hover:border-border-strong hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+        className='absolute -right-5 top-[27px] z-20 grid size-10 place-items-center rounded-control border border-border bg-surface text-ink shadow-sm transition-colors hover:border-border-strong hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
         aria-expanded={expanded}
         aria-label={expanded ? 'Ciutkan sidebar' : 'Buka sidebar'}
         onClick={() => onExpandedChange(!expanded)}
       >
-        {expanded ? <ChevronLeft aria-hidden='true' size={16} /> : <ChevronRight aria-hidden='true' size={16} />}
+        <PanelLeft aria-hidden='true' size={24} strokeWidth={1.8} />
       </button>
-      <div className={classNames('flex h-full flex-col overflow-hidden py-7', expanded ? 'px-4' : 'px-3')}>
-        <div className={classNames('pb-9', expanded && 'px-3')}>
+      <div className='flex h-full flex-col overflow-hidden px-4 pb-4 pt-7'>
+        <div className='sidebar-brand'>
           <Brand collapsed={!expanded} />
         </div>
         <Navigation collapsed={!expanded} onExpand={() => onExpandedChange(true)} />
@@ -279,7 +277,7 @@ export const AppShell = () => {
   }, [drawerOpen]);
 
   return (
-    <div className='min-h-screen bg-page text-ink'>
+    <div className='app-shell min-h-screen bg-page text-ink'>
       <DesktopSidebar expanded={sidebarExpanded} onExpandedChange={setSidebarExpanded} />
 
       <header className='sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-surface/95 px-4 backdrop-blur lg:hidden'>
@@ -318,7 +316,7 @@ export const AppShell = () => {
 
       <main
         className={classNames(
-          'transition-[margin] duration-200 ease-out motion-reduce:transition-none',
+          'app-shell-content',
           sidebarExpanded ? 'lg:ml-(--sidebar-width)' : 'lg:ml-(--sidebar-collapsed-width)',
         )}
       >
