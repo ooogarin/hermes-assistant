@@ -6,7 +6,7 @@ Read the relevant documents before changing code:
 2. `docs/coding-conventions.md` — code, database, migration, and test rules.
 3. `docs/feature-docs/` — only when working on the matching domain.
 
-If documents conflict, the newest explicit user decision wins. Update the affected documents together. Do not invent domain behavior absent from its feature design; mark it as an open decision.
+If documents conflict, the newest explicit user decision wins. Do not invent domain behavior absent from its feature design; mark it as an open decision. Documentation changes require an explicit user request; implementation work does not by itself authorize writing or updating docs.
 
 ## Non-negotiable rules
 
@@ -17,6 +17,7 @@ If documents conflict, the newest explicit user decision wins. Update the affect
 - Validate every external input with Zod.
 - Never expose or log secrets, SQL internals, database details, or client-visible stack traces.
 - Preserve unrelated user changes and avoid unrelated refactors.
+- Do not create documentation, request descriptions, or standalone or embedded scripts (including Postman test or pre-request scripts) unless the user explicitly asks for them. A feature request authorizes the source code and migrations needed to implement it, but not supplemental docs or scripts.
 - Always write simple, readable code: separate logical steps with blank lines, use braced control-flow blocks, and give intermediate operations and long conditions clear variable names. Follow the readability rules in `docs/coding-conventions.md`.
 
 ## Change workflow
@@ -25,7 +26,7 @@ If documents conflict, the newest explicit user decision wins. Update the affect
 2. State assumptions that affect behavior, schema, API, or scope.
 3. Make the smallest cohesive change and add proportionate tests.
 4. Run available formatting, linting, type checks, and relevant tests.
-5. Update docs when behavior, schema, API, or architecture changes.
+5. If behavior, schema, API, or architecture changes, identify related docs that may need updates, but edit them only when the user explicitly asks.
 
 ## Git naming
 

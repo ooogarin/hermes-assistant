@@ -11,7 +11,7 @@ Work from the repository root. Preserve unrelated changes and keep the change as
 
 Use this skill only when the task requires writing or changing production backend code in `src/modules/`, directly related shared or core code, or matching database migrations.
 
-Tests and documentation are completion work for a production-code change, not standalone reasons to activate this skill. Do not use it for code review, general cleanup, test-only work, documentation-only work, or work outside the backend module boundary.
+Tests may be part of completing a production-code change, but documentation and auxiliary scripts are opt-in. Do not create or edit docs or standalone scripts unless the user explicitly asks, even when behavior, schema, or API changes. Report any related docs that may now be stale. This does not prevent changing production source or migrations required by the requested feature. Do not use this skill for code review, general cleanup, test-only work, documentation-only work, or work outside the backend module boundary.
 
 ## Read before editing
 
@@ -97,6 +97,6 @@ Bun module mocks can leak across test files in one process. Keep service-rule te
 3. Run `bun run verify` before handoff.
 4. Run `bun run test:integration` when a safe PostgreSQL test database is configured.
 5. Run `git diff --check` and inspect the final diff for unrelated changes.
-6. Update the matching feature document whenever behavior, schema, API, or an error contract changes.
+6. Do not update docs unless explicitly requested. When behavior, schema, API, or an error contract changes, identify the related doc paths that may need updates in the final report.
 
 Report passed, failed, and skipped tests separately. A skipped PostgreSQL suite is not evidence that its SQL passed.

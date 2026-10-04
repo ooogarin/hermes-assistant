@@ -1,0 +1,146 @@
+.app-shell {
+  --sidebar-motion-duration: 380ms;
+  --sidebar-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.app-sidebar {
+  transition: width var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.app-shell-content {
+  transition: margin-left var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 40px;
+  margin: 0 12px 29px;
+}
+
+/* Keep label widths and icon positions fixed; the sidebar clips the text as it narrows. */
+.sidebar-label {
+  flex-shrink: 0;
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(0);
+  transition:
+    opacity 160ms ease 90ms,
+    transform var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.sidebar-brand .sidebar-label {
+  font-size: 32px;
+  line-height: 1;
+  letter-spacing: -0.8px;
+}
+
+.sidebar-label[data-collapsed="true"] {
+  opacity: 0;
+  transform: translateX(-8px);
+  transition-delay: 0ms;
+}
+
+.sidebar-nav-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.sidebar-nav-row > svg {
+  flex-shrink: 0;
+}
+
+.sidebar-chevron {
+  transition: transform var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+.sidebar-nav-active {
+  background: var(--color-primary);
+}
+
+.sidebar-submenu {
+  position: relative;
+  margin: 6px 0 3px;
+  padding: 4px 0;
+}
+
+/* The rail and dot centers share the English icon's fixed horizontal position. */
+.sidebar-submenu::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 26px;
+  width: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+
+.sidebar-nav-child {
+  isolation: isolate;
+  gap: 19.5px;
+  padding-left: 23.5px;
+}
+
+.sidebar-nav-child::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    inset var(--sidebar-motion-duration) var(--sidebar-motion-ease),
+    opacity 160ms ease;
+}
+
+.sidebar-nav-child.sidebar-nav-active {
+  background: transparent;
+}
+
+.sidebar-nav-child.sidebar-nav-active::before {
+  opacity: 1;
+}
+
+.sidebar-submenu[data-collapsed="true"] .sidebar-nav-child::before {
+  inset: 10px calc(100% - 40.5px) 10px 12.5px;
+}
+
+.sidebar-dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+}
+
+.sidebar-nav-active .sidebar-dot {
+  background: white;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar,
+  .app-shell-content,
+  .sidebar-label,
+  .sidebar-nav-row,
+  .sidebar-chevron,
+  .sidebar-nav-child::before {
+    transition: none;
+  }
+}
