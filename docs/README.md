@@ -10,6 +10,7 @@ Read the relevant document before changing code or defining a feature.
 | [coding-conventions.md](coding-conventions.md) | Code, database, migration, and test conventions |
 | [auth-design.md](auth-design.md) | Single-owner JWT auth, static password ENV, API contracts, and frontend integration |
 | [frontend.md](frontend.md) | React report frontend, local proxy, and security boundary |
+| [frontend-deployment.md](frontend-deployment.md) | Panduan deploy frontend pada VPS Ubuntu dengan Caddy, HTTPS, proxy API, verifikasi, update, dan rollback |
 | [frontend-implementation-plan.md](frontend-implementation-plan.md) | Frontend foundation, delivery phases, blockers, testing, and definition of done |
 | [frontend-screens.md](frontend-screens.md) | Cross-cutting screen, navigation, state, and accessibility conventions |
 | [frontend-screens/auth.md](frontend-screens/auth.md) | Login, JWT status check, logout, responsive layout, and accessible feedback |

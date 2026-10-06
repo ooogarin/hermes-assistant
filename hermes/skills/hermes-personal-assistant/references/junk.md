@@ -27,9 +27,10 @@ Use a compact card for a saved item:
 
 If there is no title, write `*Judul:* Tanpa judul`. For search results, use
 `🔎 *Hasil Pencarian Junk*` and show one concise item per result with code, title,
-category, tags, URL, and date. For a resolved PATCH or DELETE target, show the code
-and intended effect before waiting for confirmation. Do not expose payloads, endpoint
-names, internal status, or raw diagnostic output by default.
+category, tags, URL, and date. For a directly requested single-item PATCH or DELETE,
+use the current API-resolved code and intended effect; no extra confirmation is needed
+when the target is clear. Do not expose payloads, endpoint names, internal status, or
+raw diagnostic output by default.
 
 ## Create Flow
 
@@ -72,8 +73,10 @@ Preserve the original input, including whitespace, in `raw_text`. Put a cleaned/
 
 Save immediately with suggested metadata and return the generated `JK-...` code. Patch supports `title`, `category`, `content_text`, `source_url`, `source_name`, and a full replacement `tags` array; `raw_text` is immutable.
 
-Target resolution follows Notes: explicit code, then current latest item or keyword search. After one match, show the `JK-...` code and intended mutation, then wait for
-explicit confirmation; ask for a code when multiple match, and report no match honestly. Never reclassify Junk as Notes.
+Target resolution follows Notes: explicit code, then current latest item or keyword
+search. After one match, use its `JK-...` code for the directly requested mutation.
+Ask the user to choose when multiple items match, and report no match honestly. Never
+reclassify Junk as Notes.
 
 ## Search, Update, and Delete Flow
 
@@ -84,8 +87,8 @@ explicit confirmation; ask for a code when multiple match, and report no match h
   and date.
 - Explicit `JK-...` is the preferred mutation target. Otherwise search a keyword or
   resolve the latest active item through the API.
-- A keyword correction/delete requires one resolved match plus explicit confirmation
-  after showing its code and intended effect. For multiple matches, show codes and titles and ask the user to choose.
+- A keyword correction/delete can proceed when exactly one current item matches. For
+  multiple matches, show codes and titles and ask the user to choose.
 - PATCH supports `title`, `category`, `content_text`, `source_url`, `source_name`, and a full
   replacement `tags` array. `raw_text` is immutable.
 - DELETE is a soft delete; do not describe it as permanent file removal.

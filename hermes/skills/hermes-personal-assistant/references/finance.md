@@ -105,9 +105,10 @@ the current list before mutating anything.
   target; do not use an old chat reference.
 - A PATCH may contain only `amount`, `category_code`, `name`, `location`, and `note`.
   Date, type, raw text, and daily number cannot be changed through this MVP.
-- Before every PATCH or DELETE, show the resolved stable `date + daily_number`, the
-  intended change or deletion, and wait for explicit confirmation. For multiple items
-  or a broad request, show every candidate and affected count before confirmation.
+- For a clear single-item PATCH or DELETE, resolve the current target and proceed
+  without an extra confirmation. For multiple items, an old batch, a broad request, or
+  a large or sensitive change, show every affected stable `date + daily_number`, the
+  intended effect, and wait for explicit confirmation.
 
 After a successful mutation, report the stable date/daily-number reference. A failed
 or ambiguous mutation must not be described as completed.
@@ -139,9 +140,9 @@ daily number; use the number returned by the API.
 For a list, use `📋 *Transaksi — <tanggal>*` and show one compact item per result.
 For a summary, use `📊 *Ringkasan Keuangan*`, then show the period, mode, returned
 total, and returned category breakdown. Use only values returned by the API; omit a
-field that is not returned instead of calculating or guessing it. For PATCH or DELETE,
-first show the target and intended effect in the confirmation format; after success,
-show the concise result and stable `date / daily_number` reference.
+field that is not returned instead of calculating or guessing it. After a PATCH or
+DELETE, show the concise result and stable `date / daily_number` reference. When the
+operation requires confirmation, show the target and intended effect first.
 
 ## Preview-Only Finance Requests
 
@@ -223,7 +224,9 @@ Patch supports only `amount`, `category_code`, `name`, `location`, and `note`. D
 In API responses, `daily_number` is stable for a date; `display_number` is temporary
 and may change. When the user refers to a displayed number or “latest”, fetch the
 current list for that date immediately before the mutation and map it to
-`daily_number`. The route parameter remains the numeric value itself. Then show the
-resolved target and wait for explicit confirmation before every PATCH or DELETE.
+`daily_number`. The route parameter remains the numeric value itself. Proceed with a
+clear single-item request after resolving the target. For multiple items, an old batch,
+a broad request, or a large or sensitive change, show the affected targets and wait
+for explicit confirmation.
 
 For reports, call `/summary` and narrate returned totals. Never sum chat messages yourself.

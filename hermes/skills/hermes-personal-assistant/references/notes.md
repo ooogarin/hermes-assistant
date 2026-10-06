@@ -27,10 +27,10 @@ Use a compact card for a saved note:
 ```
 
 For search results, use `🔎 *Hasil Pencarian Catatan*` and show one concise item per
-result with its code, title, category, tags, and date. If exactly one result is
-resolved for a later mutation, show its code and the proposed change before waiting
-for confirmation. Do not include payloads, endpoint names, internal status, or full
-raw text unless the user asks for them.
+result with its code, title, category, tags, and date. For a directly requested
+single-item mutation, use the current API-resolved code and intended change; no extra
+confirmation is needed when the target is clear. Do not include payloads, endpoint
+names, internal status, or full raw text unless the user asks for them.
 
 ## Create Flow
 
@@ -108,9 +108,10 @@ Never move a message between Notes and Junk by inference; topic choice is author
   delete when current context matters.
 - `latest note` means the newest active result from the API, not the newest message in
   chat history.
-- After a keyword or latest-note lookup resolves exactly one item, show its `NT-...`
-  code and the intended PATCH or DELETE, then wait for explicit confirmation. With
-  multiple matches, show concise codes/titles and ask the user to choose. With no match, report that honestly.
+- After a keyword or latest-note lookup resolves exactly one item, use its current
+  `NT-...` code and perform the directly requested PATCH or DELETE. With multiple
+  matches, show concise codes/titles and ask the user to choose. With no match, report
+  that honestly.
 - PATCH only the fields the user asked to change. A tags patch replaces the complete
   tag list, so first preserve existing tags when the user asks to add/remove one tag.
 - DELETE is a soft delete. Never claim permanent physical removal.

@@ -1,6 +1,6 @@
 ---
 name: hermes-backend-modules
-description: Write or modify production code for Hermes backend domain modules built with Bun, Hono, Zod, native bun:sql, and PostgreSQL. Use when implementing features, fixes, migrations, or API behavior under src/modules; do not use for review-only, cleanup-only, test-only, documentation-only, Hermes Agent, Telegram, frontend, or deployment work.
+description: Write or modify production code for Hermes API domain modules built with Bun, Hono, Zod, native bun:sql, and PostgreSQL. Use when implementing features, fixes, migrations, or API behavior under apps/api/src/modules or apps/api/migrations; do not use for review-only, cleanup-only, test-only, documentation-only, Hermes Agent, Telegram, frontend, or deployment work.
 ---
 
 # Hermes Backend Modules
@@ -9,7 +9,7 @@ Work from the repository root. Preserve unrelated changes and keep the change as
 
 ## Scope
 
-Use this skill only when the task requires writing or changing production backend code in `src/modules/`, directly related shared or core code, or matching database migrations.
+Use this skill only when the task requires writing or changing production backend code in `apps/api/src/modules/`, directly related API shared or core code, or matching migrations in `apps/api/migrations/`.
 
 Tests may be part of completing a production-code change, but documentation and auxiliary scripts are opt-in. Do not create or edit docs or standalone scripts unless the user explicitly asks, even when behavior, schema, or API changes. Report any related docs that may now be stale. This does not prevent changing production source or migrations required by the requested feature. Do not use this skill for code review, general cleanup, test-only work, documentation-only work, or work outside the backend module boundary.
 
@@ -17,11 +17,10 @@ Tests may be part of completing a production-code change, but documentation and 
 
 Read `AGENTS.md`, then the relevant repository documents:
 
-1. `docs/tech-stack.md`
-2. `docs/architecture.md`
-3. `docs/coding-conventions.md`
-4. `docs/api-conventions.md`
-5. Only the matching file in `docs/feature-docs/`
+1. `docs/architecture.md`
+2. `docs/coding-conventions.md`
+3. `docs/api-conventions.md`
+4. Only the matching file in `docs/feature-docs/`
 
 Treat the feature document as the source of truth for domain behavior. Do not infer missing behavior from another feature. If the requested behavior is not decided there, identify it as an open decision instead of silently inventing it.
 
@@ -29,7 +28,7 @@ Treat the feature document as the source of truth for domain behavior. Do not in
 
 Use `src/modules/finance/` to calibrate file responsibilities and code style, while preserving intentional differences documented for another domain.
 
-Every full module normally contains:
+Every full module normally lives under `apps/api/src/modules/<module>/` and contains:
 
 ```text
 <module>.route.ts
@@ -52,6 +51,7 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 - Services own business rules, target resolution, workflows, and transaction boundaries. They never receive Hono context.
 - Repositories are the only domain files allowed to access the database. Use parameterized raw SQL and explicit selected columns.
 - Types files own reusable request, service, repository payload, and row contracts. Keep those groups visibly separated.
+- Keep independently maintained subfeatures in nested folders such as `apps/api/src/modules/reading/reading-setting/`. Parent routes mount child routes, and parent services call child services rather than child repositories; follow `docs/architecture.md` for established module layouts.
 
 ## Preserve repository invariants
 
@@ -63,7 +63,9 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 - Use `countWords` for Reading and Writing word counts.
 - Name PostgreSQL transaction executor variables and parameters `trx`; reserve `transaction` for Finance domain values.
 - Generate daily codes inside a transaction with the module's PostgreSQL advisory-lock namespace.
-- Serialize scoped `MAX + 1` allocation, such as Finance daily numbers or Writing submission numbers, before inserting.
+- Serialize scoped `MAX + 1` allocation, such as Finance daily numbers or Writing
+  submission codes, before inserting. Writing submissions use their `WS-...` code as
+  identity; the schema has no `submission_number` field.
 - For PATCH SQL, distinguish an omitted field from an explicit nullable value.
 - Open a service transaction only for dependent writes. Pass the same reserved connection to every participating repository operation, clear the local reference before commit, and preserve the original error if rollback fails.
 - If commit fails, attempt rollback before releasing the connection and preserve the original commit error.
@@ -71,7 +73,7 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 
 ## Migrations
 
-- Name migrations `<four-digit-sequence>_<description>.ts` and export `up` and `down`.
+- Put migrations in `apps/api/migrations/`, name them `<four-digit-sequence>_<description>.ts`, and export `up` and `down`.
 - Use readable multiline raw SQL with explicit constraints and indexes.
 - Do not edit a migration known to have been applied. Add a new migration instead.
 - Keep database constraints aligned with service validation when the invariant must survive all write paths.

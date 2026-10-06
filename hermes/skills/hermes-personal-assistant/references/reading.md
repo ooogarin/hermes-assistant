@@ -56,47 +56,36 @@ expected answers.
 
 ## Telegram Material Format
 
-For a successfully created material, use this compact, scannable format. Do not add a
-process narration such as “Bacaan B1 tema keuangan jadi” before the metadata, and do
-not expose expected answers.
+For a successfully created material, follow the Reading feature design's compact
+format. Do not add process narration before the metadata or expose expected answers.
 
 ```text
-✅ *RD-20260921-001*
-*Judul:* A Simple Plan for Your Money
-*Tipe:* Informative article
-*Level:* B1
-*Panjang:* 275 kata • 3 paragraf
+📖 Reading RD-20260726-001 — 26 Jul 2026
+Topic: Earthquake in Japan (News) · Level A1 · ~280 words
+Tags: news, natural-disaster, japan
 
-📖 *A Simple Plan for Your Money*
+[reading passage, preserving paragraph breaks]
 
-<content_text, preserving its paragraph breaks>
-
-────────
-
-✏️ *Pertanyaan*
-1. <question_text>
-2. <question_text>
-3. <question_text>
-
-────────
-
-💡 *Level B1*
-Kosakata kunci: budget, income, expenses, emergency fund, interest.
-_Pertanyaan opsional: boleh dijawab sebagian atau dilewati._
+Questions:
+1. When did the event happen?
+2. Where did it happen?
+3. What was the magnitude?
 ```
 
 Rules for this format:
 
-- The first line is the API-returned `RD-...` code, not a generic success sentence.
-- Use the API-returned `word_count` for `Panjang`; never estimate it. State the number
-  of paragraphs only when it is directly clear from the generated or returned `content_text`; otherwise omit the paragraph portion.
-- Preserve blank lines between paragraphs. Do not put the passage in a code block.
-- Use `Tipe`, `Level`, and `Panjang` in Indonesian; preserve the title, genre, passage, questions, and vocabulary in English when the material is English.
-- Keep the vocabulary note short: at most five relevant words or phrases. It is a learning aid, not a second explanation of the passage.
+- Use the API-returned material code and date. Include the title, genre, level, returned
+  `word_count`, and returned tags in the metadata; do not estimate the count.
+- Preserve blank lines between passage paragraphs. Do not put the passage in a code
+  block.
+- Keep the title, genre, passage, tags, and questions in English when the material is
+  English.
+- Omit the entire `Questions` section when the material has no questions. Otherwise,
+  present the questions as a supplement and never imply that users must answer them.
 - The ordinary response contains no endpoint, payload, internal status, tool trace, answer key, or grading claim.
 - For a default preview, use the same layout but replace the first line with
-  `📝 *Preview — belum disimpan*` and do not invent an `RD-...` code. For payload-only
-  and full-preview requests, follow the parent skill's preview rules.
+  `📝 Preview — belum disimpan` and do not invent an `RD-...` code or date. For
+  payload-only and full-preview requests, follow the parent skill's preview rules.
 
 For cron, fetch settings and read `default_level`, `default_word_count`, `min_word_count`, `max_word_count`, and `default_question_count` from the response. Use those defaults in the `snake_case` create request, set `source: "cron"`, and choose a fresh topic/genre when possible. For a user request, use provided one-off overrides without changing settings unless explicitly asked; set `source: "request"`.
 

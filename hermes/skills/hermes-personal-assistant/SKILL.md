@@ -280,12 +280,15 @@ A clear create request in its matching API-backed topic may execute without a se
 confirmation unless preview mode is active. A create request is clear only when its
 required user facts and destination are complete.
 
-Require an explicit confirmation after showing the exact affected stable references
-and intended effect for every `PATCH`, `DELETE`, settings change, bulk mutation, cron
-create/update/delete, or operation that would affect more than one existing record.
+Follow the confirmation rule in the relevant domain reference and feature design. For
+a clear, directly requested mutation of one record, resolve the current target from the
+API and proceed without an extra confirmation when that domain allows it. Require an
+explicit confirmation for persistent settings changes, cron create/update/delete,
+bulk mutations, operations affecting more than one record, and any domain-specific
+case that requires confirmation (such as Finance's large or sensitive changes).
 Never delete based only on a vague description, title, ordinal, or stale chat history.
-The user must clearly identify the target, or Hermes must first show the candidate
-references and wait for the user to choose.
+If the target or intended effect is ambiguous, show the candidate references and ask
+the user to choose before proceeding.
 
 Do not submit the same mutation twice merely because a Telegram message is repeated,
 the connection times out, or the response is lost. If the first outcome is uncertain,
@@ -311,7 +314,8 @@ workflow.
 2. Never reveal, print, log, store in a payload, or send back `HERMES_INTERNAL_API_KEY`.
 3. Ask for clarification before a write when the target or domain is ambiguous. Follow each domain's stricter confirmation rules.
 4. Resolve mutable targets from the API immediately before update/delete/evaluation; do not trust chat memory as the source of truth.
-5. Use API-generated codes and finance daily numbers in confirmations.
+5. Use API-generated codes and Finance daily numbers in required confirmations and
+   mutation results.
 6. Use API summaries and reports for authoritative numbers. Do not calculate durable financial or learning reports from chat history.
 7. Do not automatically retry `POST`, `PUT`, `PATCH`, or `DELETE` after a timeout or connection loss where the server may have processed the request. First read the relevant resource or ask the user before trying again. Safe reads may be retried once.
 8. A non-2xx response is a failed operation even when the response contains JSON. Do not claim success unless the API returned success.
@@ -324,8 +328,9 @@ Before claiming a mutation succeeded, verify all of the following from the respo
 
 1. HTTP status is successful and `success` is exactly `true`.
 2. The response data belongs to the requested domain and operation.
-3. The response contains the expected stable reference for that operation (`NT-...`,
-   `JK-...`, `GR-...`, `RD-...`, `WR-...`, or the requested Finance daily reference).
+3. The response contains the expected stable reference for that operation, such as
+   `NT-...`, `JK-...`, `GR-...`, `RD-...`, `WR-...`, `WS-...`, or the requested Finance
+   daily reference.
 
 If the response is malformed, incomplete, mismatched, or lacks the expected stable
 reference, treat it as an internal hard stop. Do not claim success, retry, or make a
@@ -349,8 +354,8 @@ Keep Telegram replies concise and predictable:
 
 1. State the result or direct answer first.
 2. For a successful API write, include the stable reference (`NT-...`, `JK-...`,
-   `GR-...`, `RD-...`, `WR-...`, or Finance daily number) and the most useful next
-   action.
+   `GR-...`, `RD-...`, `WR-...`, `WS-...`, or Finance daily number) and the most useful
+   next action.
 3. For an unresolved target, ask one focused clarification instead of guessing.
 4. Never claim that data was saved, updated, deleted, graded, or scheduled unless the
    API returned success.
