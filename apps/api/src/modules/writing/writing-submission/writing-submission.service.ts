@@ -3,6 +3,7 @@ import { AppError } from '../../../core/errors/app-error';
 import { notFoundError } from '../../../core/errors/not-found-error';
 import { formatPublicCode } from '../../../shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../../../shared/date/date';
+import { formatTaxonomyLabel } from '../../../shared/text/taxonomy';
 import { countWords } from '../../../shared/text/word-count';
 import { getMaterialReference } from '../writing-material/writing-material.service';
 import * as writingSubmissionRepository from './writing-submission.repository';
@@ -75,8 +76,8 @@ export const listSubmissions = async (input: ListWritingSubmissionsRequest): Pro
       text_excerpt: row.text_excerpt,
       word_count: row.word_count,
       estimated_topic: row.estimated_topic,
-      estimated_genre: row.estimated_genre,
-      estimated_tags: row.estimated_tags,
+      estimated_genre: toEstimatedGenreLabel(row.estimated_genre),
+      estimated_tags: toEstimatedTagLabels(row.estimated_tags),
       estimated_level: row.estimated_level,
       analysis_status: row.analysis_status,
       created_at: toIsoTimestamp(row.created_at),
@@ -218,8 +219,8 @@ const toWritingSubmission = (row: WritingSubmissionRow): WritingSubmission => ({
   original_text: row.original_text,
   word_count: row.word_count,
   estimated_topic: row.estimated_topic,
-  estimated_genre: row.estimated_genre,
-  estimated_tags: row.estimated_tags,
+  estimated_genre: toEstimatedGenreLabel(row.estimated_genre),
+  estimated_tags: toEstimatedTagLabels(row.estimated_tags),
   estimated_level: row.estimated_level,
   analysis_status: row.analysis === null ? 'not_analyzed' : 'analyzed',
   analysis: row.analysis,
@@ -227,6 +228,13 @@ const toWritingSubmission = (row: WritingSubmissionRow): WritingSubmission => ({
   created_at: toIsoTimestamp(row.created_at),
   updated_at: toIsoTimestamp(row.updated_at),
 });
+
+// Stored metadata stays lowercase; only responses capitalize the labels.
+const toEstimatedGenreLabel = (estimated_genre: string | null): string | null =>
+  estimated_genre === null ? null : formatTaxonomyLabel(estimated_genre);
+
+const toEstimatedTagLabels = (estimated_tags: string[] | null): string[] | null =>
+  estimated_tags === null ? null : estimated_tags.map(formatTaxonomyLabel);
 
 const toPaginationMeta = (totalValue: number | string, page: number, limit: number): WritingPaginationMeta => {
   const total = Number(totalValue);

@@ -147,8 +147,8 @@ const writingSubmission: WritingSubmission = {
   original_text: 'I go yesterday.',
   word_count: 3,
   estimated_topic: 'Work',
-  estimated_genre: 'journal',
-  estimated_tags: ['work'],
+  estimated_genre: 'Journal',
+  estimated_tags: ['Work'],
   estimated_level: 'A1',
   analysis_status: 'analyzed',
   analysis: writingAnalysis,
@@ -177,7 +177,12 @@ const writingMaterialRow: WritingMaterialRow = {
   source: writingMaterial.source,
 };
 
-const writingSubmissionRow: WritingSubmissionRow = { ...writingSubmission };
+// The stored row keeps lowercase metadata; service responses format the labels.
+const writingSubmissionRow: WritingSubmissionRow = {
+  ...writingSubmission,
+  estimated_genre: 'journal',
+  estimated_tags: ['work'],
+};
 
 let financeCategories: Array<{ id: number; code: string; name: string; description: string; type: 'expense' }> = [];
 let financeDailySummaryResult: FinanceDailySummaryRow[] = [];

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeTaxonomyValue } from '../../../shared/text/taxonomy';
 import { materialCodeSchema } from '../writing-material/writing-material.validator';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -11,7 +12,7 @@ const originalText = z
   .refine((value) => /\S/.test(value), { message: 'Text must not be blank.' });
 const estimatedMetadata = {
   estimated_topic: text(300),
-  estimated_genre: text(100),
+  estimated_genre: text(100).transform(normalizeTaxonomyValue),
   estimated_tags: z.array(text(64)).max(50),
   estimated_level: z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
 };

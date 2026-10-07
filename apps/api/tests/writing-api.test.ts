@@ -458,3 +458,22 @@ test('rejects obsolete number-based submission routes and invalid submission cod
   expect(obsolete.status).toBe(404);
   expect(invalid.status).toBe(400);
 });
+
+test('normalizes mixed-case estimated genre to the stored lowercase form', async () => {
+  let updateInput: UpdateWritingSubmissionRequest | undefined;
+  const app = createWritingApp({
+    updateSubmission: async (_code, input) => {
+      updateInput = input;
+      return { ...submission, estimated_genre: 'Journal' };
+    },
+  });
+
+  const response = await app.request(`http://localhost/api/v1/writing/submissions/${submission.code}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ estimated_genre: 'Journal' }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(updateInput).toEqual({ estimated_genre: 'journal' });
+});

@@ -487,7 +487,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     expect(analyzed).toMatchObject({
       estimated_topic: 'Sports',
-      estimated_genre: 'journal',
+      estimated_genre: 'Journal',
       estimated_tags: [],
       estimated_level: 'B1',
       analysis_status: 'analyzed',
