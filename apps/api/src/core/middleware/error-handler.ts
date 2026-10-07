@@ -102,10 +102,14 @@ export const errorHandler: ErrorHandler<AppEnv> = (error, context) => {
     });
   }
 
-  appLogger.error('Unexpected request failure: {errorName} [requestId={requestId}]', {
-    errorName: error.name,
-    requestId,
-  });
+  const errorMessage = error instanceof Error ? error.message : '';
+  const errorLike = error as unknown as { code?: unknown };
+  const errorCode = typeof errorLike.code === 'string' ? errorLike.code : '';
+
+  appLogger.error(
+    'Unexpected request failure: {errorName}: {errorMessage} [code={errorCode}] [requestId={requestId}]',
+    { errorName: error.name, errorMessage, errorCode, requestId },
+  );
 
   return failureResponse({
     context,

@@ -187,7 +187,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Writing schema PostgreSQL integration', ()
     await databaseClient`
       UPDATE writing_submissions
       SET
-        analysis = ${JSON.stringify(feedback)}::JSONB,
+        analysis = ${feedback}::JSONB,
         analyzed_at = NOW(),
         estimated_genre = 'journal',
         estimated_tags = ARRAY['daily life'],
