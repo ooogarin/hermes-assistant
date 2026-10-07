@@ -28,9 +28,9 @@ export const updateOne = async (input: UpdateGrammarSettingsPayload): Promise<Gr
   const [row] = await database<GrammarSettingsRow[]>`
     UPDATE grammar_settings
     SET
-      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''} ELSE default_level END,
+      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''}::TEXT ELSE default_level END,
       daily_question_count = CASE
-        WHEN ${input.daily_question_count !== undefined} THEN ${input.daily_question_count ?? 0}
+        WHEN ${input.daily_question_count !== undefined} THEN ${input.daily_question_count ?? 0}::INTEGER
         ELSE daily_question_count
       END,
       updated_at = NOW()

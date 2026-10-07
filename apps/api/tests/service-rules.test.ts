@@ -257,7 +257,7 @@ mock.module('../src/modules/finance/finance-category/finance-category.repository
 }));
 
 mock.module('../src/modules/finance/finance.repository', () => ({
-  getOneSummaryByDateRange: async () => ({ expense_total: '12500', income_total: '50000' }),
+  getOneSummaryByDateRange: async () => ({ expense_total: '12500', income_total: '50000', net_total: '37500' }),
   getAllCategorySummariesByDateRange: async () => [
     {
       category_code: 'food_drink',

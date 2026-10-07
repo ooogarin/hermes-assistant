@@ -32,6 +32,7 @@ export type ApiFailure = {
   request_id?: string;
 };
 
+// API keys are camelCase; acronym runs collapse to a single word (HTTPResponse becomes http_response).
 const toSnakeCase = (value: string): string => {
   return value
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')

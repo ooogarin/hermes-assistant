@@ -39,9 +39,7 @@ const CorrectedWritingPage = () => {
         ) : null}
         {result.status === 'success' ? (
           <article className='rounded-surface border border-border bg-surface px-6 py-8 sm:px-8'>
-            <p className='max-w-(--reading-width) whitespace-pre-wrap break-words text-base leading-8 text-ink'>
-              {result.data.correctedText}
-            </p>
+            <p className='whitespace-pre-wrap break-words text-base leading-8 text-ink'>{result.data.correctedText}</p>
           </article>
         ) : null}
       </div>

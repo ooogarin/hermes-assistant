@@ -12,7 +12,7 @@ const GrammarExplanationPage = () => {
   const explanation = useApiQuery(`${code}:${number}`, (signal) => getGrammarExplanation(code, questionNumber, signal));
 
   return (
-    <div className='mx-auto w-full max-w-(--reading-width)'>
+    <div className='mx-auto w-full'>
       <Link
         className='inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline'
         to={`/english/grammar/${code}`}

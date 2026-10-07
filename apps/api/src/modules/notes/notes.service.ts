@@ -1,10 +1,11 @@
 import { commitTransaction, rollbackTransaction, startTransaction } from '../../core/database/client';
+import { notFoundError } from '../../core/errors/not-found-error';
 import { formatPublicCode } from '../../shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../../shared/date/date';
-import { noteNotFound } from '../../shared/errors/note-errors';
 import { formatTaxonomyLabel } from '../../shared/text/taxonomy';
 import * as notesRepository from './notes.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
+import type { AppError } from '../../core/errors/app-error';
 import type {
   CreateNotePayload,
   CreateNoteRequest,
@@ -139,3 +140,7 @@ const toNote = (row: NoteRow): Note => ({
   updated_at: toIsoTimestamp(row.updated_at),
   deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
 });
+
+const noteNotFound = (): AppError => {
+  return notFoundError('NOTE_NOT_FOUND', 'Note not found');
+};

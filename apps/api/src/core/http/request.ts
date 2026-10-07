@@ -8,6 +8,7 @@ type ValidatedRequest = {
 
 const getValidatedRequest = (context: Context<AppEnv>): ValidatedRequest => context.req as unknown as ValidatedRequest;
 
+// The schema only binds the validated return type; Hono already validated the payload in middleware.
 const getValidatedValue = <Schema extends z.ZodType>(
   context: Context<AppEnv>,
   target: 'json' | 'param' | 'query',

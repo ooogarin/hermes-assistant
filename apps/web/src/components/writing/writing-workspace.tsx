@@ -23,9 +23,7 @@ export const WritingWorkspace = ({ material }: { material: WritingMaterial }) =>
             <span>{material.code}</span>
             <CopyButton label='Salin kode prompt' value={material.code} />
           </div>
-          <p className='mt-7 max-w-(--reading-width) whitespace-pre-wrap text-base leading-8 text-ink'>
-            {material.promptText}
-          </p>
+          <p className='mt-7 whitespace-pre-wrap text-base leading-8 text-ink'>{material.promptText}</p>
           <div className='mt-8 border-t border-border pt-6'>
             <WritingMeta material={material} />
           </div>

@@ -31,6 +31,7 @@ export const createTransactions = async (input: CreateTransactionsRequest): Prom
 
   const payloads = input.transactions.map<FinanceTransactionInsertPayload>((transaction) => ({
     amount: transaction.amount,
+    // getRequiredCategoryMapByCodes throws on missing codes, so every lookup below resolves.
     category_id: categoryByCode.get(transaction.category_code)?.id ?? 0,
     daily_number: 0,
     name: transaction.name,
@@ -144,6 +145,7 @@ export const getSummary = async (input: SummaryRequest): Promise<FinanceSummary>
 
   const expense_total = Number(totals.expense_total);
   const income_total = Number(totals.income_total);
+  const net_total = Number(totals.net_total);
   const by_category = categoryRows.map<FinanceSummaryCategory>((row) => ({
     category: {
       code: row.category_code,
@@ -160,7 +162,7 @@ export const getSummary = async (input: SummaryRequest): Promise<FinanceSummary>
     mode: input.mode,
     expense_total,
     income_total,
-    net_total: income_total - expense_total,
+    net_total,
     by_category,
   };
 };

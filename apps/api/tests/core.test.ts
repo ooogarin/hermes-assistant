@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { AppError } from '../src/core/errors/app-error';
-import { createFailureResponse, createSuccessResponse } from '../src/shared/response/api-response';
+import { createFailureResponse, createSuccessResponse, toSnakeCaseJson } from '../src/shared/response/api-response';
 
 test('creates a success response without empty metadata', () => {
   expect(
@@ -49,6 +49,13 @@ test('preserves non-plain JSON values while converting object keys', () => {
     success: true,
     data: { created_at: created_at },
   });
+});
+
+test('converts acronym-heavy keys with the runtime converter', () => {
+  // The type-level converter only models camelCase keys; acronyms are exercised through the runtime path.
+  const input: Record<string, unknown> = { HTTPResponse: 'ok', userID: 7, URL: 'x' };
+
+  expect(toSnakeCaseJson(input)).toEqual({ http_response: 'ok', user_id: 7, url: 'x' });
 });
 
 test('preserves typed application error properties', () => {

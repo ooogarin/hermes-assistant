@@ -1,19 +1,10 @@
 import { HTTPException } from 'hono/http-exception';
 import { z } from 'zod';
 import { AppError } from '../errors/app-error';
-import { failureResponse } from '../http/response';
+import { failureResponse, validationErrorBody } from '../http/response';
 import { appLogger } from '../logging/logger';
 import type { ErrorHandler } from 'hono';
 import type { AppEnv } from '../http/app-env';
-
-const validationDetails = (error: z.ZodError): { fields: Array<{ path: string; message: string }> } => {
-  return {
-    fields: error.issues.map((issue) => ({
-      path: issue.path.join('.'),
-      message: issue.message,
-    })),
-  };
-};
 
 const httpErrorBody = (statusCode: number): { code: string; message: string } => {
   switch (statusCode) {
@@ -48,14 +39,21 @@ export const errorHandler: ErrorHandler<AppEnv> = (error, context) => {
   if (error instanceof AppError) {
     const logProperties = {
       code: error.code,
+      message: error.message,
       requestId,
       statusCode: error.statusCode,
     };
 
     if (error.statusCode >= 500) {
-      appLogger.error('Application request failed: {code} ({statusCode}) [requestId={requestId}]', logProperties);
+      appLogger.error(
+        'Application request failed: {code} ({statusCode}): {message} [requestId={requestId}]',
+        logProperties,
+      );
     } else {
-      appLogger.warning('Application request failed: {code} ({statusCode}) [requestId={requestId}]', logProperties);
+      appLogger.warning(
+        'Application request failed: {code} ({statusCode}): {message} [requestId={requestId}]',
+        logProperties,
+      );
     }
 
     return failureResponse({
@@ -70,15 +68,16 @@ export const errorHandler: ErrorHandler<AppEnv> = (error, context) => {
   }
 
   if (error instanceof z.ZodError) {
-    appLogger.warning('Request validation failed [requestId={requestId}]', { requestId });
+    const failedFields = error.issues.map((issue) => issue.path.join('.')).join(', ');
+
+    appLogger.warning('Request validation failed: {failedFields} [requestId={requestId}]', {
+      failedFields,
+      requestId,
+    });
 
     return failureResponse({
       context,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Request validation failed',
-        details: validationDetails(error),
-      },
+      error: validationErrorBody(error),
       statusCode: 400,
     });
   }

@@ -40,9 +40,7 @@ const ReadingExpectedAnswersPage = () => {
                 <h2 className='font-semibold leading-7 text-ink'>
                   {answer.questionNumber}. {answer.questionText}
                 </h2>
-                <p className='mt-3 max-w-(--reading-width) whitespace-pre-wrap text-sm leading-7 text-ink-muted'>
-                  {answer.expectedAnswer}
-                </p>
+                <p className='mt-3 whitespace-pre-wrap text-sm leading-7 text-ink-muted'>{answer.expectedAnswer}</p>
               </li>
             ))}
           </ol>

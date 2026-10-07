@@ -35,7 +35,7 @@ export const WritingSubmissionDetail = ({ submission }: { submission: WritingSub
         </div>
         <article
           aria-label='Tulisan asli'
-          className='mt-7 max-w-(--reading-width) whitespace-pre-wrap break-words text-base leading-8 text-ink'
+          className='mt-7 whitespace-pre-wrap break-words text-base leading-8 text-ink'
         >
           {submission.originalText}
         </article>
@@ -132,9 +132,10 @@ export const WritingSubmissionDetail = ({ submission }: { submission: WritingSub
               <Button aria-describedby='writing-analysis-help' disabled>
                 Analisis tulisan
               </Button>
-              <p className='max-w-(--reading-width) text-sm leading-6 text-ink-muted' id='writing-analysis-help'>
-                Analisis tersedia melalui perintah langsung di Telegram. Sertakan kode {submission.code} saat meminta
-                Hermes menganalisis tulisanmu. Teks masih bisa diedit sebelum dianalisis.
+              <p className='text-sm leading-6 text-ink-muted' id='writing-analysis-help'>
+                Analisis tersedia melalui perintah langsung di Telegram. Sertakan kode{' '}
+                <strong>{submission.code}</strong> saat meminta Hermes menganalisis tulisanmu. Teks masih bisa diedit
+                sebelum dianalisis.
               </p>
             </>
           )}

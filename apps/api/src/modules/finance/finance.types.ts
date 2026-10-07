@@ -138,6 +138,7 @@ export type FinanceTransactionRow = {
 export type FinanceSummaryTotalsRow = {
   expense_total: number | string;
   income_total: number | string;
+  net_total: number | string;
 };
 
 export type FinanceSummaryCategoryRow = {

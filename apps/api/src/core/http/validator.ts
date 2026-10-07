@@ -1,6 +1,6 @@
 import { zValidator } from '@hono/zod-validator';
 import { HTTPException } from 'hono/http-exception';
-import { failureResponse } from './response';
+import { failureResponse, validationErrorBody } from './response';
 import type { Context, MiddlewareHandler, Next } from 'hono';
 import type { AppEnv } from './app-env';
 
@@ -12,16 +12,7 @@ export const appValidator = ((target: Parameters<typeof zValidator>[0], schema: 
 
     return failureResponse({
       context: context as Context<AppEnv>,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'Request validation failed',
-        details: {
-          fields: result.error.issues.map((issue) => ({
-            path: issue.path.join('.'),
-            message: issue.message,
-          })),
-        },
-      },
+      error: validationErrorBody(result.error),
       statusCode: 400,
     });
   }) as unknown as MiddlewareHandler<AppEnv>;
@@ -36,11 +27,7 @@ export const appValidator = ((target: Parameters<typeof zValidator>[0], schema: 
       if (isInvalidJson) {
         return failureResponse({
           context: context as Context<AppEnv>,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed',
-            details: null,
-          },
+          error: validationErrorBody(null),
           statusCode: 400,
         });
       }

@@ -249,11 +249,11 @@ export const updateOneByDateAndDailyNumber = async (
     WITH updated AS (
       UPDATE transactions
       SET
-        amount = CASE WHEN ${input.amount !== undefined} THEN ${input.amount ?? 0} ELSE amount END,
-        category_id = CASE WHEN ${input.category_id !== undefined} THEN ${input.category_id ?? 0} ELSE category_id END,
-        name = CASE WHEN ${input.name !== undefined} THEN ${input.name ?? ''} ELSE name END,
-        location = CASE WHEN ${input.location !== undefined} THEN ${input.location ?? null} ELSE location END,
-        note = CASE WHEN ${input.note !== undefined} THEN ${input.note ?? null} ELSE note END,
+        amount = CASE WHEN ${input.amount !== undefined} THEN ${input.amount ?? 0}::INTEGER ELSE amount END,
+        category_id = CASE WHEN ${input.category_id !== undefined} THEN ${input.category_id ?? 0}::INTEGER ELSE category_id END,
+        name = CASE WHEN ${input.name !== undefined} THEN ${input.name ?? ''}::TEXT ELSE name END,
+        location = CASE WHEN ${input.location !== undefined} THEN ${input.location ?? null}::TEXT ELSE location END,
+        note = CASE WHEN ${input.note !== undefined} THEN ${input.note ?? null}::TEXT ELSE note END,
         updated_at = NOW()
       WHERE date = ${date}::DATE
         AND daily_number = ${daily_number}
@@ -337,12 +337,18 @@ export const getOneSummaryByDateRange = async (
 
   const [row] = await database<FinanceSummaryTotalsRow[]>`
     SELECT
-      COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS expense_total,
-      COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) AS income_total
-    FROM transactions
-    WHERE date BETWEEN ${from}::DATE AND ${to}::DATE
-      AND deleted_at IS NULL
-      AND (${mode} = 'net' OR type::TEXT = ${mode})
+      expense_total,
+      income_total,
+      income_total - expense_total AS net_total
+    FROM (
+      SELECT
+        COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0) AS expense_total,
+        COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) AS income_total
+      FROM transactions
+      WHERE date BETWEEN ${from}::DATE AND ${to}::DATE
+        AND deleted_at IS NULL
+        AND (${mode}::TEXT = 'net' OR type::TEXT = ${mode}::TEXT)
+    ) AS totals
   `;
 
   if (row === undefined) {
@@ -370,7 +376,7 @@ export const getAllCategorySummariesByDateRange = async (
     JOIN categories ON categories.id = transactions.category_id
     WHERE transactions.date BETWEEN ${from}::DATE AND ${to}::DATE
       AND transactions.deleted_at IS NULL
-      AND (${mode} = 'net' OR transactions.type::TEXT = ${mode})
+      AND (${mode}::TEXT = 'net' OR transactions.type::TEXT = ${mode}::TEXT)
     GROUP BY
       categories.id
     ORDER BY
