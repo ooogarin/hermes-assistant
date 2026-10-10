@@ -11,7 +11,7 @@ import type { ReadingMaterial } from '../../features/reading/reading-api';
 
 type ReadingWorkspaceProps = {
   material: ReadingMaterial;
-  onSubmit: (answers: Array<{ questionNumber: number; userAnswer: string | null }>) => Promise<void>;
+  onSubmit: (answers: Array<{ questionNumber: number; userAnswer: string | null }>) => Promise<boolean>;
   onMark: () => void;
   submitting: boolean;
   marking: boolean;
@@ -21,10 +21,16 @@ export const ReadingWorkspace = ({ material, onSubmit, onMark, submitting, marki
   const [answers, setAnswers] = useState<Record<number, string>>(() =>
     Object.fromEntries(material.questions.map((question) => [question.questionNumber, question.userAnswer ?? ''])),
   );
+  const [editing, setEditing] = useState(false);
   const changes = material.questions.flatMap((question) => {
     const value = answers[question.questionNumber]?.trim() || null;
     return value === question.userAnswer ? [] : [{ questionNumber: question.questionNumber, userAnswer: value }];
   });
+  const answeredCount = material.questions.filter((question) => question.userAnswer !== null).length;
+  const resetAnswers = () =>
+    setAnswers(
+      Object.fromEntries(material.questions.map((question) => [question.questionNumber, question.userAnswer ?? ''])),
+    );
   return (
     <section className='w-full min-w-0 rounded-surface border border-border bg-surface'>
       <div className={detailContentClassName.page}>
@@ -64,48 +70,89 @@ export const ReadingWorkspace = ({ material, onSubmit, onMark, submitting, marki
                 className='shrink-0 transition-transform group-open:rotate-90'
               />
             </summary>
-            <form
-              className='pb-6'
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (changes.length) void onSubmit(changes);
-              }}
-            >
-              <p className='text-sm leading-6 text-ink-muted'>
-                Jawab sebagian, semuanya, atau lewati. Jawaban disimpan tanpa penilaian.
-              </p>
-              <fieldset className='mt-6 space-y-6' disabled={submitting || marking}>
-                {material.questions.map((question) => (
-                  <div key={question.questionNumber}>
-                    <label
-                      className='block text-sm font-medium leading-6 text-ink'
-                      htmlFor={`answer-${question.questionNumber}`}
+            {editing ? (
+              <form
+                className='pb-6'
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!changes.length) return;
+                  void onSubmit(changes).then((saved) => {
+                    if (saved) setEditing(false);
+                  });
+                }}
+              >
+                <p className='text-sm leading-6 text-ink-muted'>
+                  Jawab sebagian, semuanya, atau lewati. Jawaban disimpan tanpa penilaian.
+                </p>
+                <fieldset className='mt-6 space-y-6' disabled={submitting || marking}>
+                  {material.questions.map((question) => (
+                    <div key={question.questionNumber}>
+                      <label
+                        className='block text-sm font-medium leading-6 text-ink'
+                        htmlFor={`answer-${question.questionNumber}`}
+                      >
+                        {question.questionNumber}. {question.questionText}
+                      </label>
+                      <Textarea
+                        className='mt-2 min-h-24'
+                        id={`answer-${question.questionNumber}`}
+                        value={answers[question.questionNumber] ?? ''}
+                        onChange={(event) =>
+                          setAnswers((current) => ({ ...current, [question.questionNumber]: event.target.value }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </fieldset>
+                <div className='mt-6 flex flex-wrap items-center justify-between gap-4'>
+                  <div className='flex flex-wrap items-center gap-3'>
+                    <Button type='submit' disabled={!changes.length || marking} pending={submitting}>
+                      Simpan jawaban
+                    </Button>
+                    <Button
+                      type='button'
+                      variant='secondary'
+                      disabled={submitting}
+                      onClick={() => {
+                        resetAnswers();
+                        setEditing(false);
+                      }}
                     >
-                      {question.questionNumber}. {question.questionText}
-                    </label>
-                    <Textarea
-                      className='mt-2 min-h-24'
-                      id={`answer-${question.questionNumber}`}
-                      value={answers[question.questionNumber] ?? ''}
-                      onChange={(event) =>
-                        setAnswers((current) => ({ ...current, [question.questionNumber]: event.target.value }))
-                      }
-                    />
+                      Batal
+                    </Button>
                   </div>
-                ))}
-              </fieldset>
-              <div className='mt-6 flex flex-wrap items-center justify-between gap-4'>
-                <Button type='submit' disabled={!changes.length || marking} pending={submitting}>
-                  Simpan jawaban
-                </Button>
-                <Link
-                  className='text-sm font-semibold text-primary hover:underline'
-                  to={`/english/reading/${material.code}/expected-answers`}
-                >
-                  Lihat jawaban acuan
-                </Link>
+                  <ReferenceLink code={material.code} />
+                </div>
+              </form>
+            ) : (
+              <div className='pb-6'>
+                <p className='text-sm leading-6 text-ink-muted'>
+                  {answeredCount} dari {material.questions.length} soal terjawab · Jawaban disimpan tanpa penilaian.
+                </p>
+                <div className='mt-6 space-y-6'>
+                  {material.questions.map((question) => (
+                    <div key={question.questionNumber}>
+                      <p className='text-sm font-medium leading-6 text-ink'>
+                        {question.questionNumber}. {question.questionText}
+                      </p>
+                      {question.userAnswer === null ? (
+                        <p className='mt-2 text-sm leading-6 text-ink-muted'>Belum dijawab</p>
+                      ) : (
+                        <p className='mt-2 whitespace-pre-wrap rounded-control border border-border bg-surface-subtle px-3 py-3 text-sm leading-7 text-ink'>
+                          {question.userAnswer}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className='mt-6 flex flex-wrap items-center justify-between gap-4'>
+                  <Button type='button' disabled={submitting || marking} onClick={() => setEditing(true)}>
+                    Edit jawaban
+                  </Button>
+                  <ReferenceLink code={material.code} />
+                </div>
               </div>
-            </form>
+            )}
           </details>
         ) : null}
         <dl className='mt-8 grid grid-cols-[auto_minmax(0,1fr)] gap-x-8 gap-y-4 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]'>
@@ -131,3 +178,9 @@ export const ReadingWorkspace = ({ material, onSubmit, onMark, submitting, marki
     </section>
   );
 };
+
+const ReferenceLink = ({ code }: { code: string }) => (
+  <Link className='text-sm font-semibold text-primary hover:underline' to={`/english/reading/${code}/expected-answers`}>
+    Lihat jawaban acuan
+  </Link>
+);

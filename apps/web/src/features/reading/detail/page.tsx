@@ -26,8 +26,10 @@ const ReadingDetailPage = () => {
     try {
       setSavedMaterial(await saveReadingAnswers(code, answers));
       setNotice('Jawaban berhasil disimpan.');
+      return true;
     } catch {
       setSubmitError('Jawaban belum dapat disimpan. Coba lagi.');
+      return false;
     } finally {
       setSubmitting(false);
     }

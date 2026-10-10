@@ -54,7 +54,7 @@ test('renders the title and content from the new Reading detail API fields', asy
     <MemoryRouter>
       <ReadingWorkspace
         material={parsed}
-        onSubmit={async () => {}}
+        onSubmit={async () => true}
         onMark={() => {}}
         marking={false}
         submitting={false}
@@ -106,7 +106,7 @@ test('keeps questions collapsed and permits saving a subset without marking read
     ],
   });
   const parsed = await getReadingMaterial(material.code);
-  const save = vi.fn().mockResolvedValue(undefined);
+  const save = vi.fn().mockResolvedValue(true);
   const mark = vi.fn();
   render(
     <MemoryRouter>
@@ -115,11 +115,94 @@ test('keeps questions collapsed and permits saving a subset without marking read
   );
   expect(screen.getByText('Pertanyaan opsional').closest('details')).not.toHaveAttribute('open');
   await user.click(screen.getByText('Pertanyaan opsional'));
+  expect(screen.queryByLabelText('1. Who visits the market?')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Edit jawaban' }));
   await user.type(screen.getByLabelText('1. Who visits the market?'), 'Mira');
+  expect(screen.getByLabelText('2. When does Mira visit?')).toBeEnabled();
   await user.click(screen.getByRole('button', { name: 'Simpan jawaban' }));
   expect(save).toHaveBeenCalledWith([{ questionNumber: 1, userAnswer: 'Mira' }]);
   expect(mark).not.toHaveBeenCalled();
-  expect(screen.getByLabelText('2. When does Mira visit?')).toBeEnabled();
+  expect(await screen.findByRole('button', { name: 'Edit jawaban' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('1. Who visits the market?')).not.toBeInTheDocument();
+});
+
+test('shows saved answers read-only until Edit jawaban is pressed', async () => {
+  const user = userEvent.setup();
+  mockResponse({
+    ...material,
+    questions: [{ question_number: 1, question_text: 'Who visits the market?', user_answer: 'Mira' }],
+  });
+  const parsed = await getReadingMaterial(material.code);
+  const save = vi.fn().mockResolvedValue(true);
+  render(
+    <MemoryRouter>
+      <ReadingWorkspace material={parsed} onSubmit={save} onMark={() => {}} marking={false} submitting={false} />
+    </MemoryRouter>,
+  );
+  await user.click(screen.getByText('Pertanyaan opsional'));
+  expect(screen.getByText('Mira')).toBeInTheDocument();
+  expect(screen.getByText('1 dari 1 soal terjawab · Jawaban disimpan tanpa penilaian.')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: 'Edit jawaban' }));
+  const field = screen.getByLabelText('1. Who visits the market?');
+  expect(field).toBeEnabled();
+  expect(field).toHaveValue('Mira');
+  expect(screen.getByRole('button', { name: 'Simpan jawaban' })).toBeDisabled();
+  expect(save).not.toHaveBeenCalled();
+});
+
+test('cancelling edits restores saved answers and returns to read-only mode', async () => {
+  const user = userEvent.setup();
+  mockResponse({
+    ...material,
+    questions: [{ question_number: 1, question_text: 'Who visits the market?', user_answer: 'Mira' }],
+  });
+  const parsed = await getReadingMaterial(material.code);
+  const save = vi.fn().mockResolvedValue(true);
+  render(
+    <MemoryRouter>
+      <ReadingWorkspace material={parsed} onSubmit={save} onMark={() => {}} marking={false} submitting={false} />
+    </MemoryRouter>,
+  );
+  await user.click(screen.getByText('Pertanyaan opsional'));
+  await user.click(screen.getByRole('button', { name: 'Edit jawaban' }));
+  await user.clear(screen.getByLabelText('1. Who visits the market?'));
+  await user.type(screen.getByLabelText('1. Who visits the market?'), 'Draft');
+  await user.click(screen.getByRole('button', { name: 'Batal' }));
+
+  expect(save).not.toHaveBeenCalled();
+  expect(screen.getByText('Mira')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Edit jawaban' })).toBeInTheDocument();
+});
+
+test('stays in edit mode when saving fails and leaves edit mode when it succeeds', async () => {
+  const user = userEvent.setup();
+  mockResponse({
+    ...material,
+    questions: [{ question_number: 1, question_text: 'Who visits the market?', user_answer: null }],
+  });
+  const parsed = await getReadingMaterial(material.code);
+  const save = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+  render(
+    <MemoryRouter>
+      <ReadingWorkspace material={parsed} onSubmit={save} onMark={() => {}} marking={false} submitting={false} />
+    </MemoryRouter>,
+  );
+  await user.click(screen.getByText('Pertanyaan opsional'));
+  await user.click(screen.getByRole('button', { name: 'Edit jawaban' }));
+  await user.type(screen.getByLabelText('1. Who visits the market?'), 'Mira');
+
+  await user.click(screen.getByRole('button', { name: 'Simpan jawaban' }));
+  expect(save).toHaveBeenCalledWith([{ questionNumber: 1, userAnswer: 'Mira' }]);
+  expect(screen.getByRole('button', { name: 'Simpan jawaban' })).toBeInTheDocument();
+  expect(screen.getByLabelText('1. Who visits the market?')).toHaveValue('Mira');
+
+  await user.click(screen.getByRole('button', { name: 'Simpan jawaban' }));
+  expect(save).toHaveBeenCalledTimes(2);
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Edit jawaban' })).toBeInTheDocument();
 });
 
 test('omits the question section for a reading-only material', async () => {
@@ -128,7 +211,13 @@ test('omits the question section for a reading-only material', async () => {
   const mark = vi.fn();
   render(
     <MemoryRouter>
-      <ReadingWorkspace material={parsed} onSubmit={async () => {}} onMark={mark} marking={false} submitting={false} />
+      <ReadingWorkspace
+        material={parsed}
+        onSubmit={async () => true}
+        onMark={mark}
+        marking={false}
+        submitting={false}
+      />
     </MemoryRouter>,
   );
   expect(screen.queryByText('Pertanyaan opsional')).not.toBeInTheDocument();
