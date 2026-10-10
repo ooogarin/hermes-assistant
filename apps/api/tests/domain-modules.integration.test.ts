@@ -179,16 +179,32 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
           correct_answer: 'went',
           explanation: 'Use the simple past for completed actions.',
         },
+        {
+          question_type: 'error_correction',
+          grammar_area: 'agreement',
+          grammar_point: 'subject verb agreement',
+          level: 'A1',
+          question_text: 'He walk every day.',
+          correct_answer: 'He walks every day.',
+          explanation: 'Third-person singular verbs take -s.',
+        },
       ],
     });
-    expect(practice.questions.map(({ question_number }) => question_number)).toEqual([1]);
-    const answeredPractice = await grammarService.saveAnswer(practice.code, 1, {
-      user_answer: 'went',
-      result: 'correct',
-      feedback: null,
+    expect(practice.questions.map(({ question_number }) => question_number)).toEqual([1, 2]);
+    const firstPracticeAnswer = await grammarService.saveAnswers(practice.code, {
+      answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
     });
-    expect(answeredPractice.questions[0]?.answer?.result).toBe('correct');
+    expect(firstPracticeAnswer.status).toBe('active');
+    expect(firstPracticeAnswer.questions[0]?.answer?.result).toBe('correct');
     expect((await grammarService.getExplanation(practice.code, 1)).explanation).toContain('simple past');
+
+    const completedPractice = await grammarService.saveAnswers(practice.code, {
+      answers: [{ question_number: 2, user_answer: 'He walk every day.', result: 'incorrect', feedback: 'Use walks.' }],
+    });
+    expect(completedPractice.status).toBe('completed');
+    expect(completedPractice.score).toBe(1);
+    expect(completedPractice.max_score).toBe(2);
+    expect(completedPractice.completed_at).not.toBeNull();
 
     const exam = await grammarService.createSession({
       mode: 'exam',
@@ -215,8 +231,10 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         },
       ],
     });
-    await grammarService.saveAnswer(exam.code, 1, { user_answer: 'went' });
-    await grammarService.saveAnswer(exam.code, 2, { user_answer: 'He walk every day.' });
+    await grammarService.saveAnswers(exam.code, { answers: [{ question_number: 1, user_answer: 'went' }] });
+    await grammarService.saveAnswers(exam.code, {
+      answers: [{ question_number: 2, user_answer: 'He walk every day.' }],
+    });
     const report = await grammarService.evaluateSession(exam.code, {
       answers: [
         { question_number: 1, result: 'correct', feedback: null },

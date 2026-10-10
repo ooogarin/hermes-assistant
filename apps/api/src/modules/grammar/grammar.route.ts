@@ -6,7 +6,7 @@ import {
   evaluateSessionSchema,
   listSessionsSchema,
   questionReferenceSchema,
-  saveAnswerSchema,
+  saveAnswersSchema,
   sessionCodeSchema,
 } from './grammar.validator';
 import { createGrammarSettingRoutes } from './grammar-setting/grammar-setting.route';
@@ -21,10 +21,10 @@ export const createGrammarRoutes = () => {
   route.get('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.getSession);
   route.delete('/sessions/:code', appValidator('param', sessionCodeSchema), grammarHandler.removeSession);
   route.put(
-    '/sessions/:code/questions/:question_number/answer',
-    appValidator('param', questionReferenceSchema),
-    appValidator('json', saveAnswerSchema),
-    grammarHandler.saveAnswer,
+    '/sessions/:code/answers',
+    appValidator('param', sessionCodeSchema),
+    appValidator('json', saveAnswersSchema),
+    grammarHandler.saveAnswers,
   );
   route.get(
     '/sessions/:code/questions/:question_number/explanation',

@@ -239,7 +239,11 @@ If session/question mapping is ambiguous, Hermes asks for confirmation
 Hermes evaluates each answered question immediately
         |
         v
-Hermes saves answers + result + feedback through the REST API
+Hermes saves all answered questions in one bulk answer request
+(user_answer + result + feedback per question_number)
+        |
+        v
+The API marks the session completed once every question has an answer
         |
         v
 Hermes sends concise feedback without full explanation
@@ -270,7 +274,7 @@ Send session code + all questions to Telegram Grammar topic
 User answers all questions
         |
         v
-Hermes stores answers first without result if needed
+Hermes stores answers in bulk without result if needed
         |
         v
 Hermes evaluates all answers together after final submit
@@ -484,7 +488,9 @@ Type "jelasin nomor X GR-20260726-002" to see a question explanation.
 | Question type             | Soft list stored as text                                                                               |
 | Explanation               | Generated with the question; shown on demand; deeper follow-up explanations are allowed but not stored |
 | Grading                   | `correct`, `partial`, `incorrect`; result is nullable until evaluated                                  |
-| Practice evaluation       | Immediate per answered question                                                                        |
+| Answer submission         | One bulk `PUT .../answers` request; each item links to its question by `question_number`; subsets and overwrites are supported |
+| Practice evaluation       | Immediate per answered question, saved in one bulk request                                             |
+| Practice completion       | Automatic: the API completes the session with its score once every question has an answer               |
 | Exam evaluation           | Delayed until final submission; answers may be stored before results                                   |
 | Score                     | Aggregate score mainly for exam; daily/practice uses per-question result                               |
 | API architecture          | Hermes calls REST API; API stores and queries PostgreSQL                                               |
@@ -506,7 +512,7 @@ Request bodies and every response field use `snake_case` recursively.
 | `GET` | `/api/v1/grammar/sessions` | List active, completed, or abandoned sessions with search, filters, sorting, and pagination. Soft-deleted sessions are excluded. |
 | `GET` | `/api/v1/grammar/sessions/:code` | Read a session, its questions, and saved user answers. Correct answers and explanations are deliberately excluded. |
 | `DELETE` | `/api/v1/grammar/sessions/:code` | Soft delete the session, questions, and answers together. |
-| `PUT` | `/api/v1/grammar/sessions/:code/questions/:question_number/answer` | Save or replace one user answer. Practice includes immediate evaluation; exam stores an unevaluated answer. |
+| `PUT` | `/api/v1/grammar/sessions/:code/answers` | Save or replace one or more user answers in one request. Practice includes immediate evaluation per answer; exam stores unevaluated answers. |
 | `GET` | `/api/v1/grammar/sessions/:code/questions/:question_number/explanation` | Fetch the stored explanation only when Hermes/user explicitly requests it. |
 | `POST` | `/api/v1/grammar/sessions/:code/evaluate` | Save all exam results, calculate the score, and complete the session. |
 | `GET` | `/api/v1/grammar/sessions/:code/report` | Return score and result breakdown grouped by grammar area. |
@@ -531,18 +537,53 @@ Each item includes `grammar_area` and `grammar_point` from the first active ques
 
 Hermes generates every question, correct answer, and explanation before calling the API. The backend stores the complete session and question batch in one transaction, generates `GR-YYYYMMDD-###` with the Jakarta calendar date, and then returns a safe session representation. `correct_answer` and `explanation` are never included in the ordinary session response.
 
+### Bulk answer flow
+
+Hermes saves answered questions through one request to
+`PUT /api/v1/grammar/sessions/:code/answers`:
+
+```json
+{
+  "answers": [
+    { "question_number": 6, "user_answer": "what", "result": "correct", "feedback": null },
+    { "question_number": 7, "user_answer": "on", "result": "correct" }
+  ]
+}
+```
+
+1. Each item links to its question by `question_number`; `user_answer` is required,
+   `result` and `feedback` are optional. Send only the questions being answered now.
+2. Practice requires `result` on every item; exam rejects `result` and `feedback`
+   because evaluation stays deferred to the evaluate endpoint.
+3. `question_number` values must be unique and must belong to the session; otherwise
+   the API returns `400 INVALID_GRAMMAR_ANSWERS` and persists nothing.
+4. The backend upserts every supplied answer in one transaction: a new answer is
+   inserted and an existing answer for the same question is replaced (the single
+   answer per question assumption holds for MVP; re-answering remains possible).
+5. When the mode is practice and the upsert leaves every question with an answer,
+   the same transaction completes the session: `status` becomes `completed`,
+   `score` becomes the count of `correct` answers, `max_score` becomes the session
+   question count, and `completed_at` is set.
+6. The response is the updated session. Exam sessions never auto-complete; only
+   `/evaluate` completes them.
+
 ### Practice answer flow
 
-1. Hermes evaluates the answer before calling the API.
-2. Hermes sends `user_answer`, `result`, and optional concise `feedback` to the answer endpoint.
-3. The backend rejects a practice answer without `result`, stores the answer and evaluation, and leaves the session active.
+1. Hermes evaluates every submitted answer before calling the API.
+2. Hermes sends all answered questions in one bulk request with `user_answer`,
+   `result`, and optional concise `feedback`.
+3. The backend rejects the whole request when any practice answer lacks `result`,
+   and it completes the session automatically once the last open question has an
+   answer.
 
 ### Exam answer and evaluation flow
 
-1. Hermes sends each answer with `user_answer` only; `result` and `feedback` are absent.
-2. The backend stores the answer but keeps its evaluation fields null.
+1. Hermes sends collected answers in bulk with `user_answer` only; `result` and
+   `feedback` are absent.
+2. The backend stores the answers but keeps their evaluation fields null.
 3. After every question is answered, Hermes evaluates the full exam.
-4. Hermes calls the evaluate endpoint with every `question_number`, `result`, and optional feedback exactly once.
+4. Hermes calls the evaluate endpoint with every `question_number`, `result`, and
+   optional feedback exactly once.
 5. The backend validates that all questions and answers are present, updates all evaluations in one transaction, computes `score` as the count of `correct` results, sets response field `max_score` to the session question count, and marks the session `completed`.
 
 Exam results cannot be written through the individual answer endpoint, and a completed session cannot accept new answers or evaluations.

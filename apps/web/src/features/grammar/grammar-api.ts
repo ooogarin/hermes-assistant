@@ -119,21 +119,29 @@ export const getGrammarSettings = (signal?: AbortSignal): Promise<GrammarSetting
   apiRequest('/api/v1/grammar/settings', grammarSettingsSchema, { signal });
 
 export const updateGrammarSettings = (input: GrammarSettingsInput): Promise<GrammarSettings> =>
-  apiRequest('/api/v1/grammar/settings', grammarSettingsSchema, { body: input, method: 'PATCH' });
+  apiRequest('/api/v1/grammar/settings', grammarSettingsSchema, {
+    body: {
+      daily_question_count: input.dailyQuestionCount,
+      default_level: input.defaultLevel,
+    },
+    method: 'PATCH',
+  });
 
 export const getGrammarSession = (code: string, signal?: AbortSignal): Promise<GrammarSession> =>
   apiRequest(`/api/v1/grammar/sessions/${encodeURIComponent(code)}`, grammarSessionSchema, { signal });
 
-export const saveGrammarExamAnswer = (
-  code: string,
-  questionNumber: number,
-  userAnswer: string,
-): Promise<GrammarSession> =>
-  apiRequest(
-    `/api/v1/grammar/sessions/${encodeURIComponent(code)}/questions/${questionNumber}/answer`,
-    grammarSessionSchema,
-    { body: { userAnswer }, method: 'PUT' },
-  );
+export type GrammarAnswerInput = { questionNumber: number; userAnswer: string };
+
+export const saveGrammarAnswers = (code: string, answers: GrammarAnswerInput[]): Promise<GrammarSession> =>
+  apiRequest(`/api/v1/grammar/sessions/${encodeURIComponent(code)}/answers`, grammarSessionSchema, {
+    body: {
+      answers: answers.map(({ questionNumber, userAnswer }) => ({
+        question_number: questionNumber,
+        user_answer: userAnswer,
+      })),
+    },
+    method: 'PUT',
+  });
 
 export const getGrammarExplanation = (
   code: string,

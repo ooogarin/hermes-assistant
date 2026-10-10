@@ -9,7 +9,7 @@ Grammar supports practice and exam sessions. Hermes generates questions, correct
 - `GET /api/v1/grammar/sessions` lists sessions; filters include `q`, `status`, `mode`,
   `level`, `page`, `limit`, and `sort=newest|oldest`.
 - `GET|DELETE /api/v1/grammar/sessions/:code`
-- `PUT /api/v1/grammar/sessions/:code/questions/:question_number/answer`
+- `PUT /api/v1/grammar/sessions/:code/answers`
 - `GET /api/v1/grammar/sessions/:code/questions/:question_number/explanation`
 - `POST /api/v1/grammar/sessions/:code/evaluate`
 - `GET /api/v1/grammar/sessions/:code/report`
@@ -89,13 +89,38 @@ For scheduled practice, fetch settings first, read `default_level` and exactly `
 
 ## Answers
 
-- Practice: evaluate immediately, then PUT `user_answer`, `result` (`correct|partial|incorrect`), and optional concise `feedback`. Do not show the full explanation unless requested.
-- Exam: PUT each `user_answer` without result/feedback. After every question is answered, evaluate all answers once through `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and breakdown.
-- Explanation requests must use the explanation endpoint. A deeper conversational explanation need not be persisted.
+Answers are saved through one bulk endpoint. Every item links to its question by
+`question_number`; send only the questions being answered now.
 
-For practice, the order is: evaluate the answer in context, save it immediately, then
-send concise feedback. For an exam, save answers without results during collection and
-send exactly one evaluation request after all answers have been received.
+```json
+{
+  "answers": [
+    { "question_number": 1, "user_answer": "went", "result": "correct", "feedback": null },
+    { "question_number": 2, "user_answer": "go", "result": "incorrect", "feedback": "Use went." }
+  ]
+}
+```
+
+- Practice: evaluate every submitted answer first, then send one `PUT` with
+  `user_answer`, `result` (`correct|partial|incorrect`), and optional concise
+  `feedback` for each. Do not show the full explanation unless requested. When the
+  last open question of a practice session is answered, the API marks the session
+  `completed` with its score.
+- Exam: send the same `PUT` without `result` or `feedback` (answers stay
+  unevaluated). After every question is answered, evaluate all answers once through
+  `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and
+  breakdown.
+- Answering in waves is supported: each `PUT` may contain any subset of questions,
+  and re-sending a question replaces its saved answer.
+- `400 INVALID_GRAMMAR_ANSWERS` means a `question_number` is unknown to the session
+  or duplicated; do not retry the same body, resolve the session state instead.
+- Explanation requests must use the explanation endpoint. A deeper conversational
+  explanation need not be persisted.
+
+For practice, the order is: evaluate the answers in context, save them in one
+request, then send concise feedback. For an exam, save answers without results
+during collection and send exactly one evaluation request after all answers have
+been received.
 
 An ordinary answer message such as `went` is not enough when more than one active
 session/question could match. Ask for `GR-...` and the question number before calling

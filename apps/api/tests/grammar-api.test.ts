@@ -9,7 +9,7 @@ import type {
   GrammarService,
   GrammarSession,
   GrammarSessionList,
-  SaveGrammarAnswerRequest,
+  SaveAnswersRequest,
 } from '../src/modules/grammar/grammar.types';
 import type {
   GrammarSettingService,
@@ -93,7 +93,7 @@ const createGrammarServiceStub = (overrides: Partial<GrammarApiService> = {}): G
   listSessions: async () => sessionList,
   getSession: async () => session,
   removeSession: async () => {},
-  saveAnswer: async () => session,
+  saveAnswers: async () => session,
   getExplanation: async () => explanation,
   evaluateSession: async () => report,
   getReport: async () => report,
@@ -112,8 +112,7 @@ mock.module('../src/modules/grammar/grammar.service', () => ({
   listSessions: (input: Parameters<GrammarApiService['listSessions']>[0]) => activeGrammarService.listSessions(input),
   getSession: (code: string) => activeGrammarService.getSession(code),
   removeSession: (code: string) => activeGrammarService.removeSession(code),
-  saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) =>
-    activeGrammarService.saveAnswer(code, question_number, input),
+  saveAnswers: (code: string, input: SaveAnswersRequest) => activeGrammarService.saveAnswers(code, input),
   getExplanation: (code: string, question_number: number) => activeGrammarService.getExplanation(code, question_number),
   evaluateSession: (code: string, input: EvaluateGrammarSessionRequest) =>
     activeGrammarService.evaluateSession(code, input),
@@ -265,11 +264,94 @@ test('rejects an incomplete grammar session payload without calling the service'
   expect(createCalled).toBe(false);
 });
 
-test('passes an immediate practice evaluation to the grammar service', async () => {
-  let answerInput: SaveGrammarAnswerRequest | undefined;
+test('passes practice answers with immediate evaluations to the grammar service', async () => {
+  let answerInput: SaveAnswersRequest | undefined;
   const response = await createGrammarApp({
-    saveAnswer: async (_code, _questionNumber, input) => {
+    saveAnswers: async (_code, input) => {
       answerInput = input;
+      return session;
+    },
+  }).request('http://localhost/api/v1/grammar/sessions/GR-20260905-001/answers', {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer test-api-key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      answers: [
+        { question_number: 1, user_answer: 'went', result: 'correct' },
+        { question_number: 2, user_answer: 'go', result: 'incorrect', feedback: 'Use went.' },
+      ],
+    }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(answerInput).toEqual({
+    answers: [
+      { question_number: 1, user_answer: 'went', result: 'correct' },
+      { question_number: 2, user_answer: 'go', result: 'incorrect', feedback: 'Use went.' },
+    ],
+  });
+  expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(session) });
+});
+
+test('allows exam answers to remain unevaluated at the API boundary', async () => {
+  let answerInput: SaveAnswersRequest | undefined;
+  const response = await createGrammarApp({
+    saveAnswers: async (_code, input) => {
+      answerInput = input;
+      return { ...session, mode: 'exam' };
+    },
+  }).request('http://localhost/api/v1/grammar/sessions/GR-20260905-002/answers', {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer test-api-key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ answers: [{ question_number: 1, user_answer: 'went' }] }),
+  });
+
+  expect(response.status).toBe(200);
+  expect(answerInput).toEqual({ answers: [{ question_number: 1, user_answer: 'went' }] });
+});
+
+test('rejects invalid bulk answer payloads without calling the service', async () => {
+  let saveAnswersCalled = false;
+  const app = createGrammarApp({
+    saveAnswers: async () => {
+      saveAnswersCalled = true;
+      return session;
+    },
+  });
+  const emptyResponse = await app.request('http://localhost/api/v1/grammar/sessions/GR-20260905-001/answers', {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer test-api-key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ answers: [] }),
+  });
+  const unevaluatedResponse = await app.request('http://localhost/api/v1/grammar/sessions/GR-20260905-001/answers', {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer test-api-key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      answers: [{ question_number: 1, user_answer: 'went', feedback: 'Use went.' }],
+    }),
+  });
+
+  expect(emptyResponse.status).toBe(400);
+  expect(unevaluatedResponse.status).toBe(400);
+  expect(saveAnswersCalled).toBe(false);
+});
+
+test('no longer accepts per-question answer submissions', async () => {
+  let saveAnswersCalled = false;
+  const response = await createGrammarApp({
+    saveAnswers: async () => {
+      saveAnswersCalled = true;
       return session;
     },
   }).request('http://localhost/api/v1/grammar/sessions/GR-20260905-001/questions/1/answer', {
@@ -281,28 +363,8 @@ test('passes an immediate practice evaluation to the grammar service', async () 
     body: JSON.stringify({ user_answer: 'went', result: 'correct' }),
   });
 
-  expect(response.status).toBe(200);
-  expect(answerInput).toEqual({ user_answer: 'went', result: 'correct' });
-});
-
-test('allows an exam answer to remain unevaluated at the API boundary', async () => {
-  let answerInput: SaveGrammarAnswerRequest | undefined;
-  const response = await createGrammarApp({
-    saveAnswer: async (_code, _questionNumber, input) => {
-      answerInput = input;
-      return { ...session, mode: 'exam' };
-    },
-  }).request('http://localhost/api/v1/grammar/sessions/GR-20260905-002/questions/1/answer', {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer test-api-key',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ user_answer: 'went' }),
-  });
-
-  expect(response.status).toBe(200);
-  expect(answerInput).toEqual({ user_answer: 'went' });
+  expect(response.status).toBe(404);
+  expect(saveAnswersCalled).toBe(false);
 });
 
 test('passes a complete exam evaluation to the grammar service', async () => {

@@ -9,7 +9,7 @@ import { Textarea } from '../../../components/ui/form-field';
 import { ApiError } from '../../../lib/api/api-error';
 import { classNames } from '../../../lib/class-names';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { getGrammarSession, saveGrammarExamAnswer } from '../grammar-api';
+import { getGrammarSession, saveGrammarAnswers } from '../grammar-api';
 import type { GrammarQuestion, GrammarSession } from '../grammar-api';
 
 const resultStyle = {
@@ -53,7 +53,9 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
     setSaving(true);
     setMessage(undefined);
     try {
-      const updated = await saveGrammarExamAnswer(session.code, question.questionNumber, answer.trim());
+      const updated = await saveGrammarAnswers(session.code, [
+        { questionNumber: question.questionNumber, userAnswer: answer.trim() },
+      ]);
       setSession(updated);
       setMessage('Jawaban tersimpan. Penilaian exam dilakukan setelah sesi dikirim melalui Hermes.');
     } catch {

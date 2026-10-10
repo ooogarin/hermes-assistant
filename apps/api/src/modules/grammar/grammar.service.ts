@@ -23,8 +23,8 @@ import type {
   GrammarSessionRow,
   ListGrammarSessionsQuery,
   ListGrammarSessionsRequest,
-  SaveGrammarAnswerPayload,
-  SaveGrammarAnswerRequest,
+  SaveAnswersPayload,
+  SaveAnswersRequest,
 } from './grammar.types';
 
 export const createSession = async (input: CreateGrammarSessionRequest): Promise<GrammarSession> => {
@@ -127,11 +127,7 @@ export const removeSession = async (code: string): Promise<void> => {
   }
 };
 
-export const saveAnswer = async (
-  code: string,
-  question_number: number,
-  input: SaveGrammarAnswerRequest,
-): Promise<GrammarSession> => {
+export const saveAnswers = async (code: string, input: SaveAnswersRequest): Promise<GrammarSession> => {
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -146,33 +142,61 @@ export const saveAnswer = async (
       throw inactiveSession();
     }
 
-    const requiresPracticeEvaluation = session.mode === 'practice' && input.result === undefined;
+    const hasMissingPracticeEvaluation =
+      session.mode === 'practice' && input.answers.some((answer) => answer.result === undefined);
 
-    if (requiresPracticeEvaluation) {
+    if (hasMissingPracticeEvaluation) {
       throw practiceEvaluationRequired();
     }
 
-    const hasPrematureExamEvaluation = session.mode === 'exam' && input.result !== undefined;
+    const hasPrematureExamEvaluation =
+      session.mode === 'exam' && input.answers.some((answer) => answer.result !== undefined);
 
     if (hasPrematureExamEvaluation) {
       throw examEvaluationDeferred();
     }
 
-    const payload: SaveGrammarAnswerPayload = {
-      user_answer: input.user_answer,
-      result: input.result,
-      feedback: input.feedback,
+    const questionNumbers = new Set(questionRows.map((questionRow) => questionRow.question_number));
+    const answerNumbers = new Set(input.answers.map((answer) => answer.question_number));
+
+    const hasDuplicateQuestionNumbers = answerNumbers.size !== input.answers.length;
+    const hasUnknownQuestionNumbers = input.answers.some((answer) => !questionNumbers.has(answer.question_number));
+
+    if (hasDuplicateQuestionNumbers || hasUnknownQuestionNumbers) {
+      throw invalidAnswers();
+    }
+
+    const payload: SaveAnswersPayload = {
+      answers: input.answers.map((answer) => ({
+        question_number: answer.question_number,
+        user_answer: answer.user_answer,
+        result: answer.result ?? null,
+        feedback: answer.feedback ?? null,
+      })),
     };
 
-    const saved = await grammarRepository.upsertOneAnswerByCodeAndQuestionNumber(code, question_number, payload, trx);
-
-    if (!saved) {
-      throw questionNotFound();
-    }
+    await grammarRepository.upsertAllAnswersByCodeAndQuestionNumbers(code, payload, trx);
 
     const updatedQuestions = await grammarRepository.getAllQuestionsBySessionId(sessionRow.id, trx);
 
-    const updatedSession = toGrammarSession(sessionRow, updatedQuestions);
+    // A practice session completes itself as soon as its last open question has been answered.
+    if (session.mode === 'practice') {
+      const hasEveryQuestionAnswered = updatedQuestions.every((questionRow) => questionRow.user_answer !== null);
+
+      if (hasEveryQuestionAnswered) {
+        const score = updatedQuestions.filter((questionRow) => questionRow.answer_result === 'correct').length;
+
+        await grammarRepository.updateOneCompletionByCode(code, score, session.question_count, trx);
+      }
+    }
+
+    const savedSessionRow = await grammarRepository.getOneByCode(code, trx);
+
+    if (savedSessionRow === null) {
+      throw sessionNotFound();
+    }
+
+    const updatedSession = toGrammarSession(savedSessionRow, updatedQuestions);
 
     const trxToCommit = trx;
     trx = undefined;
@@ -423,6 +447,14 @@ const sessionNotFound = (): AppError => {
 
 const questionNotFound = (): AppError => {
   return notFoundError('GRAMMAR_QUESTION_NOT_FOUND', 'Grammar question not found');
+};
+
+const invalidAnswers = (): AppError => {
+  return new AppError({
+    code: 'INVALID_GRAMMAR_ANSWERS',
+    statusCode: 400,
+    message: 'Answers must reference unique questions belonging to this session',
+  });
 };
 
 const inactiveSession = (): AppError => {

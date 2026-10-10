@@ -11,7 +11,7 @@ import type {
   GrammarSessionRow,
   IdRow,
   ListGrammarSessionsQuery,
-  SaveGrammarAnswerPayload,
+  SaveAnswersPayload,
   SequenceRow,
 } from './grammar.types';
 
@@ -130,8 +130,11 @@ export const insertAllQuestions = async (
   `;
 };
 
-export const getOneByCode = async (code: string): Promise<GrammarSessionRow | null> => {
-  const database = getDatabaseClient();
+export const getOneByCode = async (
+  code: string,
+  trx?: DatabaseReservedConnection,
+): Promise<GrammarSessionRow | null> => {
+  const database = trx ?? getDatabaseClient();
 
   const [row] = await database<GrammarSessionRow[]>`
     SELECT
@@ -335,13 +338,12 @@ export const getOneByCodeForUpdate = async (
   return row;
 };
 
-export const upsertOneAnswerByCodeAndQuestionNumber = async (
+export const upsertAllAnswersByCodeAndQuestionNumbers = async (
   code: string,
-  question_number: number,
-  input: SaveGrammarAnswerPayload,
+  input: SaveAnswersPayload,
   trx: DatabaseReservedConnection,
-): Promise<IdRow | null> => {
-  const [row] = await trx<IdRow[]>`
+): Promise<void> => {
+  await trx`
     INSERT INTO grammar_answers (
       question_id,
       user_answer,
@@ -352,17 +354,22 @@ export const upsertOneAnswerByCodeAndQuestionNumber = async (
     )
     SELECT
       grammar_questions.id,
-      ${input.user_answer},
-      ${input.result ?? null}::grammar_answer_result,
-      ${input.feedback ?? null},
+      payload.user_answer,
+      payload.result::grammar_answer_result,
+      payload.feedback,
       NOW(),
-      CASE WHEN ${input.result !== undefined} THEN NOW() ELSE NULL END
+      CASE WHEN payload.result IS NOT NULL THEN NOW() ELSE NULL END
     FROM grammar_questions
     JOIN grammar_sessions ON grammar_sessions.id = grammar_questions.session_id
+    JOIN jsonb_to_recordset(${input.answers}) AS payload(
+      question_number INTEGER,
+      user_answer TEXT,
+      result TEXT,
+      feedback TEXT
+    ) ON payload.question_number = grammar_questions.question_number
     WHERE grammar_sessions.code = ${code}
       AND grammar_sessions.deleted_at IS NULL
       AND grammar_sessions.status = 'active'
-      AND grammar_questions.question_number = ${question_number}
       AND grammar_questions.deleted_at IS NULL
     ON CONFLICT (question_id) DO UPDATE
     SET
@@ -373,11 +380,7 @@ export const upsertOneAnswerByCodeAndQuestionNumber = async (
       evaluated_at = EXCLUDED.evaluated_at,
       updated_at = NOW(),
       deleted_at = NULL
-    RETURNING
-      id
   `;
-
-  return row ?? null;
 };
 
 export const getOneExplanationByCodeAndQuestionNumber = async (
@@ -409,10 +412,6 @@ export const updateAllAnswerEvaluationsByCode = async (
   input: EvaluateGrammarSessionPayload,
   trx: DatabaseReservedConnection,
 ): Promise<void> => {
-  const questionNumbers = input.answers.map((answer) => answer.question_number);
-  const results = input.answers.map((answer) => answer.result);
-  const feedback = input.answers.map((answer) => answer.feedback);
-
   await trx`
     UPDATE grammar_answers
     SET
@@ -422,14 +421,10 @@ export const updateAllAnswerEvaluationsByCode = async (
       updated_at = NOW()
     FROM grammar_questions
     JOIN grammar_sessions ON grammar_sessions.id = grammar_questions.session_id
-    JOIN UNNEST(
-      ${trx.array(questionNumbers, 'INTEGER')},
-      ${trx.array(results, 'TEXT')},
-      ${trx.array(feedback, 'TEXT')}
-    ) AS payload(
-      question_number,
-      result,
-      feedback
+    JOIN jsonb_to_recordset(${input.answers}) AS payload(
+      question_number INTEGER,
+      result TEXT,
+      feedback TEXT
     ) ON payload.question_number = grammar_questions.question_number
     WHERE grammar_answers.question_id = grammar_questions.id
       AND grammar_sessions.code = ${code}

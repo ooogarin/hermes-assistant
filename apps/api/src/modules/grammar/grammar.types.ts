@@ -4,7 +4,7 @@ import type {
   evaluateSessionSchema,
   listSessionsSchema,
   questionReferenceSchema,
-  saveAnswerSchema,
+  saveAnswersSchema,
   sessionCodeSchema,
 } from './grammar.validator';
 
@@ -18,7 +18,7 @@ export type GrammarSessionStatus = 'active' | 'completed' | 'abandoned';
 export type GrammarAnswerResult = 'correct' | 'partial' | 'incorrect';
 
 export type CreateGrammarSessionRequest = z.infer<typeof createSessionSchema>;
-export type SaveGrammarAnswerRequest = z.infer<typeof saveAnswerSchema>;
+export type SaveAnswersRequest = z.infer<typeof saveAnswersSchema>;
 export type EvaluateGrammarSessionRequest = z.infer<typeof evaluateSessionSchema>;
 export type ListGrammarSessionsRequest = z.infer<typeof listSessionsSchema>;
 export type GrammarSessionParams = z.infer<typeof sessionCodeSchema>;
@@ -114,7 +114,7 @@ export type GrammarService = {
   listSessions: (input: ListGrammarSessionsRequest) => Promise<GrammarSessionList>;
   getSession: (code: string) => Promise<GrammarSession>;
   removeSession: (code: string) => Promise<void>;
-  saveAnswer: (code: string, question_number: number, input: SaveGrammarAnswerRequest) => Promise<GrammarSession>;
+  saveAnswers: (code: string, input: SaveAnswersRequest) => Promise<GrammarSession>;
   getExplanation: (code: string, question_number: number) => Promise<GrammarExplanation>;
   evaluateSession: (code: string, input: EvaluateGrammarSessionRequest) => Promise<GrammarReport>;
   getReport: (code: string) => Promise<GrammarReport>;
@@ -140,10 +140,13 @@ export type CreateGrammarSessionPayload = {
   }>;
 };
 
-export type SaveGrammarAnswerPayload = {
-  user_answer: string;
-  result?: GrammarAnswerResult;
-  feedback?: string | null;
+export type SaveAnswersPayload = {
+  answers: Array<{
+    question_number: number;
+    user_answer: string;
+    result: GrammarAnswerResult | null;
+    feedback: string | null;
+  }>;
 };
 
 export type EvaluateGrammarSessionPayload = {

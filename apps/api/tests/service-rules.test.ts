@@ -9,6 +9,7 @@ import type {
   GrammarSession,
   GrammarSessionListRow,
   GrammarSessionRow,
+  SaveAnswersPayload,
 } from '../src/modules/grammar/grammar.types';
 import type { JunkItemRow } from '../src/modules/junk/junk.types';
 import type {
@@ -190,6 +191,9 @@ let grammarLockedSessionResult: GrammarSession = grammarSession;
 let grammarListResult: GrammarSessionListRow[] = [];
 let grammarCountResult: GrammarCountRow = { total: 0 };
 let grammarAnswerWriteCount = 0;
+let grammarAnswersPayloadResult: SaveAnswersPayload | null = null;
+let grammarCompletionWriteCount = 0;
+let grammarCompletionResult: { code: string; score: number; max_score: number } | null = null;
 let grammarReadConnections: Array<DatabaseReservedConnection | undefined> = [];
 let committedTransactionCount = 0;
 let rolledBackTransactionCount = 0;
@@ -299,9 +303,24 @@ mock.module('../src/modules/grammar/grammar.repository', () => ({
 
     return grammarLockedSessionResult.questions.map(toGrammarQuestionRow);
   },
-  upsertOneAnswerByCodeAndQuestionNumber: async () => {
+  upsertAllAnswersByCodeAndQuestionNumbers: async (
+    _code: string,
+    payload: SaveAnswersPayload,
+    _trx: DatabaseReservedConnection,
+  ) => {
     grammarAnswerWriteCount += 1;
-    return { id: 1 };
+    grammarAnswersPayloadResult = payload;
+  },
+  updateOneCompletionByCode: async (code: string, score: number, max_score: number) => {
+    grammarCompletionWriteCount += 1;
+    grammarCompletionResult = { code, score, max_score };
+    grammarLockedSessionResult = {
+      ...grammarLockedSessionResult,
+      status: 'completed',
+      score,
+      max_score,
+      completed_at: '2026-09-05T11:00:00.000Z',
+    };
   },
 }));
 
@@ -399,6 +418,9 @@ beforeEach(() => {
   grammarListResult = [];
   grammarCountResult = { total: 0 };
   grammarAnswerWriteCount = 0;
+  grammarAnswersPayloadResult = null;
+  grammarCompletionWriteCount = 0;
+  grammarCompletionResult = null;
   grammarReadConnections = [];
   committedTransactionCount = 0;
   rolledBackTransactionCount = 0;
@@ -535,7 +557,9 @@ test('grammar reads use the pool outside a transaction and the same reserved con
 
   grammarReadConnections = [];
 
-  await grammarService.saveAnswer(grammarSession.code, 1, { user_answer: 'went', result: 'correct' });
+  await grammarService.saveAnswers(grammarSession.code, {
+    answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],
+  });
 
   expect(grammarReadConnections).toEqual([fakeTrx, fakeTrx, fakeTrx]);
   expect(grammarAnswerWriteCount).toBe(1);
@@ -691,28 +715,143 @@ test('junk formats category and tags without changing separators needed for filt
 });
 
 test('grammar requires immediate evaluation for practice answers', async () => {
-  await expect(grammarService.saveAnswer(grammarSession.code, 1, { user_answer: 'went' })).rejects.toMatchObject({
-    code: 'PRACTICE_EVALUATION_REQUIRED',
-    statusCode: 400,
-  });
+  await expect(
+    grammarService.saveAnswers(grammarSession.code, {
+      answers: [{ question_number: 1, user_answer: 'went' }],
+    }),
+  ).rejects.toMatchObject({ code: 'PRACTICE_EVALUATION_REQUIRED', statusCode: 400 });
+  expect(grammarAnswerWriteCount).toBe(0);
+  expect(committedTransactionCount).toBe(0);
+  expect(rolledBackTransactionCount).toBe(1);
 });
 
 test('grammar defers individual evaluation for exam answers', async () => {
   grammarLockedSessionResult = { ...grammarSession, mode: 'exam' };
 
   await expect(
-    grammarService.saveAnswer(grammarSession.code, 1, { user_answer: 'went', result: 'correct', feedback: null }),
+    grammarService.saveAnswers(grammarSession.code, {
+      answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
+    }),
   ).rejects.toMatchObject({ code: 'EXAM_EVALUATION_DEFERRED', statusCode: 400 });
+  expect(grammarAnswerWriteCount).toBe(0);
+  expect(committedTransactionCount).toBe(0);
+  expect(rolledBackTransactionCount).toBe(1);
+});
+
+test('grammar saves exam answers without results in one bulk write', async () => {
+  grammarLockedSessionResult = {
+    ...grammarSession,
+    mode: 'exam',
+    question_count: 2,
+    questions: [grammarQuestion, { ...grammarQuestion, question_number: 2, grammar_point: 'subject verb agreement' }],
+  };
+
+  await expect(
+    grammarService.saveAnswers(grammarSession.code, {
+      answers: [
+        { question_number: 1, user_answer: 'went' },
+        { question_number: 2, user_answer: 'He walk every day.' },
+      ],
+    }),
+  ).resolves.toMatchObject({ mode: 'exam', status: 'active' });
+
+  expect(grammarAnswerWriteCount).toBe(1);
+  expect(grammarAnswersPayloadResult).toEqual({
+    answers: [
+      { question_number: 1, user_answer: 'went', result: null, feedback: null },
+      { question_number: 2, user_answer: 'He walk every day.', result: null, feedback: null },
+    ],
+  });
+  expect(grammarCompletionWriteCount).toBe(0);
+  expect(committedTransactionCount).toBe(1);
+});
+
+test('grammar completes an active practice session once every question has an answer', async () => {
+  const answeredAt = '2026-09-05T10:05:00.000Z';
+  grammarLockedSessionResult = {
+    ...grammarSession,
+    question_count: 2,
+    questions: [
+      {
+        ...grammarQuestion,
+        answer: {
+          user_answer: 'went',
+          result: 'correct',
+          feedback: null,
+          answered_at: answeredAt,
+          evaluated_at: answeredAt,
+        },
+      },
+      {
+        ...grammarQuestion,
+        question_number: 2,
+        grammar_point: 'subject verb agreement',
+        answer: {
+          user_answer: 'He walk every day.',
+          result: 'incorrect',
+          feedback: null,
+          answered_at: answeredAt,
+          evaluated_at: answeredAt,
+        },
+      },
+    ],
+  };
+
+  const result = await grammarService.saveAnswers(grammarSession.code, {
+    answers: [{ question_number: 2, user_answer: 'He walks every day.', result: 'incorrect', feedback: 'Use walks.' }],
+  });
+
+  expect(grammarAnswerWriteCount).toBe(1);
+  expect(grammarCompletionWriteCount).toBe(1);
+  expect(grammarCompletionResult).toEqual({ code: grammarSession.code, score: 1, max_score: 2 });
+  expect(result.status).toBe('completed');
+  expect(result.score).toBe(1);
+  expect(result.max_score).toBe(2);
+  expect(committedTransactionCount).toBe(1);
+});
+
+test('grammar keeps an incomplete practice session active', async () => {
+  const result = await grammarService.saveAnswers(grammarSession.code, {
+    answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],
+  });
+
+  expect(grammarAnswerWriteCount).toBe(1);
+  expect(grammarCompletionWriteCount).toBe(0);
+  expect(result.status).toBe('active');
+  expect(committedTransactionCount).toBe(1);
+});
+
+test('grammar rejects answers that reference unknown questions without writing', async () => {
+  await expect(
+    grammarService.saveAnswers(grammarSession.code, {
+      answers: [{ question_number: 5, user_answer: 'went', result: 'correct' }],
+    }),
+  ).rejects.toMatchObject({ code: 'INVALID_GRAMMAR_ANSWERS', statusCode: 400 });
+  expect(grammarAnswerWriteCount).toBe(0);
+  expect(committedTransactionCount).toBe(0);
+  expect(rolledBackTransactionCount).toBe(1);
+});
+
+test('grammar rejects duplicate question numbers without writing', async () => {
+  await expect(
+    grammarService.saveAnswers(grammarSession.code, {
+      answers: [
+        { question_number: 1, user_answer: 'went', result: 'correct' },
+        { question_number: 1, user_answer: 'go', result: 'correct' },
+      ],
+    }),
+  ).rejects.toMatchObject({ code: 'INVALID_GRAMMAR_ANSWERS', statusCode: 400 });
+  expect(grammarAnswerWriteCount).toBe(0);
+  expect(committedTransactionCount).toBe(0);
+  expect(rolledBackTransactionCount).toBe(1);
 });
 
 test('grammar rejects an answer when the locked session is no longer active', async () => {
   grammarLockedSessionResult = { ...grammarSession, status: 'completed' };
 
   await expect(
-    grammarService.saveAnswer(grammarSession.code, 1, {
-      user_answer: 'went',
-      result: 'correct',
-      feedback: null,
+    grammarService.saveAnswers(grammarSession.code, {
+      answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
     }),
   ).rejects.toMatchObject({ code: 'GRAMMAR_SESSION_INACTIVE', statusCode: 409 });
 

@@ -42,16 +42,30 @@ export const listSessionsSchema = z
   })
   .strict();
 
-export const saveAnswerSchema = z
+export const saveAnswersSchema = z
   .object({
-    user_answer: textSchema,
-    result: answerResultSchema.optional(),
-    feedback: z.string().trim().min(1).max(2_000).nullable().optional(),
+    answers: z
+      .array(
+        z.object({
+          question_number: z.number().int().positive(),
+          user_answer: textSchema,
+          result: answerResultSchema.optional(),
+          feedback: z.string().trim().min(1).max(2_000).nullable().optional(),
+        }),
+      )
+      .min(1)
+      .max(100),
   })
   .superRefine((value, context) => {
-    if (value.result === undefined && value.feedback !== undefined) {
-      context.addIssue({ code: 'custom', message: 'Feedback requires an evaluation result.', path: ['feedback'] });
-    }
+    value.answers.forEach((answer, index) => {
+      if (answer.result === undefined && answer.feedback !== undefined) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Feedback requires an evaluation result.',
+          path: ['answers', index, 'feedback'],
+        });
+      }
+    });
   });
 
 export const evaluateSessionSchema = z.object({

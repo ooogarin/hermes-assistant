@@ -6,7 +6,7 @@ import {
   evaluateSessionSchema,
   listSessionsSchema,
   questionReferenceSchema,
-  saveAnswerSchema,
+  saveAnswersSchema,
   sessionCodeSchema,
 } from './grammar.validator';
 import type { Context } from 'hono';
@@ -44,11 +44,11 @@ export const removeSession = async (context: Context<AppEnv>) => {
   return context.body(null, 204);
 };
 
-export const saveAnswer = async (context: Context<AppEnv>) => {
-  const params = getParam(context, questionReferenceSchema);
-  const input = getBody(context, saveAnswerSchema);
+export const saveAnswers = async (context: Context<AppEnv>) => {
+  const params = getParam(context, sessionCodeSchema);
+  const input = getBody(context, saveAnswersSchema);
 
-  const result = await grammarService.saveAnswer(params.code, params.question_number, input);
+  const result = await grammarService.saveAnswers(params.code, input);
 
   return successResponse({ context, data: result });
 };
