@@ -1,5 +1,6 @@
 import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
+import type { JakartaDateCodeParts } from '../../shared/date/date';
 import type {
   CreateGrammarSessionPayload,
   EvaluateGrammarSessionPayload,
@@ -18,20 +19,21 @@ import type {
 const grammarCodeLockNamespace = 161_803_398;
 
 export const getLastSequenceByDateForUpdate = async (
-  dateKey: number,
-  dateSegment: string,
+  codePrefix: string,
+  date: JakartaDateCodeParts,
   trx: DatabaseReservedConnection,
 ): Promise<SequenceRow> => {
   await trx`
     SELECT
-      pg_advisory_xact_lock(${grammarCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
+      pg_advisory_xact_lock(${grammarCodeLockNamespace}::INTEGER, ${date.key}::INTEGER)
   `;
 
+  // Deliberately includes soft-deleted sessions: their codes stay reserved and must not be reused.
   const [row] = await trx<SequenceRow[]>`
     SELECT
       COALESCE(MAX(SPLIT_PART(code, '-', 3)::INTEGER), 0) AS sequence
     FROM grammar_sessions
-    WHERE code LIKE ${`GR-${dateSegment}-%`}
+    WHERE code LIKE ${`${codePrefix}-${date.segment}-%`}
   `;
 
   if (row === undefined) {
