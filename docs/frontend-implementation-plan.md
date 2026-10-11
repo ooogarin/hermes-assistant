@@ -1,6 +1,6 @@
 # Hermes Frontend Implementation Plan
 
-> Status: Foundation, Finance, Notes, Junk, Reading, Writing, and Grammar settings implemented. This document plans the frontend foundation and screen delivery; it does not change domain behavior or API contracts.
+> Status: Foundation, Finance, Notes, Junk, Reading, Writing, Grammar settings, and the Grammar session list implemented. This document plans the frontend foundation and screen delivery; it does not change domain behavior or API contracts.
 
 ## Current progress
 
@@ -16,6 +16,7 @@ Completed foundation work:
 - Finance daily and range reports plus manual batch create, edit, and confirmed delete flows.
 - Notes list and detail with API-backed keyword, type, category, and tag filtering, direct detail routes, and responsive list/detail behavior.
 - Junk list, preview, and standalone detail with API-backed keyword, category, tag, and source-URL filtering plus safe nullable-title handling.
+- Grammar session list with API-backed search, status chips, mode and level filters, ordering, and server-side pagination.
 
 Finance and Notes validate the current foundation against the existing API contracts. Notes supports keyword, type, category, and tag filters. Controls without API support (source, date range, and alternative ordering) stay visibly unavailable rather than applying incomplete client-side filtering.
 
@@ -296,7 +297,6 @@ Implement the following only after their missing contracts are designed and avai
 
 | Screen or behavior | Current blocker |
 | --- | --- |
-| Grammar session list | No collection/search/filter/pagination endpoint |
 | Writing draft submission | Current POST requires caller-authored estimated level and complete analysis |
 | General English Q&A | No authenticated browser conversation contract |
 | Save General English response to Notes | Save/preview payload and confirmation contract missing |
