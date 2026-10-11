@@ -25,7 +25,7 @@ The initial web scope is to update persistent defaults, open a known session, an
 
 | ID | Screen | Proposed route | Initial status | API status |
 | --- | --- | --- | --- | --- |
-| SCR-GRAM-001 | Grammar session list | `/english/grammar` | Design ready; API integration next | Available |
+| SCR-GRAM-001 | Grammar session list | `/english/grammar` | Implemented | Available |
 | SCR-GRAM-002 | Grammar settings | `/english/grammar/settings` | Implemented | Available |
 | SCR-GRAM-003 | Grammar session workspace | `/english/grammar/:code` | Implemented for a known code | Available |
 | SCR-GRAM-004 | Grammar explanation | `/english/grammar/:code/questions/:number/explanation` | Implemented on demand | Available |
@@ -43,6 +43,7 @@ Find a session and continue, review, or inspect its result.
 - Header: `Grammar` and the local `Pengaturan` action, with no supporting subtitle.
 - Search, status chips, mode filter, and level filter.
 - One grouped table-like list with session code, mode, grammar focus, level, question count, source, date, status, and score where available.
+- Rows carry an action label that matches the destination: `Lanjutkan` for active sessions, `Lihat hasil` for completed sessions, and `Buka sesi` for abandoned sessions.
 - Selecting a row opens SCR-GRAM-003 or SCR-GRAM-005 according to its session state.
 
 **Data contract**
@@ -164,4 +165,4 @@ GET /api/v1/grammar/sessions/:code/report
 1. SCR-GRAM-002 Settings, because its API contract is complete and independent of the missing collection endpoint.
 2. SCR-GRAM-003 for a known session code, including distinct practice and exam states.
 3. SCR-GRAM-004 explanations and SCR-GRAM-005 reports after their session states are verified.
-4. SCR-GRAM-001 after the collection endpoint is available; the remaining work is browser API wiring and visual-state QA.
+4. SCR-GRAM-001 once the collection endpoint became available. Implemented.

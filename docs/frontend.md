@@ -2,7 +2,7 @@
 
 ## Scope
 
-`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk, Reading, API-backed Writing workflows, and Grammar known-code workflows. The frontend does not own durable data, calculations, aggregation, analysis, or filtering rules; those remain in the API and PostgreSQL.
+`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk, Reading, API-backed Writing workflows, and Grammar session-list and known-code workflows. The frontend does not own durable data, calculations, aggregation, analysis, or filtering rules; those remain in the API and PostgreSQL.
 
 The initial implementation deliberately uses React's built-in `useState` and `useEffect`, plus focused custom hooks such as `useFinanceReport`. It does not use a state-management library, UI kit, or chart library. Reusable UI is implemented as small Tailwind components in `src/components`.
 
@@ -105,7 +105,7 @@ GET   /api/v1/grammar/settings
 PATCH /api/v1/grammar/settings
 ```
 
-The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` exposes the settings entry point and an explicit unavailable state while the Grammar session collection API is missing.
+The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` lists sessions with API-backed search, status chips, mode and level filters, newest/oldest ordering, and server-side pagination, and exposes the settings entry point.
 
 Known Grammar session routes display session questions, stored feedback, on-demand explanations, and completed reports. The browser may save unevaluated exam answers. It does not grade practice answers or submit final exam evaluations because those commands require authoritative results supplied by Hermes.
 
