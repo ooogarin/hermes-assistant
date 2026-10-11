@@ -17,7 +17,10 @@ export const getJakartaDateCodeParts = (value: Date): JakartaDateCodeParts => {
   };
   const segment = `${getPart('year')}${getPart('month')}${getPart('day')}`;
 
-  return { key: Number(segment), segment };
+  return {
+    key: Number(segment),
+    segment,
+  };
 };
 
 export const toIsoTimestamp = (value: Date | string): string => {

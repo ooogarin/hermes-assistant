@@ -27,6 +27,8 @@ import type {
   SaveAnswersRequest,
 } from './grammar.types';
 
+const GRAMMAR_CODE_PREFIX = 'GR';
+
 export const createSession = async (input: CreateGrammarSessionRequest): Promise<GrammarSession> => {
   let trx: DatabaseReservedConnection | undefined;
 
@@ -35,9 +37,9 @@ export const createSession = async (input: CreateGrammarSessionRequest): Promise
 
     trx = await startTransaction();
 
-    const sequenceRow = await grammarRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
+    const sequenceRow = await grammarRepository.getLastSequenceByDateForUpdate(GRAMMAR_CODE_PREFIX, date, trx);
 
-    const code = formatPublicCode('GR', date.segment, sequenceRow.sequence + 1);
+    const code = formatPublicCode(GRAMMAR_CODE_PREFIX, date.segment, sequenceRow.sequence + 1);
     const payload = toCreateGrammarSessionPayload(input);
 
     const sessionId = await grammarRepository.insertOne(code, payload, trx);
