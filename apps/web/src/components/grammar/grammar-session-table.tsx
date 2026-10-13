@@ -6,11 +6,11 @@ import {
   grammarSessionStatusLabels,
   grammarSourceLabels,
 } from '../../features/grammar/grammar-display';
-import { formatDate, formatDisplayLabel } from '../../lib/formatting/formatters';
+import { formatDate } from '../../lib/formatting/formatters';
 import type { GrammarSessionListItem } from '../../features/grammar/grammar-api';
 
-const minimumWidth = 'min-w-[calc(clamp(9rem,22cqw,14rem)+64rem)]';
-const columns = `grid ${minimumWidth} grid-cols-[clamp(9rem,22cqw,14rem)_6rem_minmax(11rem,1fr)_8rem_4rem_9rem_8rem_7rem_6rem_7rem] gap-4`;
+const minimumWidth = 'min-w-[calc(clamp(9rem,22cqw,14rem)+53rem)]';
+const columns = `grid ${minimumWidth} grid-cols-[clamp(9rem,22cqw,14rem)_6rem_8rem_4rem_9rem_8rem_7rem_6rem_7rem] gap-4`;
 
 const badgeClassName = 'inline-flex shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-xs font-medium';
 const primaryBadgeClassName = `${badgeClassName} border-primary/25 bg-primary-subtle text-primary`;
@@ -44,12 +44,6 @@ const sessionActionLabel = (item: GrammarSessionListItem): string => {
   }
 
   return item.status === 'completed' ? 'Lihat hasil' : 'Buka sesi';
-};
-
-const focusLabel = (item: GrammarSessionListItem): string => {
-  const parts = [item.grammarArea, item.grammarPoint].filter((part): part is string => part !== null);
-
-  return parts.map((part) => formatDisplayLabel(part)).join(' · ') || '—';
 };
 
 const scoreLabel = (item: GrammarSessionListItem): string =>
@@ -105,7 +99,6 @@ export const GrammarSessionTable = ({ items }: { items: GrammarSessionListItem[]
           <div aria-hidden='true' className={`${columns} border-b border-border text-sm font-semibold text-ink-muted`}>
             <span className={`${frozenColumn} bg-surface px-5 py-3 whitespace-nowrap`}>Sesi</span>
             <span className='py-3 whitespace-nowrap'>Mode</span>
-            <span className='py-3 whitespace-nowrap'>Fokus</span>
             <span className='py-3 whitespace-nowrap'>Level</span>
             <span className='py-3 whitespace-nowrap'>Soal</span>
             <span className='py-3 whitespace-nowrap'>Sumber</span>
@@ -129,10 +122,6 @@ export const GrammarSessionTable = ({ items }: { items: GrammarSessionListItem[]
                   <div className='min-w-0 py-5'>
                     <span className='sr-only'>Mode: </span>
                     <GrammarModeBadge mode={item.mode} />
-                  </div>
-                  <div className='min-w-0 py-5 text-sm text-ink-muted'>
-                    <span className='sr-only'>Fokus: </span>
-                    <span className='break-words'>{focusLabel(item)}</span>
                   </div>
                   <div className='min-w-0 py-5 text-sm text-ink-muted'>
                     <span className='sr-only'>Level: </span>
@@ -176,14 +165,15 @@ export const GrammarSessionTable = ({ items }: { items: GrammarSessionListItem[]
           />
         ) : null}
       </div>
-      {canScroll ? (
-        <footer className='flex flex-wrap items-center justify-end gap-3 border-t border-border px-5 py-4 text-xs text-ink-muted'>
+      <footer className='flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 text-xs text-ink-muted'>
+        <span>Menampilkan {items.length} sesi</span>
+        {canScroll ? (
           <span id='grammar-session-scroll-hint' className='inline-flex items-center gap-2'>
             <MoveHorizontal aria-hidden='true' size={16} />
             Geser horizontal untuk melihat semua kolom
           </span>
-        </footer>
-      ) : null}
+        ) : null}
+      </footer>
     </section>
   );
 };

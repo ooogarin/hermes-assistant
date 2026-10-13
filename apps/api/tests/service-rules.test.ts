@@ -3,7 +3,6 @@ import { writingAnalysis } from './fixtures/writing';
 import type { DatabaseReservedConnection } from '../src/core/database/database.types';
 import type { FinanceDailySummaryQuery, FinanceDailySummaryRow } from '../src/modules/finance/finance.types';
 import type {
-  GrammarCountRow,
   GrammarSession,
   GrammarSessionListRow,
   GrammarSessionRow,
@@ -191,7 +190,7 @@ let financeCategories: Array<{ id: number; code: string; name: string; descripti
 let financeDailySummaryResult: FinanceDailySummaryRow[] = [];
 let grammarLockedSessionResult: GrammarSession = grammarSession;
 let grammarListResult: GrammarSessionListRow[] = [];
-let grammarCountResult: GrammarCountRow = { total: 0 };
+
 let grammarAnswerWriteCount = 0;
 let grammarAnswersPayloadResult: SaveAnswersPayload | null = null;
 let grammarCompletionWriteCount = 0;
@@ -301,7 +300,6 @@ mock.module('../src/modules/grammar/grammar.repository', () => ({
   getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
   insert: async () => toGrammarSessionRow(grammarSession),
   getAll: async () => grammarListResult,
-  countAll: async () => grammarCountResult,
   getOneByCode: async () => toGrammarSessionRow(grammarLockedSessionResult),
   getOneByCodeForUpdate: async (_code: string, trx: DatabaseReservedConnection) => {
     grammarReadConnections.push(trx);
@@ -421,7 +419,6 @@ beforeEach(() => {
   financeDailySummaryResult = [];
   grammarLockedSessionResult = grammarSession;
   grammarListResult = [];
-  grammarCountResult = { total: 0 };
   grammarAnswerWriteCount = 0;
   grammarAnswersPayloadResult = null;
   grammarCompletionWriteCount = 0;
@@ -638,17 +635,13 @@ test('grammar service composes list responses from repository rows', async () =>
       source: grammarSession.source,
       status: grammarSession.status,
       level: grammarSession.level,
-      grammar_area: 'tenses',
-      grammar_point: 'simple past',
       question_count: '5',
-      answered_question_count: '3',
       score: null,
       max_score: null,
       started_at: '2026-09-05T10:00:00.000Z',
       completed_at: null,
     },
   ];
-  grammarCountResult = { total: '21' };
 
   await expect(
     grammarService.listSessions({
@@ -656,7 +649,6 @@ test('grammar service composes list responses from repository rows', async () =>
       status: 'active',
       mode: 'practice',
       level: 'A1',
-      page: 2,
       limit: 20,
       sort: 'newest',
     }),
@@ -668,17 +660,13 @@ test('grammar service composes list responses from repository rows', async () =>
         source: 'request',
         status: 'active',
         level: 'A1',
-        grammar_area: 'tenses',
-        grammar_point: 'simple past',
         question_count: 5,
-        answered_question_count: 3,
         score: null,
         max_score: null,
         started_at: '2026-09-05T10:00:00.000Z',
         completed_at: null,
       },
     ],
-    meta: { page: 2, limit: 20, total: 21, total_pages: 2 },
   });
 });
 

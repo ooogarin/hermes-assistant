@@ -8,7 +8,6 @@ import { GrammarSessionTable } from '../../../components/grammar/grammar-session
 import { PageHeader } from '../../../components/layout/page-header';
 import { Button } from '../../../components/ui/button';
 import { ChoiceDropdown } from '../../../components/ui/choice-dropdown';
-import { CollectionPagination } from '../../../components/ui/collection-pagination';
 import { FilterChip } from '../../../components/ui/filter-chip';
 import { FilterPopover } from '../../../components/ui/filter-popover';
 import { SearchForm } from '../../../components/ui/search-form';
@@ -19,20 +18,18 @@ import type { GrammarSessionListFilters } from '../grammar-api';
 const sessionStatuses = ['active', 'completed'] as const;
 const sessionModes = ['practice', 'exam'] as const;
 const sessionLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
-const sessionsPerPage = 20;
+const sessionListLimit = 100;
 
 const GrammarListPage = () => {
   const [params, setParams] = useSearchParams();
   const rawMode = params.get('mode');
   const rawLevel = params.get('level');
-  const requestedPage = Number.parseInt(params.get('page') ?? '', 10);
   const filters: GrammarSessionListFilters = {
     q: params.get('q')?.trim() || undefined,
     status: sessionStatuses.find((status) => status === params.get('status')),
     mode: sessionModes.find((mode) => mode === rawMode),
     level: rawLevel?.trim() || undefined,
-    page: Number.isNaN(requestedPage) || requestedPage < 1 ? 1 : requestedPage,
-    limit: sessionsPerPage,
+    limit: sessionListLimit,
     sort: params.get('sort') === 'oldest' ? 'oldest' : 'newest',
   };
   const [query, setQuery] = useState(filters.q ?? '');
@@ -49,7 +46,6 @@ const GrammarListPage = () => {
 
   const update = (changes: Record<string, string | number | undefined>) => {
     const next = new URLSearchParams(params);
-    next.delete('page');
 
     for (const [name, value] of Object.entries(changes)) {
       if (value === undefined || value === '') {
@@ -69,7 +65,7 @@ const GrammarListPage = () => {
         <div className='flex flex-col gap-3 lg:flex-row lg:items-stretch'>
           <SearchForm
             label='Cari sesi'
-            placeholder='Cari grammar point atau sesi...'
+            placeholder='Cari kode sesi...'
             value={query}
             onChange={(value) => {
               setQuery(value);
@@ -155,20 +151,7 @@ const GrammarListPage = () => {
       {sessions.status === 'error' ? <ErrorState onRetry={sessions.retry} /> : null}
       {sessions.status === 'success' ? (
         sessions.data.items.length ? (
-          <>
-            <GrammarSessionTable items={sessions.data.items} />
-            {sessions.data.meta.totalPages > 1 ? (
-              <CollectionPagination
-                itemLabel='sesi'
-                itemCount={sessions.data.items.length}
-                limit={sessions.data.meta.limit}
-                onPageChange={(page) => update({ page })}
-                page={sessions.data.meta.page}
-                total={sessions.data.meta.total}
-                totalPages={sessions.data.meta.totalPages}
-              />
-            ) : null}
-          </>
+          <GrammarSessionTable items={sessions.data.items} />
         ) : (
           <ContentState
             title={hasFilters ? 'Tidak ada sesi yang cocok' : 'Belum ada sesi Grammar'}

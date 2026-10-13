@@ -246,11 +246,10 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     expect(report.breakdown).toHaveLength(2);
 
     const completedSessions = await grammarService.listSessions({
-      q: 'AGREEMENT',
+      q: exam.code,
       status: 'completed',
       mode: 'exam',
       level: 'A1',
-      page: 1,
       limit: 20,
       sort: 'newest',
     });
@@ -262,15 +261,11 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
           source: 'request',
           status: 'completed',
           level: 'A1',
-          grammar_area: 'tenses',
-          grammar_point: 'simple past',
           question_count: 2,
-          answered_question_count: 2,
           score: 1,
           max_score: 2,
         },
       ],
-      meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
     });
 
     await grammarService.removeSession(practice.code);

@@ -42,16 +42,16 @@ Find a session and continue, review, or inspect its result.
 
 - Header: `Grammar` and the local `Pengaturan` action, with no supporting subtitle.
 - Search, status chips, mode filter, and level filter.
-- One grouped table-like list with session code, mode, grammar focus, level, question count, source, date, status, and score where available.
+- One grouped table-like list with session code, mode, level, question count, source, date, status, and score where available.
 - Rows carry an action label that matches the destination: `Lanjutkan` for active sessions, `Lihat hasil` for completed sessions, and `Buka sesi` for abandoned sessions.
 - Selecting a row opens SCR-GRAM-003 or SCR-GRAM-005 according to its session state.
 
 **Data contract**
 
-- `GET /api/v1/grammar/sessions` supports `q`, `status`, `mode`, `level`, `page`, `limit`, and `sort` query parameters.
-- Search is case-insensitive across session code, grammar area, and grammar point. `status`, `mode`, and `level` use exact matches. Soft-deleted sessions are excluded.
-- Each item includes `grammar_area`, `grammar_point`, `question_count`, `answered_question_count`, `score`, `max_score`, `started_at`, and `completed_at`, plus the standard `meta` pagination object.
-- The service uses the first active question's grammar area and point as the compact list focus. The browser must not rebuild counts or status from session detail data.
+- `GET /api/v1/grammar/sessions` supports `q`, `status`, `mode`, `level`, `limit`, and `sort` query parameters.
+- Search is case-insensitive across the session code. `status`, `mode`, and `level` use exact matches. Soft-deleted sessions are excluded.
+- Each item includes `code`, `mode`, `source`, `status`, `level`, `question_count`, `score`, `max_score`, `started_at`, and `completed_at`. The response is `{ items: [...] }` with no pagination metadata.
+- The list is a bounded Notes-style collection: it requests a fixed `limit`, renders every returned item, and shows a `Menampilkan <n> sesi` footer. Do not render pagination controls. The browser must not rebuild counts or status from session detail data.
 
 ## SCR-GRAM-002 — Grammar settings
 

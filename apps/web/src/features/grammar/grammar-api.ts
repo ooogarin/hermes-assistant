@@ -109,15 +109,6 @@ const grammarReportSchema = z
   })
   .transform(({ max_score, ...report }) => ({ ...report, maxScore: max_score }));
 
-const grammarPaginationMetaSchema = z
-  .object({
-    page: z.number().int(),
-    limit: z.number().int(),
-    total: z.number().int(),
-    total_pages: z.number().int(),
-  })
-  .transform(({ total_pages, ...meta }) => ({ ...meta, totalPages: total_pages }));
-
 const grammarSessionListItemSchema = z
   .object({
     code: z.string(),
@@ -125,20 +116,15 @@ const grammarSessionListItemSchema = z
     source: z.enum(['cron', 'request']),
     status: z.enum(['active', 'completed', 'abandoned']),
     level: z.string(),
-    grammar_area: z.string().nullable(),
-    grammar_point: z.string().nullable(),
     question_count: z.number().int().positive(),
-    answered_question_count: z.number().int().nonnegative(),
     score: z.number().nullable(),
     max_score: z.number().nullable(),
     started_at: z.string(),
     completed_at: z.string().nullable(),
   })
-  .transform(({ completed_at, grammar_area, grammar_point, max_score, question_count, started_at, ...session }) => ({
+  .transform(({ completed_at, max_score, question_count, started_at, ...session }) => ({
     ...session,
     completedAt: completed_at,
-    grammarArea: grammar_area,
-    grammarPoint: grammar_point,
     maxScore: max_score,
     questionCount: question_count,
     startedAt: started_at,
@@ -146,7 +132,6 @@ const grammarSessionListItemSchema = z
 
 const grammarSessionListSchema = z.object({
   items: z.array(grammarSessionListItemSchema),
-  meta: grammarPaginationMetaSchema,
 });
 
 export type GrammarSessionListItem = z.output<typeof grammarSessionListItemSchema>;
@@ -155,7 +140,6 @@ export type GrammarSessionListFilters = {
   level?: string;
   limit?: number;
   mode?: 'practice' | 'exam';
-  page?: number;
   q?: string;
   sort?: 'newest' | 'oldest';
   status?: 'active' | 'completed' | 'abandoned';

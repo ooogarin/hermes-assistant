@@ -73,17 +73,13 @@ const sessionList: GrammarSessionList = {
       source: session.source,
       status: session.status,
       level: session.level,
-      grammar_area: 'tenses',
-      grammar_point: 'simple past',
       question_count: session.question_count,
-      answered_question_count: 0,
       score: session.score,
       max_score: session.max_score,
       started_at: session.started_at,
       completed_at: session.completed_at,
     },
   ],
-  meta: { page: 1, limit: 20, total: 1, total_pages: 1 },
 };
 
 const createGrammarServiceStub = (overrides: Partial<GrammarApiService> = {}): GrammarApiService => ({
@@ -211,7 +207,7 @@ test('rejects unknown fields in grammar session bodies', async () => {
   expect(response.status).toBe(400);
 });
 
-test('lists grammar sessions with validated filters and pagination', async () => {
+test('lists grammar sessions with validated filters', async () => {
   let listInput: Parameters<GrammarApiService['listSessions']>[0] | undefined;
   const response = await createGrammarApp({
     listSessions: async (input) => {
@@ -219,7 +215,7 @@ test('lists grammar sessions with validated filters and pagination', async () =>
       return sessionList;
     },
   }).request(
-    'http://localhost/api/v1/grammar/sessions?q=past&status=completed&mode=exam&level=B1&page=2&limit=10&sort=oldest',
+    'http://localhost/api/v1/grammar/sessions?q=past&status=completed&mode=exam&level=B1&limit=10&sort=oldest',
     { headers: { Authorization: 'Bearer test-api-key' } },
   );
 
@@ -229,7 +225,6 @@ test('lists grammar sessions with validated filters and pagination', async () =>
     status: 'completed',
     mode: 'exam',
     level: 'B1',
-    page: 2,
     limit: 10,
     sort: 'oldest',
   });

@@ -49,10 +49,7 @@ export type GrammarSessionListItem = {
   source: GrammarSource;
   status: GrammarSessionStatus;
   level: string;
-  grammar_area: string | null;
-  grammar_point: string | null;
   question_count: number;
-  answered_question_count: number;
   score: number | null;
   max_score: number | null;
   started_at: string;
@@ -61,14 +58,6 @@ export type GrammarSessionListItem = {
 
 export type GrammarSessionList = {
   items: GrammarSessionListItem[];
-  meta: GrammarPaginationMeta;
-};
-
-export type GrammarPaginationMeta = {
-  page: number;
-  limit: number;
-  total: number;
-  total_pages: number;
 };
 
 export type GrammarExplanation = {
@@ -139,7 +128,6 @@ export type ListGrammarSessionsQuery = {
   status?: GrammarSessionStatus;
   mode?: GrammarMode;
   level?: string;
-  page: number;
   limit: number;
   sort: 'newest' | 'oldest';
 };
@@ -176,18 +164,11 @@ export type GrammarSessionListRow = {
   source: GrammarSource;
   status: GrammarSessionStatus;
   level: string;
-  grammar_area: string | null;
-  grammar_point: string | null;
   question_count: number | string;
-  answered_question_count: number | string;
   score: number | string | null;
   max_score: number | string | null;
   started_at: Date | string;
   completed_at: Date | string | null;
-};
-
-export type GrammarCountRow = {
-  total: number | string;
 };
 
 export type GrammarExplanationRow = {
