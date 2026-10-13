@@ -24,6 +24,8 @@ export const updateSettings = async (input: UpdateGrammarSettingsRequest): Promi
   return toGrammarSettings(settingsRow);
 };
 
+// ==========[ Helper functions ]==========================================================================================
+
 const toGrammarSettings = (row: GrammarSettingsRow): GrammarSettings => ({
   default_level: row.default_level,
   daily_question_count: row.daily_question_count,

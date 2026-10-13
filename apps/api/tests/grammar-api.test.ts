@@ -182,6 +182,35 @@ test('creates a grammar session without exposing correct answers or explanations
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(session) });
 });
 
+test('rejects unknown fields in grammar session bodies', async () => {
+  const response = await createGrammarApp().request('http://localhost/api/v1/grammar/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer test-api-key',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      mode: 'practice',
+      source: 'request',
+      level: 'A1',
+      unexpected: true,
+      questions: [
+        {
+          question_type: 'fill_blank',
+          grammar_area: 'tenses',
+          grammar_point: 'simple past',
+          level: 'A1',
+          question_text: 'She ___ (go) to school yesterday.',
+          correct_answer: 'went',
+          explanation: 'Use the simple past form “went”.',
+        },
+      ],
+    }),
+  });
+
+  expect(response.status).toBe(400);
+});
+
 test('lists grammar sessions with validated filters and pagination', async () => {
   let listInput: Parameters<GrammarApiService['listSessions']>[0] | undefined;
   const response = await createGrammarApp({

@@ -47,6 +47,7 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 
 - Routes only wire methods, paths, validators, and handlers.
 - Validators use Zod for every external body, query, and path value.
+- Every body, query, and nested object schema ends with `.strict()`, even when it has no other refinement, so unknown fields are rejected with 400. Path parameter schemas may omit it.
 - Handlers read validated values with the shared request helpers, compose explicit request contracts, and format responses.
 - Services own business rules, target resolution, workflows, and transaction boundaries. They never receive Hono context.
 - Repositories are the only domain files allowed to access the database. Use parameterized raw SQL and explicit selected columns.

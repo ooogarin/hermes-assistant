@@ -7,6 +7,7 @@ import type {
   saveAnswersSchema,
   sessionCodeSchema,
 } from './grammar.validator';
+import type { GrammarQuestion } from './grammar-question/grammar-question.types';
 
 // ====================================================================================================
 // Request contracts
@@ -27,22 +28,6 @@ export type GrammarQuestionParams = z.infer<typeof questionReferenceSchema>;
 // ====================================================================================================
 // Service operations
 // ====================================================================================================
-
-export type GrammarQuestion = {
-  question_number: number;
-  question_type: string;
-  grammar_area: string;
-  grammar_point: string;
-  level: string;
-  question_text: string;
-  answer: {
-    user_answer: string;
-    result: GrammarAnswerResult | null;
-    feedback: string | null;
-    answered_at: string | null;
-    evaluated_at: string | null;
-  } | null;
-};
 
 export type GrammarSession = {
   code: string;
@@ -125,19 +110,11 @@ export type GrammarService = {
 // ====================================================================================================
 
 export type CreateGrammarSessionPayload = {
+  code: string;
   mode: GrammarMode;
   source: GrammarSource;
   level: string;
-  questions: Array<{
-    question_number: number;
-    question_type: string;
-    grammar_area: string;
-    grammar_point: string;
-    level: string;
-    question_text: string;
-    correct_answer: string;
-    explanation: string;
-  }>;
+  question_count: number;
 };
 
 export type SaveAnswersPayload = {
@@ -211,21 +188,6 @@ export type GrammarSessionListRow = {
 
 export type GrammarCountRow = {
   total: number | string;
-};
-
-export type GrammarQuestionRow = {
-  id: number;
-  question_number: number;
-  question_type: string;
-  grammar_area: string;
-  grammar_point: string;
-  level: string;
-  question_text: string;
-  user_answer: string | null;
-  answer_result: GrammarAnswerResult | null;
-  feedback: string | null;
-  answered_at: Date | string | null;
-  evaluated_at: Date | string | null;
 };
 
 export type GrammarExplanationRow = {

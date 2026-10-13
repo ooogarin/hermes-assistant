@@ -4,13 +4,15 @@ import type { DatabaseReservedConnection } from '../src/core/database/database.t
 import type { FinanceDailySummaryQuery, FinanceDailySummaryRow } from '../src/modules/finance/finance.types';
 import type {
   GrammarCountRow,
-  GrammarQuestion,
-  GrammarQuestionRow,
   GrammarSession,
   GrammarSessionListRow,
   GrammarSessionRow,
   SaveAnswersPayload,
 } from '../src/modules/grammar/grammar.types';
+import type {
+  GrammarQuestion,
+  GrammarQuestionRow,
+} from '../src/modules/grammar/grammar-question/grammar-question.types';
 import type { JunkItemRow } from '../src/modules/junk/junk.types';
 import type {
   ReadingMaterial,
@@ -286,10 +288,18 @@ mock.module('../src/modules/junk/junk.repository', () => ({
   softDeleteOneByCode: async () => junkResult !== null,
 }));
 
+mock.module('../src/modules/grammar/grammar-question/grammar-question.repository', () => ({
+  bulkInsert: async () => undefined,
+  getAllBySessionId: async (_sessionId: number, trx?: DatabaseReservedConnection) => {
+    grammarReadConnections.push(trx);
+
+    return grammarLockedSessionResult.questions.map(toGrammarQuestionRow);
+  },
+}));
+
 mock.module('../src/modules/grammar/grammar.repository', () => ({
   getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
-  insertOne: async () => ({ id: 1 }),
-  insertAllQuestions: async () => undefined,
+  insert: async () => toGrammarSessionRow(grammarSession),
   getAll: async () => grammarListResult,
   countAll: async () => grammarCountResult,
   getOneByCode: async () => toGrammarSessionRow(grammarLockedSessionResult),
@@ -297,11 +307,6 @@ mock.module('../src/modules/grammar/grammar.repository', () => ({
     grammarReadConnections.push(trx);
 
     return toGrammarSessionRow(grammarLockedSessionResult);
-  },
-  getAllQuestionsBySessionId: async (_sessionId: number, trx?: DatabaseReservedConnection) => {
-    grammarReadConnections.push(trx);
-
-    return grammarLockedSessionResult.questions.map(toGrammarQuestionRow);
   },
   upsertAllAnswersByCodeAndQuestionNumbers: async (
     _code: string,
@@ -499,7 +504,7 @@ test('create flows return the transaction-local result without a post-commit rea
         grammar_area: 'tenses',
         grammar_point: 'simple past',
         level: 'A1',
-        question_text: 'She ___ yesterday.',
+        question_text: 'She ___ (go) yesterday.',
         correct_answer: 'went',
         explanation: 'Use the simple past.',
       },
@@ -534,7 +539,7 @@ test('create flows return the transaction-local result without a post-commit rea
   });
 
   expect(createdGrammarSession).toEqual(grammarSession);
-  expect(grammarReadConnections).toEqual([fakeTrx, fakeTrx]);
+  expect(grammarReadConnections).toEqual([]);
   expect(createdReadingMaterial).toEqual(readingMaterial);
   expect(createdWritingMaterial).toEqual(writingMaterial);
   expect(submittedReadingMaterial).toEqual(readingMaterial);
