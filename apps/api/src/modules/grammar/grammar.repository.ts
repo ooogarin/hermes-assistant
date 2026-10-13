@@ -6,7 +6,6 @@ import type {
   EvaluateGrammarSessionPayload,
   GrammarCountRow,
   GrammarExplanationRow,
-  GrammarQuestionRow,
   GrammarReportRow,
   GrammarSessionListRow,
   GrammarSessionRow,
@@ -43,12 +42,11 @@ export const getLastSequenceByDateForUpdate = async (
   return row;
 };
 
-export const insertOne = async (
-  code: string,
+export const insert = async (
   input: CreateGrammarSessionPayload,
   trx: DatabaseReservedConnection,
-): Promise<IdRow> => {
-  const [session] = await trx<IdRow[]>`
+): Promise<GrammarSessionRow> => {
+  const [session] = await trx<GrammarSessionRow[]>`
     INSERT INTO grammar_sessions (
       code,
       mode,
@@ -57,14 +55,24 @@ export const insertOne = async (
       question_count
     )
     VALUES (
-      ${code},
+      ${input.code},
       ${input.mode}::grammar_mode,
       ${input.source}::grammar_source,
       ${input.level},
-      ${input.questions.length}
+      ${input.question_count}
     )
     RETURNING
-      id
+      id,
+      code,
+      mode,
+      source,
+      status,
+      level,
+      question_count,
+      score,
+      max_score,
+      started_at,
+      completed_at
   `;
 
   if (session === undefined) {
@@ -72,64 +80,6 @@ export const insertOne = async (
   }
 
   return session;
-};
-
-export const insertAllQuestions = async (
-  sessionId: number,
-  questions: CreateGrammarSessionPayload['questions'],
-  trx: DatabaseReservedConnection,
-): Promise<void> => {
-  const questionNumbers = questions.map((question) => question.question_number);
-  const questionTypes = questions.map((question) => question.question_type);
-  const grammarAreas = questions.map((question) => question.grammar_area);
-  const grammarPoints = questions.map((question) => question.grammar_point);
-  const levels = questions.map((question) => question.level);
-  const questionTexts = questions.map((question) => question.question_text);
-  const correctAnswers = questions.map((question) => question.correct_answer);
-  const explanations = questions.map((question) => question.explanation);
-
-  await trx`
-    INSERT INTO grammar_questions (
-      session_id,
-      question_number,
-      question_type,
-      grammar_area,
-      grammar_point,
-      level,
-      question_text,
-      correct_answer,
-      explanation
-    )
-    SELECT
-      ${sessionId},
-      payload.question_number,
-      payload.question_type,
-      payload.grammar_area,
-      payload.grammar_point,
-      payload.level,
-      payload.question_text,
-      payload.correct_answer,
-      payload.explanation
-    FROM UNNEST(
-      ${trx.array(questionNumbers, 'INTEGER')},
-      ${trx.array(questionTypes, 'TEXT')},
-      ${trx.array(grammarAreas, 'TEXT')},
-      ${trx.array(grammarPoints, 'TEXT')},
-      ${trx.array(levels, 'TEXT')},
-      ${trx.array(questionTexts, 'TEXT')},
-      ${trx.array(correctAnswers, 'TEXT')},
-      ${trx.array(explanations, 'TEXT')}
-    ) AS payload(
-      question_number,
-      question_type,
-      grammar_area,
-      grammar_point,
-      level,
-      question_text,
-      correct_answer,
-      explanation
-    )
-  `;
 };
 
 export const getOneByCode = async (
@@ -278,35 +228,6 @@ export const countAll = async (input: ListGrammarSessionsQuery): Promise<Grammar
   }
 
   return row;
-};
-
-export const getAllQuestionsBySessionId = async (
-  sessionId: number,
-  trx?: DatabaseReservedConnection,
-): Promise<GrammarQuestionRow[]> => {
-  const database = trx ?? getDatabaseClient();
-
-  return database<GrammarQuestionRow[]>`
-    SELECT
-      grammar_questions.id,
-      grammar_questions.question_number,
-      grammar_questions.question_type,
-      grammar_questions.grammar_area,
-      grammar_questions.grammar_point,
-      grammar_questions.level,
-      grammar_questions.question_text,
-      grammar_answers.user_answer,
-      grammar_answers.result AS answer_result,
-      grammar_answers.feedback,
-      grammar_answers.answered_at,
-      grammar_answers.evaluated_at
-    FROM grammar_questions
-    LEFT JOIN grammar_answers ON grammar_answers.question_id = grammar_questions.id AND grammar_answers.deleted_at IS NULL
-    WHERE grammar_questions.session_id = ${sessionId}
-      AND grammar_questions.deleted_at IS NULL
-    ORDER BY
-      grammar_questions.question_number ASC
-  `;
 };
 
 export const getOneByCodeForUpdate = async (
