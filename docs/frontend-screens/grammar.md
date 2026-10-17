@@ -43,7 +43,7 @@ Find a session and review or inspect its result.
 - Header: `Grammar` and the local `Pengaturan` action, with no supporting subtitle.
 - Search by session code, status chips, mode filter, and level filter.
 - One grouped table-like list with session code, mode, date, level, source, status, and score where available.
-- Rows are single links with no separate action column. Selecting a row opens SCR-GRAM-003 for active or abandoned sessions and SCR-GRAM-005 for completed sessions.
+- Rows are single links with no separate action column. Selecting a row always opens SCR-GRAM-003, where the workspace and its report are two tabs.
 
 **Data contract**
 
@@ -126,14 +126,15 @@ GET /api/v1/grammar/sessions/:code
 
 - Ordinary session detail deliberately excludes correct answers and full explanations.
 - The web screen is read-only. Answering happens through Hermes/Telegram: practice answers are evaluated immediately per question, and exam answers are stored unevaluated until the complete exam is evaluated.
-- Practice grading and final exam evaluation remain owned by Hermes because the API requires caller-supplied evaluation results; the frontend does not infer authoritative correctness. When a session completes, the screen shows its stored result and links to SCR-GRAM-005.
+- Practice grading and final exam evaluation remain owned by Hermes because the API requires caller-supplied evaluation results; the frontend does not infer authoritative correctness. When a session completes, the screen shows its stored result and its report becomes available.
+- The workspace and its report are two tabs, `Soal` and `Laporan`, shown under the header. The `Laporan` tab stays visible but inactive with an explanatory tooltip until the session is completed; both tabs return to the list through `Semua Grammar`.
 - The layout is two columns: the main column holds one question at a time, and the side column holds the question list above the session summary.
 - The header shows the mode and focus as its title. The session code sits in the side session summary with a copy action, together with the other session metadata (level, question count, date, source, and status).
 - The workspace opens on the first question. `Sebelumnya` and `Berikutnya` sit inside the side question-list card, which shows each question as a number box whose background color marks its stored result; users can also pick a question directly from the list.
 - The saved answer is shown as read-only quoted text, and an evaluated question shows a colored result banner with its feedback.
 - The explanation link is part of the result banner and appears only for questions that already have an evaluation result, so exam explanations stay hidden until evaluation.
 - Question type, grammar area, and grammar point are displayed in title case even though the API stores them in lowercase.
-- A completed session shows its stored score in the side session summary next to the SCR-GRAM-005 link.
+- A completed session shows its stored score in the side session summary.
 
 ## SCR-GRAM-004 — Grammar explanation
 
@@ -160,8 +161,11 @@ Review the score and grammar-area breakdown of an evaluated session.
 GET /api/v1/grammar/sessions/:code/report
 ```
 
-- Lead with score and completion state, then divider-led grammar-area breakdown rows.
-- Do not show a report for an active or unevaluated session as though it were complete.
+- Main column: a `Breakdown per area` table with `Area`, `Benar`, `Sebagian`, `Salah`, and `Proporsi` columns. Each row shows the area name, the stored counts, a segmented proportion bar (correct, partial, incorrect), and the weighted proportion as a rounded percentage.
+- Side column: a `Ringkasan hasil` summary with the stored score, the correct, partial, and incorrect question counts, and the answered count.
+- The screen does not repeat the score as a standalone hero card, and it does not offer write actions such as starting practice or closing the session.
+- Reach the report through the `Laporan` tab of SCR-GRAM-003. Its back link returns to the session list.
+- Do not show a report for an active or unevaluated session as though it were complete; in that state the screen explains that the report is not yet available.
 
 ## Implementation order
 

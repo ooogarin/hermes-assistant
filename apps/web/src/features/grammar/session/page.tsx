@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { GrammarSessionHeader } from '../../../components/grammar/grammar-session-header';
+import { GrammarSessionTabs } from '../../../components/grammar/grammar-session-tabs';
 import { Button } from '../../../components/ui/button';
 import { CopyButton } from '../../../components/ui/copy-button';
 import { ApiError } from '../../../lib/api/api-error';
@@ -73,6 +74,7 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
   return (
     <>
       <GrammarSessionHeader session={session} />
+      <GrammarSessionTabs code={session.code} reportAvailable={session.status === 'completed'} />
       <div className='mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]'>
         <section className='min-w-0 rounded-surface border border-border bg-surface p-6 sm:p-8'>
           <p className='text-sm font-semibold text-primary'>
@@ -189,14 +191,6 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
                 ? 'Practice memberikan umpan balik melalui evaluasi Hermes setelah setiap jawaban.'
                 : 'Jawaban exam disimpan tanpa hasil dan dinilai bersama setelah sesi selesai.'}
             </p>
-            {session.status === 'completed' ? (
-              <Link
-                className='mt-4 inline-flex text-sm font-semibold text-primary hover:underline'
-                to={`/english/grammar/${session.code}/report`}
-              >
-                Lihat laporan
-              </Link>
-            ) : null}
           </aside>
         </div>
       </div>

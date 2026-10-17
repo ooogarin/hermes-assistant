@@ -8,7 +8,7 @@ export const GrammarSessionHeader = ({ session }: { session: GrammarSession }) =
   const focus = points.length === 1 ? formatDisplayLabel(points[0]) : 'Mixed grammar';
 
   return (
-    <header className='border-b border-border pb-6 sm:pb-8'>
+    <header>
       <h1 className='break-words text-2xl font-semibold tracking-tight text-ink sm:text-3xl'>
         {modeLabel[session.mode]} · {focus}
       </h1>

@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { GrammarSessionTable } from '../../components/grammar/grammar-session-table';
 import { getGrammarSessions } from './grammar-api';
 import GrammarListPage from './list/page';
+import GrammarReportPage from './report/page';
 import GrammarSessionPage from './session/page';
 
 const listItems = [
@@ -95,7 +96,7 @@ test('list request and response follow the collection contract', async () => {
   });
 });
 
-test('rows open the workspace or report according to session state', async () => {
+test('rows always open the session workspace', async () => {
   mockResponse({ items: listItems });
   const parsed = await getGrammarSessions({});
   render(
@@ -109,7 +110,7 @@ test('rows open the workspace or report according to session state', async () =>
   expect(within(activeRow).getByText('Daily practice')).toBeInTheDocument();
 
   const completedRow = screen.getByRole('link', { name: /GR-20261009-001/ });
-  expect(completedRow).toHaveAttribute('href', '/english/grammar/GR-20261009-001/report');
+  expect(completedRow).toHaveAttribute('href', '/english/grammar/GR-20261009-001');
   expect(within(completedRow).getByText('8/10')).toBeInTheDocument();
 
   const abandonedRow = screen.getByRole('link', { name: /GR-20261008-001/ });
@@ -196,6 +197,9 @@ test('workspace opens the first question, formats lowercase labels, and gates ex
   expect(screen.getByRole('heading', { name: /Past Perfect/ })).toBeInTheDocument();
   expect(screen.getByText('Fill Blank · Tenses · Past Perfect')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Lihat penjelasan' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Soal' })).toHaveAttribute('href', '/english/grammar/GR-20261011-001');
+  expect(screen.queryByRole('link', { name: 'Laporan' })).not.toBeInTheDocument();
+  expect(screen.getByText('Laporan')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Sebelumnya' })).toBeDisabled();
 
   await user.click(screen.getByRole('button', { name: 'Berikutnya' }));
@@ -222,5 +226,59 @@ test('completed workspace shows the stored score in the session header', async (
 
   expect(await screen.findByText('Skor')).toBeInTheDocument();
   expect(screen.getByText('1 / 2')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Lihat laporan' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Laporan' })).toHaveAttribute(
+    'href',
+    '/english/grammar/GR-20261011-001/report',
+  );
+});
+
+test('report shows the per-area breakdown table and the result summary', async () => {
+  const reportPayload = {
+    code: 'GR-20261011-001',
+    status: 'completed',
+    score: 1,
+    max_score: 2,
+    breakdown: [
+      { grammar_area: 'passive_voice', correct: 0, partial: 0, incorrect: 1 },
+      { grammar_area: 'tenses', correct: 1, partial: 0, incorrect: 0 },
+    ],
+  };
+  const reportSession = {
+    ...sessionPayload,
+    status: 'completed',
+    score: 1,
+    max_score: 2,
+    completed_at: '2026-10-11T03:10:00.000Z',
+  };
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async (input: unknown) => {
+      const url = String(input);
+      const data = url.includes('/report') ? reportPayload : reportSession;
+      return new Response(JSON.stringify({ success: true, data }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001/report']}>
+      <Routes>
+        <Route path='/english/grammar/:code/report' element={<GrammarReportPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByRole('heading', { name: 'Breakdown per area' })).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Proporsi' })).toBeInTheDocument();
+  expect(screen.getByText('Passive Voice')).toBeInTheDocument();
+  expect(screen.getByText('Tenses')).toBeInTheDocument();
+  expect(screen.getByText('0%')).toBeInTheDocument();
+  expect(screen.getByText('100%')).toBeInTheDocument();
+
+  expect(screen.getByRole('heading', { name: 'Ringkasan hasil' })).toBeInTheDocument();
+  expect(screen.getByText('1 / 2')).toBeInTheDocument();
+  expect(screen.getByText('0 soal')).toBeInTheDocument();
+  expect(screen.getByText('2 dari 2')).toBeInTheDocument();
+  expect(screen.queryByText('Langkah berikutnya')).not.toBeInTheDocument();
 });

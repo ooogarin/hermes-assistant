@@ -35,9 +35,6 @@ const GrammarSessionStatusBadge = ({ status }: { status: GrammarSessionListItem[
   </span>
 );
 
-const sessionHref = (item: GrammarSessionListItem): string =>
-  item.status === 'completed' ? `/english/grammar/${item.code}/report` : `/english/grammar/${item.code}`;
-
 const scoreLabel = (item: GrammarSessionListItem): string =>
   item.score === null || item.maxScore === null ? '—' : `${item.score}/${item.maxScore}`;
 
@@ -102,7 +99,7 @@ export const GrammarSessionTable = ({ items }: { items: GrammarSessionListItem[]
               <li key={item.code} className='border-b border-border last:border-b-0'>
                 <Link
                   className={`${columns} group items-stretch bg-surface transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary`}
-                  to={sessionHref(item)}
+                  to={`/english/grammar/${item.code}`}
                 >
                   <div
                     className={`${frozenColumn} border-l-4 border-l-transparent bg-surface px-4 py-5 group-hover:bg-surface-subtle group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-primary`}
