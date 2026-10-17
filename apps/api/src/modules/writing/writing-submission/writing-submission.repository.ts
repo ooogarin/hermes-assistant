@@ -1,7 +1,7 @@
 import { getDatabaseClient } from '../../../core/database/client';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type {
-  CreateWritingSubmissionPayload,
+  InsertWritingSubmissionPayload,
   ListWritingSubmissionsQuery,
   SaveWritingAnalysisPayload,
   UpdateWritingSubmissionPayload,
@@ -9,6 +9,7 @@ import type {
   WritingSequenceRow,
   WritingSubmissionListRow,
   WritingSubmissionRow,
+  WritingSubmissionWriteRow,
 } from './writing-submission.types';
 
 const writingSubmissionLockNamespace = 223_606_797;
@@ -38,24 +39,14 @@ export const getLastSequenceByDateForUpdate = async (
   return row;
 };
 
-export const insertOne = async (
-  code: string,
-  input: CreateWritingSubmissionPayload,
+export const insert = async (
+  payload: InsertWritingSubmissionPayload,
   trx: DatabaseReservedConnection,
-): Promise<WritingSubmissionRow> => {
-  const [row] = await trx<WritingSubmissionRow[]>`
-    INSERT INTO writing_submissions (
-      code,
-      material_id,
-      original_text,
-      word_count
-    )
-    VALUES (
-      ${code},
-      ${input.material_id},
-      ${input.original_text},
-      ${input.word_count}
-    )
+): Promise<WritingSubmissionWriteRow> => {
+  const allowedColumns = ['code', 'material_id', 'original_text', 'word_count'] as const;
+
+  const [row] = await trx<WritingSubmissionWriteRow[]>`
+    INSERT INTO writing_submissions ${trx(payload, ...allowedColumns)}
     RETURNING
       code,
       original_text,
@@ -67,8 +58,7 @@ export const insertOne = async (
       analysis,
       analyzed_at,
       created_at,
-      updated_at,
-      ${input.material_code}::TEXT AS material_code
+      updated_at
   `;
 
   if (row === undefined) {
@@ -132,24 +122,32 @@ export const getOneByCodeForUpdate = async (
   return row ?? null;
 };
 
-export const updateOne = async (
+export const updateOneByCode = async (
   code: string,
-  material_code: string | null,
   input: UpdateWritingSubmissionPayload,
-  trx: DatabaseReservedConnection,
-): Promise<WritingSubmissionRow> => {
-  // An explicit [] clears tags; an omitted field keeps the current value.
-  const tags = trx.array(input.estimated_tags ?? [], 'TEXT');
+  trx?: DatabaseReservedConnection,
+): Promise<WritingSubmissionWriteRow> => {
+  const database = trx ?? getDatabaseClient();
 
-  const [row] = await trx<WritingSubmissionRow[]>`
+  const allowedColumns = [
+    'original_text',
+    'word_count',
+    'estimated_topic',
+    'estimated_genre',
+    'estimated_tags',
+    'estimated_level',
+  ] as const;
+
+  // An explicit [] clears tags; an omitted field keeps the current value.
+  const updateInput = {
+    ...input,
+    estimated_tags: input.estimated_tags === undefined ? undefined : database.array(input.estimated_tags, 'TEXT'),
+  };
+
+  const [row] = await database<WritingSubmissionWriteRow[]>`
     UPDATE writing_submissions
     SET
-      original_text = COALESCE(${input.original_text}::TEXT, original_text),
-      word_count = COALESCE(${input.word_count}::INTEGER, word_count),
-      estimated_topic = COALESCE(${input.estimated_topic}::TEXT, estimated_topic),
-      estimated_genre = COALESCE(${input.estimated_genre}::TEXT, estimated_genre),
-      estimated_tags = CASE WHEN ${input.estimated_tags !== undefined} THEN ${tags} ELSE estimated_tags END,
-      estimated_level = COALESCE(${input.estimated_level}::TEXT, estimated_level),
+      ${database(updateInput, ...allowedColumns)},
       updated_at = NOW()
     WHERE code = ${code} AND deleted_at IS NULL
     RETURNING
@@ -163,8 +161,7 @@ export const updateOne = async (
       analysis,
       analyzed_at,
       created_at,
-      updated_at,
-      ${material_code}::TEXT AS material_code
+      updated_at
   `;
 
   if (row === undefined) {
@@ -174,19 +171,20 @@ export const updateOne = async (
   return row;
 };
 
-export const updateOneAnalysis = async (
+export const updateOneAnalysisByCode = async (
   code: string,
-  material_code: string | null,
   input: SaveWritingAnalysisPayload,
-  trx: DatabaseReservedConnection,
-): Promise<WritingSubmissionRow> => {
+  trx?: DatabaseReservedConnection,
+): Promise<WritingSubmissionWriteRow> => {
+  const database = trx ?? getDatabaseClient();
+
   // AI fills only missing estimates; preserve manual values, including empty tags.
-  const [row] = await trx<WritingSubmissionRow[]>`
+  const [row] = await database<WritingSubmissionWriteRow[]>`
     UPDATE writing_submissions
     SET
       estimated_topic = COALESCE(estimated_topic, ${input.estimated_topic}),
       estimated_genre = COALESCE(estimated_genre, ${input.estimated_genre}),
-      estimated_tags = COALESCE(estimated_tags, ${trx.array(input.estimated_tags, 'TEXT')}),
+      estimated_tags = COALESCE(estimated_tags, ${database.array(input.estimated_tags, 'TEXT')}),
       estimated_level = COALESCE(estimated_level, ${input.estimated_level}),
       analysis = ${input.analysis}::JSONB,
       analyzed_at = NOW(),
@@ -203,8 +201,7 @@ export const updateOneAnalysis = async (
       analysis,
       analyzed_at,
       created_at,
-      updated_at,
-      ${material_code}::TEXT AS material_code
+      updated_at
   `;
 
   if (row === undefined) {

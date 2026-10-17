@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 import type { createMaterialSchema, listMaterialsSchema, materialCodeSchema } from './writing-material.validator';
 
-// Request contracts
+// ==========[ Request contracts ]==========================================================================================
 
 export type CreateWritingMaterialRequest = z.infer<typeof createMaterialSchema>;
 
@@ -13,7 +13,7 @@ export type WritingSource = 'cron' | 'request';
 
 export type WritingMaterialStatus = 'unsubmitted' | 'submitted' | 'reviewed';
 
-// Service responses
+// ==========[ Service operations ]==========================================================================================
 
 export type WritingMaterial = {
   code: string;
@@ -48,9 +48,18 @@ export type WritingMaterialService = {
   getMaterial: (code: string) => Promise<WritingMaterial>;
 };
 
-// Repository payloads and rows
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateWritingMaterialPayload = Omit<WritingMaterial, 'code'>;
+export type InsertWritingMaterialPayload = {
+  code: string;
+  topic: string;
+  prompt_text: string;
+  level: string;
+  genre: string;
+  tags: string[];
+  target_word_count: number;
+  source: WritingSource;
+};
 
 export type ListWritingMaterialsQuery = {
   q?: string;
@@ -61,6 +70,8 @@ export type ListWritingMaterialsQuery = {
   limit: number;
   sort: 'newest' | 'oldest';
 };
+
+// ==========[ Repository responses ]==========================================================================================
 
 export type WritingSequenceRow = { sequence: number };
 

@@ -14,12 +14,12 @@ import type {
   FinanceSummary,
   FinanceSummaryCategory,
   FinanceTransaction,
-  FinanceTransactionInsertPayload,
   FinanceTransactionRow,
-  FinanceTransactionUpdatePayload,
+  InsertFinanceTransactionPayload,
   ListTransactionsRequest,
   SummaryRequest,
   TransactionReferenceRequest,
+  UpdateFinanceTransactionPayload,
   UpdateTransactionRequest,
 } from './finance.types';
 
@@ -29,7 +29,7 @@ export const createTransactions = async (input: CreateTransactionsRequest): Prom
     input.type,
   );
 
-  const payloads = input.transactions.map<FinanceTransactionInsertPayload>((transaction) => ({
+  const payloads = input.transactions.map<InsertFinanceTransactionPayload>((transaction) => ({
     amount: transaction.amount,
     // getRequiredCategoryMapByCodes throws on missing codes, so every lookup below resolves.
     category_id: categoryByCode.get(transaction.category_code)?.id ?? 0,
@@ -51,7 +51,7 @@ export const createTransactions = async (input: CreateTransactionsRequest): Prom
       daily_number: firstDailyNumber + index,
     }));
 
-    const transactions = await financeRepository.insertAll(
+    const transactions = await financeRepository.bulkInsert(
       randomUUID(),
       input.date,
       input.type,
@@ -108,7 +108,7 @@ export const updateTransaction = async (
     category_id = category.id;
   }
 
-  const payload: FinanceTransactionUpdatePayload = {
+  const payload: UpdateFinanceTransactionPayload = {
     amount: input.amount,
     category_id,
     name: input.name,
@@ -183,9 +183,7 @@ export const getDailySummary = async (input: DailySummaryRequest): Promise<Finan
   }));
 };
 
-// ====================================================================================================
-// Helper functions
-// ====================================================================================================
+// ==========[ Helper functions ]==========================================================================================
 
 const toIsoDate = (value: Date | string): string => {
   return value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10);

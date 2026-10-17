@@ -8,7 +8,7 @@ import type {
   updateSubmissionSchema,
 } from './writing-submission.validator';
 
-// Request contracts
+// ==========[ Request contracts ]==========================================================================================
 
 export type CreateWritingSubmissionRequest = z.infer<typeof createSubmissionSchema>;
 
@@ -24,7 +24,7 @@ export type WritingAnalysis = z.infer<typeof analysisSchema>;
 
 export type WritingAnalysisStatus = 'not_analyzed' | 'analyzed';
 
-// Service responses
+// ==========[ Service operations ]==========================================================================================
 
 export type WritingEstimatedMetadata = {
   estimated_topic: string | null;
@@ -70,11 +70,11 @@ export type WritingSubmissionService = {
   getCorrectedText: (code: string) => Promise<WritingCorrectedText>;
 };
 
-// Repository payloads and rows
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateWritingSubmissionPayload = {
+export type InsertWritingSubmissionPayload = {
+  code: string;
   material_id: number | string | null;
-  material_code: string | null;
   original_text: string;
   word_count: number;
 };
@@ -91,6 +91,8 @@ export type UpdateWritingSubmissionPayload = UpdateWritingSubmissionRequest & { 
 
 export type ListWritingSubmissionsQuery = ListWritingSubmissionsRequest;
 
+// ==========[ Repository responses ]==========================================================================================
+
 export type WritingSequenceRow = { sequence: number };
 
 export type WritingSubmissionRow = WritingEstimatedMetadata & {
@@ -103,6 +105,8 @@ export type WritingSubmissionRow = WritingEstimatedMetadata & {
   created_at: Date | string;
   updated_at: Date | string;
 };
+
+export type WritingSubmissionWriteRow = Omit<WritingSubmissionRow, 'material_code'>;
 
 export type WritingSubmissionListRow = WritingEstimatedMetadata & {
   code: string;

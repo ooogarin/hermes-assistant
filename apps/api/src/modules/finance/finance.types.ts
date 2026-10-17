@@ -9,9 +9,7 @@ import type {
 } from './finance.validator';
 import type { Category } from './finance-category/finance-category.types';
 
-// ====================================================================================================
-// Request contracts
-// ====================================================================================================
+// ==========[ Request contracts ]==========================================================================================
 
 export type TransactionType = 'expense' | 'income';
 export type SummaryMode = TransactionType | 'net';
@@ -28,9 +26,7 @@ export type TransactionReferenceRequest = {
   daily_number: number;
 };
 
-// ====================================================================================================
-// Service operations
-// ====================================================================================================
+// ==========[ Service operations ]==========================================================================================
 
 export type FinanceTransaction = {
   daily_number: number;
@@ -82,11 +78,9 @@ export type FinanceService = {
   getDailySummary: (input: DailySummaryRequest) => Promise<FinanceDailySummary[]>;
 };
 
-// ====================================================================================================
-// Repository payloads
-// ====================================================================================================
+// ==========[ Repository payloads ]==========================================================================================
 
-export type FinanceTransactionInsertPayload = {
+export type InsertFinanceTransactionPayload = {
   amount: number;
   category_id: number;
   daily_number: number;
@@ -95,11 +89,7 @@ export type FinanceTransactionInsertPayload = {
   note: string | null;
 };
 
-export type DailyNumberRow = {
-  daily_number: number | null;
-};
-
-export type FinanceTransactionUpdatePayload = {
+export type UpdateFinanceTransactionPayload = {
   amount?: number;
   category_id?: number;
   name?: string;
@@ -112,9 +102,11 @@ export type FinanceDailySummaryQuery = {
   to: string;
 };
 
-// ====================================================================================================
-// Repository responses
-// ====================================================================================================
+// ==========[ Repository responses ]==========================================================================================
+
+export type DailyNumberRow = {
+  daily_number: number | null;
+};
 
 export type FinanceTransactionRow = {
   id: number;

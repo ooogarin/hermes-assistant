@@ -7,7 +7,6 @@ import * as grammarRepository from './grammar.repository';
 import * as grammarQuestionRepository from './grammar-question/grammar-question.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateGrammarSessionPayload,
   CreateGrammarSessionRequest,
   EvaluateGrammarSessionPayload,
   EvaluateGrammarSessionRequest,
@@ -20,15 +19,16 @@ import type {
   GrammarSessionListItem,
   GrammarSessionListRow,
   GrammarSessionRow,
+  InsertGrammarSessionPayload,
   ListGrammarSessionsQuery,
   ListGrammarSessionsRequest,
   SaveAnswersPayload,
   SaveAnswersRequest,
 } from './grammar.types';
 import type {
-  CreateGrammarQuestionPayload,
   GrammarQuestion,
   GrammarQuestionRow,
+  InsertGrammarQuestionPayload,
 } from './grammar-question/grammar-question.types';
 
 const GRAMMAR_CODE_PREFIX = 'GR';
@@ -44,8 +44,8 @@ export const createSession = async (input: CreateGrammarSessionRequest): Promise
     const sequenceRow = await grammarRepository.getLastSequenceByDateForUpdate(GRAMMAR_CODE_PREFIX, date, trx);
 
     const code = formatPublicCode(GRAMMAR_CODE_PREFIX, date.segment, sequenceRow.sequence + 1);
-    const grammarSessionPayload = toCreateGrammarSessionPayload(input, code);
-    const grammarQuestionPayloads = toCreateGrammarQuestionPayloads(input);
+    const grammarSessionPayload = toInsertGrammarSessionPayload(input, code);
+    const grammarQuestionPayloads = toInsertGrammarQuestionPayloads(input);
 
     const sessionRow = await grammarRepository.insert(grammarSessionPayload, trx);
 
@@ -297,14 +297,12 @@ export const getReport = async (code: string): Promise<GrammarReport> => {
   return toGrammarReport(reportRows);
 };
 
-// ====================================================================================================
-// Helper functions
-// ====================================================================================================
+// ==========[ Helper functions ]==========================================================================================
 
-const toCreateGrammarSessionPayload = (
+const toInsertGrammarSessionPayload = (
   input: CreateGrammarSessionRequest,
   code: string,
-): CreateGrammarSessionPayload => ({
+): InsertGrammarSessionPayload => ({
   code,
   mode: input.mode,
   source: input.source,
@@ -312,7 +310,7 @@ const toCreateGrammarSessionPayload = (
   question_count: input.questions.length,
 });
 
-const toCreateGrammarQuestionPayloads = (input: CreateGrammarSessionRequest): CreateGrammarQuestionPayload[] =>
+const toInsertGrammarQuestionPayloads = (input: CreateGrammarSessionRequest): InsertGrammarQuestionPayload[] =>
   input.questions.map((question, index) => ({
     question_number: index + 1,
     question_type: question.question_type,
@@ -373,7 +371,7 @@ const toGrammarQuestion = (row: GrammarQuestionRow): GrammarQuestion => ({
         },
 });
 
-const toNewGrammarQuestion = (question: CreateGrammarQuestionPayload): GrammarQuestion => ({
+const toNewGrammarQuestion = (question: InsertGrammarQuestionPayload): GrammarQuestion => ({
   question_number: question.question_number,
   question_type: question.question_type,
   grammar_area: question.grammar_area,

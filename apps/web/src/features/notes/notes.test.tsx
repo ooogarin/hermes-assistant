@@ -25,7 +25,6 @@ const note: Note = {
   tags: ['focus', 'habits', 'work'],
   createdAt: '2026-09-08T09:00:00.000Z',
   updatedAt: '2026-09-09T09:00:00.000Z',
-  deletedAt: null,
 };
 
 const wireNote = {
@@ -42,7 +41,6 @@ const wireNote = {
   tags: note.tags,
   created_at: note.createdAt,
   updated_at: note.updatedAt,
-  deleted_at: note.deletedAt,
 };
 
 const dialogMethods = ['showModal', 'close'] as const;

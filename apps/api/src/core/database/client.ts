@@ -24,7 +24,6 @@ export const startTransaction = async (): Promise<DatabaseReservedConnection> =>
     await trx`BEGIN`;
   } catch (error) {
     trx.release();
-
     throw error;
   }
 

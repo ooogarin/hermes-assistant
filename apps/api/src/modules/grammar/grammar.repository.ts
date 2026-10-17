@@ -2,13 +2,13 @@ import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type { JakartaDateCodeParts } from '../../shared/date/date';
 import type {
-  CreateGrammarSessionPayload,
   EvaluateGrammarSessionPayload,
   GrammarExplanationRow,
   GrammarReportRow,
   GrammarSessionListRow,
   GrammarSessionRow,
   IdRow,
+  InsertGrammarSessionPayload,
   ListGrammarSessionsQuery,
   SaveAnswersPayload,
   SequenceRow,
@@ -42,7 +42,7 @@ export const getLastSequenceByDateForUpdate = async (
 };
 
 export const insert = async (
-  input: CreateGrammarSessionPayload,
+  input: InsertGrammarSessionPayload,
   trx: DatabaseReservedConnection,
 ): Promise<GrammarSessionRow> => {
   const [session] = await trx<GrammarSessionRow[]>`

@@ -1,11 +1,11 @@
 import type { z } from 'zod';
 import type { updateSettingsSchema } from './reading-setting.validator';
 
-// Request contracts
+// ==========[ Request contracts ]==========================================================================================
 
 export type UpdateReadingSettingsRequest = z.infer<typeof updateSettingsSchema>;
 
-// Service operations
+// ==========[ Service operations ]==========================================================================================
 
 export type ReadingSettings = {
   default_level: string;
@@ -21,7 +21,7 @@ export type ReadingSettingService = {
   updateSettings: (input: UpdateReadingSettingsRequest) => Promise<ReadingSettings>;
 };
 
-// Repository payloads
+// ==========[ Repository payloads ]==========================================================================================
 
 export type UpdateReadingSettingsPayload = {
   default_level?: string;
@@ -31,7 +31,7 @@ export type UpdateReadingSettingsPayload = {
   max_word_count?: number;
 };
 
-// Repository responses
+// ==========[ Repository responses ]==========================================================================================
 
 export type ReadingSettingsRow = {
   default_level: string;

@@ -1,4 +1,5 @@
 import { getDatabaseClient } from '../../../core/database/client';
+import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type { GrammarSettingsRow, UpdateGrammarSettingsPayload } from './grammar-setting.types';
 
 export const getOne = async (): Promise<GrammarSettingsRow> => {
@@ -22,17 +23,18 @@ export const getOne = async (): Promise<GrammarSettingsRow> => {
   return row;
 };
 
-export const updateOne = async (input: UpdateGrammarSettingsPayload): Promise<GrammarSettingsRow> => {
-  const database = getDatabaseClient();
+export const updateOne = async (
+  input: UpdateGrammarSettingsPayload,
+  trx?: DatabaseReservedConnection,
+): Promise<GrammarSettingsRow> => {
+  const database = trx ?? getDatabaseClient();
+
+  const allowedColumns = ['default_level', 'daily_question_count'] as const;
 
   const [row] = await database<GrammarSettingsRow[]>`
     UPDATE grammar_settings
     SET
-      default_level = CASE WHEN ${input.default_level !== undefined} THEN ${input.default_level ?? ''}::TEXT ELSE default_level END,
-      daily_question_count = CASE
-        WHEN ${input.daily_question_count !== undefined} THEN ${input.daily_question_count ?? 0}::INTEGER
-        ELSE daily_question_count
-      END,
+      ${database(input, ...allowedColumns)},
       updated_at = NOW()
     WHERE id = (
       SELECT

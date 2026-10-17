@@ -3,9 +3,7 @@ import type { createNoteSchema, noteCodeSchema, searchNotesSchema, updateNoteSch
 
 export const noteTypes = ['fact', 'personal', 'news', 'quote', 'idea', 'reminder'] as const;
 
-// ====================================================================================================
-// Request contracts
-// ====================================================================================================
+// ==========[ Request contracts ]==========================================================================================
 
 export type NoteType = (typeof noteTypes)[number];
 
@@ -18,9 +16,7 @@ export type NoteReferenceRequest = {
   code: string;
 };
 
-// ====================================================================================================
-// Service operations
-// ====================================================================================================
+// ==========[ Service operations ]==========================================================================================
 
 export type Note = {
   code: string;
@@ -36,7 +32,6 @@ export type Note = {
   tags: string[];
   created_at: string;
   updated_at: string;
-  deleted_at: string | null;
 };
 
 export type NotesService = {
@@ -47,11 +42,10 @@ export type NotesService = {
   remove: (input: NoteReferenceRequest) => Promise<void>;
 };
 
-// ====================================================================================================
-// Repository payloads
-// ====================================================================================================
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateNotePayload = {
+export type InsertNotePayload = {
+  code: string;
   title: string;
   content_text: string;
   raw_text: string | null;
@@ -88,9 +82,7 @@ export type UpdateNotePayload = {
   tags?: string[];
 };
 
-// ====================================================================================================
-// Repository responses
-// ====================================================================================================
+// ==========[ Repository responses ]==========================================================================================
 
 export type NoteRow = {
   code: string;
@@ -106,7 +98,6 @@ export type NoteRow = {
   tags: string[];
   created_at: Date | string;
   updated_at: Date | string;
-  deleted_at: Date | string | null;
 };
 
 export type NoteSequenceRow = {

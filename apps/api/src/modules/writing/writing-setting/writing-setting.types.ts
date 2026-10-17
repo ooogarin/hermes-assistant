@@ -1,11 +1,11 @@
 import type { z } from 'zod';
 import type { updateSettingsSchema } from './writing-setting.validator';
 
-// Request contracts
+// ==========[ Request contracts ]==========================================================================================
 
 export type UpdateWritingSettingsRequest = z.infer<typeof updateSettingsSchema>;
 
-// Service operations
+// ==========[ Service operations ]==========================================================================================
 
 export type WritingSettings = {
   default_level: string;
@@ -20,7 +20,7 @@ export type WritingSettingService = {
   updateSettings: (input: UpdateWritingSettingsRequest) => Promise<WritingSettings>;
 };
 
-// Repository payloads
+// ==========[ Repository payloads ]==========================================================================================
 
 export type UpdateWritingSettingsPayload = {
   default_level?: string;
@@ -29,7 +29,7 @@ export type UpdateWritingSettingsPayload = {
   max_word_count?: number;
 };
 
-// Repository responses
+// ==========[ Repository responses ]==========================================================================================
 
 export type WritingSettingsRow = {
   default_level: string;

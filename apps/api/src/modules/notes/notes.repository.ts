@@ -1,7 +1,7 @@
 import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateNotePayload,
+  InsertNotePayload,
   ListNotesRepositoryQuery,
   NoteRow,
   NoteSequenceRow,
@@ -34,38 +34,25 @@ export const getLastSequenceByDateForUpdate = async (
   return row;
 };
 
-export const insertOne = async (
-  code: string,
-  input: CreateNotePayload,
-  trx: DatabaseReservedConnection,
-): Promise<NoteRow> => {
+export const insert = async (payload: InsertNotePayload, trx: DatabaseReservedConnection): Promise<NoteRow> => {
+  const allowedColumns = [
+    'code',
+    'title',
+    'content_text',
+    'raw_text',
+    'type',
+    'category',
+    'source_name',
+    'source_url',
+    'source_context',
+    'source_reference',
+    'tags',
+  ] as const;
+
+  const insertInput = { ...payload, tags: trx.array(payload.tags, 'TEXT') };
+
   const [row] = await trx<NoteRow[]>`
-    INSERT INTO notes (
-      code,
-      title,
-      content_text,
-      raw_text,
-      type,
-      category,
-      source_name,
-      source_url,
-      source_context,
-      source_reference,
-      tags
-    )
-    VALUES (
-      ${code},
-      ${input.title},
-      ${input.content_text},
-      ${input.raw_text},
-      ${input.type}::note_type,
-      ${input.category},
-      ${input.source_name},
-      ${input.source_url},
-      ${input.source_context},
-      ${input.source_reference},
-      ${trx.array(input.tags, 'TEXT')}
-    )
+    INSERT INTO notes ${trx(insertInput, ...allowedColumns)}
     RETURNING
       code,
       title,
@@ -79,8 +66,7 @@ export const insertOne = async (
       source_reference,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
   `;
 
   if (row === undefined) {
@@ -107,8 +93,7 @@ export const getOneByCode = async (code: string): Promise<NoteRow | null> => {
       source_reference,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
     FROM notes
     WHERE code = ${code}
       AND deleted_at IS NULL
@@ -141,8 +126,7 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
       source_reference,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
     FROM notes
     WHERE deleted_at IS NULL
       AND (
@@ -173,24 +157,31 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
   return rows;
 };
 
-export const updateOneByCode = async (code: string, input: UpdateNotePayload): Promise<NoteRow | null> => {
-  const database = getDatabaseClient();
+export const updateOneByCode = async (
+  code: string,
+  input: UpdateNotePayload,
+  trx?: DatabaseReservedConnection,
+): Promise<NoteRow | null> => {
+  const database = trx ?? getDatabaseClient();
+
+  const allowedColumns = [
+    'title',
+    'content_text',
+    'type',
+    'category',
+    'source_name',
+    'source_url',
+    'source_context',
+    'source_reference',
+    'tags',
+  ] as const;
+
+  const updateInput = { ...input, tags: input.tags === undefined ? undefined : database.array(input.tags, 'TEXT') };
 
   const [row] = await database<NoteRow[]>`
     UPDATE notes
     SET
-      title = CASE WHEN ${input.title !== undefined} THEN ${input.title ?? ''} ELSE title END,
-      content_text = CASE WHEN ${input.content_text !== undefined} THEN ${input.content_text ?? ''} ELSE content_text END,
-      type = CASE WHEN ${input.type !== undefined} THEN ${input.type ?? 'fact'}::note_type ELSE type END,
-      category = CASE WHEN ${input.category !== undefined} THEN ${input.category ?? ''} ELSE category END,
-      source_name = CASE WHEN ${input.source_name !== undefined} THEN ${input.source_name ?? null} ELSE source_name END,
-      source_url = CASE WHEN ${input.source_url !== undefined} THEN ${input.source_url ?? null} ELSE source_url END,
-      source_context = CASE WHEN ${input.source_context !== undefined} THEN ${input.source_context ?? null} ELSE source_context END,
-      source_reference = CASE
-        WHEN ${input.source_reference !== undefined} THEN ${input.source_reference ?? null}
-        ELSE source_reference
-      END,
-      tags = CASE WHEN ${input.tags !== undefined} THEN ${database.array(input.tags ?? [], 'TEXT')} ELSE tags END,
+      ${database(updateInput, ...allowedColumns)},
       updated_at = NOW()
     WHERE code = ${code}
       AND deleted_at IS NULL
@@ -207,8 +198,7 @@ export const updateOneByCode = async (code: string, input: UpdateNotePayload): P
       source_reference,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
   `;
 
   return row === undefined ? null : row;

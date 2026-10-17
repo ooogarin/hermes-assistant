@@ -1,7 +1,7 @@
 import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateJunkPayload,
+  InsertJunkPayload,
   JunkItemRow,
   JunkSequenceRow,
   ListJunkRepositoryQuery,
@@ -34,32 +34,22 @@ export const getLastSequenceByDateForUpdate = async (
   return row;
 };
 
-export const insertOne = async (
-  code: string,
-  input: CreateJunkPayload,
-  trx: DatabaseReservedConnection,
-): Promise<JunkItemRow> => {
+export const insert = async (payload: InsertJunkPayload, trx: DatabaseReservedConnection): Promise<JunkItemRow> => {
+  const allowedColumns = [
+    'code',
+    'title',
+    'category',
+    'raw_text',
+    'content_text',
+    'source_url',
+    'source_name',
+    'tags',
+  ] as const;
+
+  const insertInput = { ...payload, tags: trx.array(payload.tags, 'TEXT') };
+
   const [row] = await trx<JunkItemRow[]>`
-    INSERT INTO junk_items (
-      code,
-      title,
-      category,
-      raw_text,
-      content_text,
-      source_url,
-      source_name,
-      tags
-    )
-    VALUES (
-      ${code},
-      ${input.title},
-      ${input.category},
-      ${input.raw_text},
-      ${input.content_text},
-      ${input.source_url},
-      ${input.source_name},
-      ${trx.array(input.tags, 'TEXT')}
-    )
+    INSERT INTO junk_items ${trx(insertInput, ...allowedColumns)}
     RETURNING
       code,
       title,
@@ -70,8 +60,7 @@ export const insertOne = async (
       source_name,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
   `;
 
   if (row === undefined) {
@@ -95,8 +84,7 @@ export const getOneByCode = async (code: string): Promise<JunkItemRow | null> =>
       source_name,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
     FROM junk_items
     WHERE code = ${code}
       AND deleted_at IS NULL
@@ -126,8 +114,7 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
       source_name,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
     FROM junk_items
     WHERE deleted_at IS NULL
       AND (
@@ -157,18 +144,21 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   return rows;
 };
 
-export const updateOneByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {
-  const database = getDatabaseClient();
+export const updateOneByCode = async (
+  code: string,
+  input: UpdateJunkPayload,
+  trx?: DatabaseReservedConnection,
+): Promise<JunkItemRow | null> => {
+  const database = trx ?? getDatabaseClient();
+
+  const allowedColumns = ['title', 'category', 'content_text', 'source_url', 'source_name', 'tags'] as const;
+
+  const updateInput = { ...input, tags: input.tags === undefined ? undefined : database.array(input.tags, 'TEXT') };
 
   const [row] = await database<JunkItemRow[]>`
     UPDATE junk_items
     SET
-      title = CASE WHEN ${input.title !== undefined} THEN ${input.title ?? null} ELSE title END,
-      category = CASE WHEN ${input.category !== undefined} THEN ${input.category ?? ''} ELSE category END,
-      content_text = CASE WHEN ${input.content_text !== undefined} THEN ${input.content_text ?? null} ELSE content_text END,
-      source_url = CASE WHEN ${input.source_url !== undefined} THEN ${input.source_url ?? null} ELSE source_url END,
-      source_name = CASE WHEN ${input.source_name !== undefined} THEN ${input.source_name ?? null} ELSE source_name END,
-      tags = CASE WHEN ${input.tags !== undefined} THEN ${database.array(input.tags ?? [], 'TEXT')} ELSE tags END,
+      ${database(updateInput, ...allowedColumns)},
       updated_at = NOW()
     WHERE code = ${code}
       AND deleted_at IS NULL
@@ -182,8 +172,7 @@ export const updateOneByCode = async (code: string, input: UpdateJunkPayload): P
       source_name,
       tags,
       created_at,
-      updated_at,
-      deleted_at
+      updated_at
   `;
 
   return row === undefined ? null : row;

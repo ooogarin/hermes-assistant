@@ -41,8 +41,6 @@ const readingMaterialSchema = z
     level: z.string(),
     genre: z.string(),
     tags: z.array(z.string()),
-    target_word_count: z.number().int().positive(),
-    target_question_count: z.number().int().min(0).max(20),
     reading_status: z.enum(['unread', 'read']),
     created_at: z.string(),
     updated_at: z.string(),
@@ -52,29 +50,15 @@ const readingMaterialSchema = z
     source: z.enum(['cron', 'request']),
     questions: z.array(readingQuestionSchema),
   })
-  .transform(
-    ({
-      is_override,
-      content_text,
-      target_word_count,
-      target_question_count,
-      reading_status,
-      created_at,
-      updated_at,
-      word_count,
-      ...material
-    }) => ({
-      ...material,
-      isOverride: is_override,
-      contentText: content_text,
-      targetWordCount: target_word_count,
-      targetQuestionCount: target_question_count,
-      readingStatus: reading_status,
-      createdAt: created_at,
-      updatedAt: updated_at,
-      wordCount: word_count,
-    }),
-  );
+  .transform(({ is_override, content_text, reading_status, created_at, updated_at, word_count, ...material }) => ({
+    ...material,
+    isOverride: is_override,
+    contentText: content_text,
+    readingStatus: reading_status,
+    createdAt: created_at,
+    updatedAt: updated_at,
+    wordCount: word_count,
+  }));
 
 const expectedAnswerSchema = z
   .object({

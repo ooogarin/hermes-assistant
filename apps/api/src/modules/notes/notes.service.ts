@@ -7,8 +7,8 @@ import * as notesRepository from './notes.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type { AppError } from '../../core/errors/app-error';
 import type {
-  CreateNotePayload,
   CreateNoteRequest,
+  InsertNotePayload,
   ListNotesRepositoryQuery,
   ListNotesRequest,
   Note,
@@ -28,8 +28,8 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
 
     const sequenceRow = await notesRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
 
-    const code = formatPublicCode('NT', date.segment, sequenceRow.sequence + 1);
-    const payload: CreateNotePayload = {
+    const payload: InsertNotePayload = {
+      code: formatPublicCode('NT', date.segment, sequenceRow.sequence + 1),
       title: input.title,
       content_text: input.content_text,
       raw_text: input.raw_text,
@@ -42,7 +42,7 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
       tags: input.tags,
     };
 
-    const noteRow = await notesRepository.insertOne(code, payload, trx);
+    const noteRow = await notesRepository.insert(payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
@@ -120,9 +120,7 @@ export const remove = async ({ code }: NoteReferenceRequest): Promise<void> => {
   }
 };
 
-// ====================================================================================================
-// Helper functions
-// ====================================================================================================
+// ==========[ Helper functions ]==========================================================================================
 
 const toNote = (row: NoteRow): Note => ({
   code: row.code,
@@ -138,7 +136,6 @@ const toNote = (row: NoteRow): Note => ({
   tags: row.tags.map(formatTaxonomyLabel),
   created_at: toIsoTimestamp(row.created_at),
   updated_at: toIsoTimestamp(row.updated_at),
-  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
 });
 
 const noteNotFound = (): AppError => {

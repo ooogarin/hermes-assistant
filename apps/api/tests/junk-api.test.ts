@@ -22,7 +22,6 @@ const junkItem: JunkItem = {
   tags: ['rust', 'programming'],
   created_at: '2026-09-05T10:00:00.000Z',
   updated_at: '2026-09-05T10:00:00.000Z',
-  deleted_at: null,
 };
 
 const createJunkServiceStub = (overrides: Partial<JunkService> = {}): JunkService => ({

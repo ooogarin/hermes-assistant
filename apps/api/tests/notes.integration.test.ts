@@ -93,6 +93,48 @@ describe.skipIf(!hasTestDatabaseUrl)('Notes PostgreSQL integration', () => {
     await expect(notesService.getDetail({ code: firstNote.code })).rejects.toMatchObject({ code: 'NOTE_NOT_FOUND' });
   });
 
+  test('updates a single field, clears nullable sources, and replaces tags', async () => {
+    const note = await notesService.create({
+      title: 'Partial note update',
+      content_text: 'Content stays the same across partial updates.',
+      raw_text: null,
+      type: 'fact',
+      category: 'tech/programming',
+      source_name: 'postgresql.org',
+      source_url: 'https://www.postgresql.org/docs/',
+      source_context: 'Documentation',
+      source_reference: 'chapter 13',
+      tags: ['postgres', 'database'],
+    });
+
+    const retypedNote = await notesService.update(
+      { code: note.code },
+      {
+        type: 'reminder',
+        source_name: null,
+        source_url: null,
+        source_context: null,
+        source_reference: null,
+      },
+    );
+
+    expect(retypedNote.type).toBe('reminder');
+    expect(retypedNote.source_name).toBeNull();
+    expect(retypedNote.source_url).toBeNull();
+    expect(retypedNote.source_context).toBeNull();
+    expect(retypedNote.source_reference).toBeNull();
+    expect(retypedNote.title).toBe('Partial note update');
+    expect(retypedNote.content_text).toBe('Content stays the same across partial updates.');
+    expect(retypedNote.tags).toEqual(['Postgres', 'Database']);
+
+    const retaggedNote = await notesService.update({ code: note.code }, { tags: [] });
+
+    expect(retaggedNote.tags).toEqual([]);
+    expect(retaggedNote.type).toBe('reminder');
+    expect(retaggedNote.source_name).toBeNull();
+    expect(retaggedNote.content_text).toBe('Content stays the same across partial updates.');
+  });
+
   test('records the notes migration as applied', async () => {
     const migrations = await loadMigrations(migrationDirectory);
     const statuses = await getMigrationStatus(getDatabase(), migrations);

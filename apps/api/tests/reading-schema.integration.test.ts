@@ -10,7 +10,7 @@ import {
 import * as readingRepository from '../src/modules/reading/reading.repository';
 import { createTestDatabaseClient, hasTestDatabaseUrl, resetTestDatabase } from './helpers/database';
 import type { DatabaseClient } from '../src/core/database/database.types';
-import type { CreateReadingMaterialPayload } from '../src/modules/reading/reading.types';
+import type { InsertReadingMaterialPayload, InsertReadingQuestionPayload } from '../src/modules/reading/reading.types';
 
 const migrationDirectory = fileURLToPath(new URL('../migrations', import.meta.url));
 const readingMigrationName = '0010_align_reading_schema.ts';
@@ -278,26 +278,29 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading schema PostgreSQL integration', ()
 
   test('uses the new Reading field names for inserts, detail, list, and search', async () => {
     const code = 'RD-20261001-001';
-    const input: CreateReadingMaterialPayload = {
+    const input: InsertReadingMaterialPayload = {
+      code,
       title: 'Morning market',
-      target_question_count: 5,
       level: 'A1',
       genre: 'story',
       tags: ['daily-life'],
       target_word_count: 300,
+      target_question_count: 5,
+      word_count: 9,
       content_text: 'Mira visits the market early every Sunday morning.',
+      is_override: false,
       source: 'request',
-      questions: Array.from({ length: 5 }, (_, index) => ({
-        question_number: index + 1,
-        question_text: `Question ${index + 1}`,
-        expected_answer: `Reference ${index + 1}`,
-      })),
     };
+    const questions: InsertReadingQuestionPayload[] = Array.from({ length: 5 }, (_, index) => ({
+      question_number: index + 1,
+      question_text: `Question ${index + 1}`,
+      expected_answer: `Reference ${index + 1}`,
+    }));
     const trx = await getDatabase().reserve();
     try {
       await trx`BEGIN`;
-      const material = await readingRepository.insertOne(code, input, 9, false, trx);
-      await readingRepository.insertAllQuestions(material.id, input.questions, trx);
+      const material = await readingRepository.insert(input, trx);
+      await readingRepository.bulkInsertQuestions(material.id, questions, trx);
       expect(await readingRepository.getOneByCode(code, trx)).toMatchObject({
         title: input.title,
         content_text: input.content_text,

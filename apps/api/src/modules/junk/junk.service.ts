@@ -7,8 +7,8 @@ import { formatTaxonomyLabel } from '../../shared/text/taxonomy';
 import * as junkRepository from './junk.repository';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateJunkPayload,
   CreateJunkRequest,
+  InsertJunkPayload,
   JunkItem,
   JunkItemRow,
   JunkReferenceRequest,
@@ -29,7 +29,8 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
     const sequenceRow = await junkRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
 
     const code = formatPublicCode('JK', date.segment, sequenceRow.sequence + 1);
-    const payload: CreateJunkPayload = {
+    const payload: InsertJunkPayload = {
+      code,
       title: input.title,
       category: input.category,
       raw_text: input.raw_text,
@@ -39,7 +40,7 @@ export const create = async (input: CreateJunkRequest): Promise<JunkItem> => {
       tags: input.tags,
     };
 
-    const junkItemRow = await junkRepository.insertOne(code, payload, trx);
+    const junkItemRow = await junkRepository.insert(payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
@@ -133,9 +134,7 @@ export const remove = async ({ code }: JunkReferenceRequest): Promise<void> => {
   }
 };
 
-// ====================================================================================================
-// Helper functions
-// ====================================================================================================
+// ==========[ Helper functions ]==========================================================================================
 
 const toJunkItem = (row: JunkItemRow): JunkItem => ({
   code: row.code,
@@ -148,7 +147,6 @@ const toJunkItem = (row: JunkItemRow): JunkItem => ({
   tags: row.tags.map(formatTaxonomyLabel),
   created_at: toIsoTimestamp(row.created_at),
   updated_at: toIsoTimestamp(row.updated_at),
-  deleted_at: row.deleted_at === null ? null : toIsoTimestamp(row.deleted_at),
 });
 
 const junkItemNotFound = (): AppError => {

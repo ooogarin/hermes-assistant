@@ -6,11 +6,11 @@ import type {
   FinanceDailySummaryRow,
   FinanceSummaryCategoryRow,
   FinanceSummaryTotalsRow,
-  FinanceTransactionInsertPayload,
   FinanceTransactionRow,
-  FinanceTransactionUpdatePayload,
+  InsertFinanceTransactionPayload,
   SummaryMode,
   TransactionType,
+  UpdateFinanceTransactionPayload,
 } from './finance.types';
 
 export const getLastDailyNumberByDateForUpdate = async (
@@ -36,21 +36,14 @@ export const getLastDailyNumberByDateForUpdate = async (
   return row;
 };
 
-export const insertAll = async (
+export const bulkInsert = async (
   batchId: string,
   date: string,
   type: TransactionType,
   raw_text: string,
-  payloads: FinanceTransactionInsertPayload[],
+  payloads: InsertFinanceTransactionPayload[],
   trx: DatabaseReservedConnection,
 ): Promise<FinanceTransactionRow[]> => {
-  const amounts = payloads.map((payload) => payload.amount);
-  const categoryIds = payloads.map((payload) => payload.category_id);
-  const dailyNumbers = payloads.map((payload) => payload.daily_number);
-  const names = payloads.map((payload) => payload.name);
-  const locations = payloads.map((payload) => payload.location);
-  const notes = payloads.map((payload) => payload.note);
-
   const rows = await trx<FinanceTransactionRow[]>`
     WITH inserted AS (
       INSERT INTO transactions (
@@ -76,20 +69,13 @@ export const insertAll = async (
         ${date}::DATE,
         payload.daily_number,
         ${raw_text}
-      FROM UNNEST(
-        ${trx.array(amounts, 'INTEGER')},
-        ${trx.array(categoryIds, 'INTEGER')},
-        ${trx.array(dailyNumbers, 'INTEGER')},
-        ${trx.array(names, 'TEXT')},
-        ${trx.array(locations, 'TEXT')},
-        ${trx.array(notes, 'TEXT')}
-      ) AS payload(
-        amount,
-        category_id,
-        daily_number,
-        name,
-        location,
-        note
+      FROM jsonb_to_recordset(${payloads}) AS payload(
+        amount INTEGER,
+        category_id INTEGER,
+        daily_number INTEGER,
+        name TEXT,
+        location TEXT,
+        note TEXT
       )
       RETURNING
         id,
@@ -241,19 +227,18 @@ export const getAllByDate = async (date: string): Promise<FinanceTransactionRow[
 export const updateOneByDateAndDailyNumber = async (
   date: string,
   daily_number: number,
-  input: FinanceTransactionUpdatePayload,
+  input: UpdateFinanceTransactionPayload,
+  trx?: DatabaseReservedConnection,
 ): Promise<FinanceTransactionRow | null> => {
-  const database = getDatabaseClient();
+  const database = trx ?? getDatabaseClient();
+
+  const allowedColumns = ['amount', 'category_id', 'name', 'location', 'note'] as const;
 
   const [row] = await database<FinanceTransactionRow[]>`
     WITH updated AS (
       UPDATE transactions
       SET
-        amount = CASE WHEN ${input.amount !== undefined} THEN ${input.amount ?? 0}::INTEGER ELSE amount END,
-        category_id = CASE WHEN ${input.category_id !== undefined} THEN ${input.category_id ?? 0}::INTEGER ELSE category_id END,
-        name = CASE WHEN ${input.name !== undefined} THEN ${input.name ?? ''}::TEXT ELSE name END,
-        location = CASE WHEN ${input.location !== undefined} THEN ${input.location ?? null}::TEXT ELSE location END,
-        note = CASE WHEN ${input.note !== undefined} THEN ${input.note ?? null}::TEXT ELSE note END,
+        ${database(input, ...allowedColumns)},
         updated_at = NOW()
       WHERE date = ${date}::DATE
         AND daily_number = ${daily_number}

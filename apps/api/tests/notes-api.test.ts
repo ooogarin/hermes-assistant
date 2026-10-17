@@ -25,7 +25,6 @@ const note: Note = {
   tags: ['postgres', 'database'],
   created_at: '2026-07-26T10:00:00.000Z',
   updated_at: '2026-07-26T10:00:00.000Z',
-  deleted_at: null,
 };
 
 const createNotesServiceStub = (overrides: Partial<NotesService> = {}): NotesService => ({

@@ -1,7 +1,7 @@
 import { getDatabaseClient } from '../../../core/database/client';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type {
-  CreateWritingMaterialPayload,
+  InsertWritingMaterialPayload,
   ListWritingMaterialsQuery,
   WritingCountRow,
   WritingMaterialListRow,
@@ -36,32 +36,25 @@ export const getLastSequenceByDateForUpdate = async (
   return row;
 };
 
-export const insertOne = async (
-  code: string,
-  input: CreateWritingMaterialPayload,
+export const insert = async (
+  payload: InsertWritingMaterialPayload,
   trx: DatabaseReservedConnection,
 ): Promise<WritingMaterialRow> => {
+  const allowedColumns = [
+    'code',
+    'topic',
+    'prompt_text',
+    'level',
+    'genre',
+    'tags',
+    'target_word_count',
+    'source',
+  ] as const;
+
+  const insertInput = { ...payload, tags: trx.array(payload.tags, 'TEXT') };
+
   const [row] = await trx<WritingMaterialRow[]>`
-    INSERT INTO writing_materials (
-      code,
-      topic,
-      prompt_text,
-      level,
-      genre,
-      tags,
-      target_word_count,
-      source
-    )
-    VALUES (
-      ${code},
-      ${input.topic},
-      ${input.prompt_text},
-      ${input.level},
-      ${input.genre},
-      ${trx.array(input.tags, 'TEXT')},
-      ${input.target_word_count},
-      ${input.source}::writing_source
-    )
+    INSERT INTO writing_materials ${trx(insertInput, ...allowedColumns)}
     RETURNING
       id,
       code,

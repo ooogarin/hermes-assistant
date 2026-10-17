@@ -9,8 +9,8 @@ import { getMaterialReference } from '../writing-material/writing-material.servi
 import * as writingSubmissionRepository from './writing-submission.repository';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type {
-  CreateWritingSubmissionPayload,
   CreateWritingSubmissionRequest,
+  InsertWritingSubmissionPayload,
   ListWritingSubmissionsRequest,
   SaveWritingAnalysisPayload,
   SaveWritingAnalysisRequest,
@@ -36,21 +36,21 @@ export const createSubmission = async (input: CreateWritingSubmissionRequest): P
     const sequence = await writingSubmissionRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
     const code = formatPublicCode('WS', date.segment, sequence.sequence + 1);
 
-    const payload: CreateWritingSubmissionPayload = {
+    const payload: InsertWritingSubmissionPayload = {
+      code,
       material_id: material?.id ?? null,
-      material_code: materialCode,
       original_text: input.original_text,
       word_count: countWords(input.original_text),
     };
 
-    const row = await writingSubmissionRepository.insertOne(code, payload, trx);
+    const row = await writingSubmissionRepository.insert(payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
 
     await commitTransaction(trxToCommit);
 
-    return toWritingSubmission(row);
+    return toWritingSubmission({ ...row, material_code: materialCode });
   } catch (error) {
     if (trx !== undefined) {
       const trxToRollback = trx;
@@ -125,14 +125,14 @@ export const updateSubmission = async (
       word_count: input.original_text === undefined ? undefined : countWords(input.original_text),
     };
 
-    const row = await writingSubmissionRepository.updateOne(code, current.material_code, payload, trx);
+    const row = await writingSubmissionRepository.updateOneByCode(code, payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
 
     await commitTransaction(trxToCommit);
 
-    return toWritingSubmission(row);
+    return toWritingSubmission({ ...row, material_code: current.material_code });
   } catch (error) {
     if (trx !== undefined) {
       const trxToRollback = trx;
@@ -181,14 +181,14 @@ export const saveAnalysis = async (code: string, input: SaveWritingAnalysisReque
       analysis: input.analysis,
     };
 
-    const row = await writingSubmissionRepository.updateOneAnalysis(code, current.material_code, payload, trx);
+    const row = await writingSubmissionRepository.updateOneAnalysisByCode(code, payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
 
     await commitTransaction(trxToCommit);
 
-    return toWritingSubmission(row);
+    return toWritingSubmission({ ...row, material_code: current.material_code });
   } catch (error) {
     if (trx !== undefined) {
       const trxToRollback = trx;
@@ -211,7 +211,7 @@ export const getCorrectedText = async (code: string): Promise<WritingCorrectedTe
   return { code, corrected_text: submission.analysis.corrected_text };
 };
 
-// Helpers
+// ==========[ Helper functions ]==========================================================================================
 
 const toWritingSubmission = (row: WritingSubmissionRow): WritingSubmission => ({
   code: row.code,

@@ -6,8 +6,8 @@ import * as writingMaterialRepository from './writing-material.repository';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type { AppError } from '../../../core/errors/app-error';
 import type {
-  CreateWritingMaterialPayload,
   CreateWritingMaterialRequest,
+  InsertWritingMaterialPayload,
   ListWritingMaterialsQuery,
   ListWritingMaterialsRequest,
   WritingMaterial,
@@ -31,9 +31,9 @@ export const createMaterial = async (input: CreateWritingMaterialRequest): Promi
     const sequenceRow = await writingMaterialRepository.getLastSequenceByDateForUpdate(date.key, date.segment, trx);
 
     const code = formatPublicCode('WR', date.segment, sequenceRow.sequence + 1);
-    const payload = toCreateWritingMaterialPayload(input);
+    const payload = toInsertWritingMaterialPayload(code, input);
 
-    const materialRow = await writingMaterialRepository.insertOne(code, payload, trx);
+    const materialRow = await writingMaterialRepository.insert(payload, trx);
 
     const trxToCommit = trx;
     trx = undefined;
@@ -95,9 +95,13 @@ export const getMaterialReference = async (
   return { id: row.id, code: row.code };
 };
 
-// Helpers
+// ==========[ Helper functions ]==========================================================================================
 
-const toCreateWritingMaterialPayload = (input: CreateWritingMaterialRequest): CreateWritingMaterialPayload => ({
+const toInsertWritingMaterialPayload = (
+  code: string,
+  input: CreateWritingMaterialRequest,
+): InsertWritingMaterialPayload => ({
+  code,
   topic: input.topic,
   prompt_text: input.prompt_text,
   level: input.level,

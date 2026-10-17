@@ -19,7 +19,6 @@ const noteSchema = z
     tags: z.array(z.string()),
     created_at: z.string(),
     updated_at: z.string(),
-    deleted_at: z.string().nullable(),
   })
   .transform(
     ({
@@ -28,7 +27,6 @@ const noteSchema = z
       source_name,
       source_url,
       created_at,
-      deleted_at,
       source_context,
       source_reference,
       updated_at,
@@ -40,7 +38,6 @@ const noteSchema = z
       sourceName: source_name,
       sourceUrl: source_url,
       createdAt: created_at,
-      deletedAt: deleted_at,
       sourceContext: source_context,
       sourceReference: source_reference,
       updatedAt: updated_at,

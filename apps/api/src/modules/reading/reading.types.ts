@@ -7,9 +7,7 @@ import type {
   updateMaterialSchema,
 } from './reading.validator';
 
-// ====================================================================================================
-// Request contracts
-// ====================================================================================================
+// ==========[ Request contracts ]==========================================================================================
 
 export type ReadingStatus = 'unread' | 'read';
 export type UpdateReadingMaterialRequest = z.infer<typeof updateMaterialSchema>;
@@ -20,9 +18,7 @@ export type ListReadingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
 export type SaveReadingAnswersRequest = z.infer<typeof saveAnswersSchema>;
 export type ReadingMaterialParams = z.infer<typeof materialCodeSchema>;
 
-// ====================================================================================================
-// Service operations
-// ====================================================================================================
+// ==========[ Service operations ]==========================================================================================
 
 export type ReadingQuestion = {
   question_number: number;
@@ -36,8 +32,6 @@ export type ReadingMaterial = {
   level: string;
   genre: string;
   tags: string[];
-  target_word_count: number;
-  target_question_count: number;
   word_count: number;
   content_text: string;
   reading_status: ReadingStatus;
@@ -75,24 +69,26 @@ export type ReadingService = {
   getExpectedAnswers: (code: string) => Promise<ReadingExpectedAnswer[]>;
 };
 
-// ====================================================================================================
-// Repository payloads
-// ====================================================================================================
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateReadingMaterialPayload = {
+export type InsertReadingMaterialPayload = {
+  code: string;
   title: string;
   level: string;
   genre: string;
   tags: string[];
   target_word_count: number;
   target_question_count: number;
+  word_count: number;
   content_text: string;
+  is_override: boolean;
   source: ReadingSource;
-  questions: Array<{
-    question_number: number;
-    question_text: string;
-    expected_answer: string;
-  }>;
+};
+
+export type InsertReadingQuestionPayload = {
+  question_number: number;
+  question_text: string;
+  expected_answer: string;
 };
 
 export type ListReadingMaterialsQuery = ListReadingMaterialsRequest;
@@ -101,9 +97,7 @@ export type SaveReadingAnswersPayload = {
   answers: Array<{ question_number: number; user_answer: string }>;
 };
 
-// ====================================================================================================
-// Repository responses
-// ====================================================================================================
+// ==========[ Repository responses ]==========================================================================================
 
 export type IdRow = {
   id: number;
@@ -119,8 +113,6 @@ export type ReadingMaterialRow = {
   level: string;
   genre: string;
   tags: string[];
-  target_word_count: number;
-  target_question_count: number;
   word_count: number;
   content_text: string;
   reading_status: ReadingStatus;

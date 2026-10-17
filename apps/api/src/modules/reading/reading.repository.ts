@@ -1,8 +1,9 @@
 import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
-  CreateReadingMaterialPayload,
   IdRow,
+  InsertReadingMaterialPayload,
+  InsertReadingQuestionPayload,
   ListReadingMaterialsQuery,
   ReadingExpectedAnswerRow,
   ReadingMaterialListRow,
@@ -39,40 +40,28 @@ export const getLastSequenceByDateForUpdate = async (
   return row;
 };
 
-export const insertOne = async (
-  code: string,
-  input: CreateReadingMaterialPayload,
-  word_count: number,
-  is_override: boolean,
+export const insert = async (
+  payload: InsertReadingMaterialPayload,
   trx: DatabaseReservedConnection,
 ): Promise<IdRow> => {
+  const allowedColumns = [
+    'code',
+    'title',
+    'level',
+    'genre',
+    'tags',
+    'target_word_count',
+    'target_question_count',
+    'word_count',
+    'content_text',
+    'is_override',
+    'source',
+  ] as const;
+
+  const insertInput = { ...payload, tags: trx.array(payload.tags, 'TEXT') };
+
   const [material] = await trx<IdRow[]>`
-    INSERT INTO reading_materials (
-      code,
-      title,
-      level,
-      genre,
-      tags,
-      target_word_count,
-      target_question_count,
-      word_count,
-      content_text,
-      is_override,
-      source
-    )
-    VALUES (
-      ${code},
-      ${input.title},
-      ${input.level},
-      ${input.genre},
-      ${trx.array(input.tags, 'TEXT')},
-      ${input.target_word_count},
-      ${input.target_question_count},
-      ${word_count},
-      ${input.content_text},
-      ${is_override},
-      ${input.source}::reading_source
-    )
+    INSERT INTO reading_materials ${trx(insertInput, ...allowedColumns)}
     RETURNING
       id
   `;
@@ -84,15 +73,11 @@ export const insertOne = async (
   return material;
 };
 
-export const insertAllQuestions = async (
+export const bulkInsertQuestions = async (
   materialId: number,
-  questions: CreateReadingMaterialPayload['questions'],
+  questions: InsertReadingQuestionPayload[],
   trx: DatabaseReservedConnection,
 ): Promise<void> => {
-  const questionNumbers = questions.map((question) => question.question_number);
-  const questionTexts = questions.map((question) => question.question_text);
-  const expectedAnswers = questions.map((question) => question.expected_answer);
-
   await trx`
     INSERT INTO reading_questions (
       material_id,
@@ -105,14 +90,10 @@ export const insertAllQuestions = async (
       payload.question_number,
       payload.question_text,
       payload.expected_answer
-    FROM UNNEST(
-      ${trx.array(questionNumbers, 'INTEGER')},
-      ${trx.array(questionTexts, 'TEXT')},
-      ${trx.array(expectedAnswers, 'TEXT')}
-    ) AS payload(
-      question_number,
-      question_text,
-      expected_answer
+    FROM jsonb_to_recordset(${questions}) AS payload(
+      question_number INTEGER,
+      question_text TEXT,
+      expected_answer TEXT
     )
   `;
 };
@@ -151,8 +132,6 @@ export const getOneByCode = async (
       level,
       genre,
       tags,
-      target_word_count,
-      target_question_count,
       word_count,
       content_text,
       reading_status,
@@ -198,8 +177,12 @@ export const getAll = async (input: ListReadingMaterialsQuery): Promise<ReadingM
   `;
 };
 
-export const updateOneStatusByCode = async (code: string, status: ReadingStatus): Promise<IdRow | null> => {
-  const database = getDatabaseClient();
+export const updateOneStatusByCode = async (
+  code: string,
+  status: ReadingStatus,
+  trx?: DatabaseReservedConnection,
+): Promise<IdRow | null> => {
+  const database = trx ?? getDatabaseClient();
 
   const [row] = await database<IdRow[]>`
     UPDATE reading_materials
@@ -290,18 +273,9 @@ export const upsertAllAnswersByMaterialId = async (
       q.id,
       payload.user_answer
     FROM reading_questions q
-    JOIN UNNEST(
-      ${trx.array(
-        input.answers.map((answer) => answer.question_number),
-        'INTEGER',
-      )},
-      ${trx.array(
-        input.answers.map((answer) => answer.user_answer),
-        'TEXT',
-      )}
-    ) AS payload(
-      question_number,
-      user_answer
+    JOIN jsonb_to_recordset(${input.answers}) AS payload(
+      question_number INTEGER,
+      user_answer TEXT
     ) ON payload.question_number = q.question_number
     WHERE q.material_id = ${materialId} AND q.deleted_at IS NULL
     ON CONFLICT (submission_id, question_id) DO UPDATE

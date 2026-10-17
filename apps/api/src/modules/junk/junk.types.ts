@@ -1,9 +1,7 @@
 import type { z } from 'zod';
 import type { createJunkSchema, junkCodeSchema, searchJunkSchema, updateJunkSchema } from './junk.validator';
 
-// ====================================================================================================
-// Request contracts
-// ====================================================================================================
+// ==========[ Request contracts ]==========================================================================================
 
 export type JunkCodeParams = z.infer<typeof junkCodeSchema>;
 export type CreateJunkRequest = z.infer<typeof createJunkSchema>;
@@ -14,9 +12,7 @@ export type JunkReferenceRequest = {
   code: string;
 };
 
-// ====================================================================================================
-// Service operations
-// ====================================================================================================
+// ==========[ Service operations ]==========================================================================================
 
 export type JunkItem = {
   code: string;
@@ -29,7 +25,6 @@ export type JunkItem = {
   tags: string[];
   created_at: string;
   updated_at: string;
-  deleted_at: string | null;
 };
 
 export type JunkService = {
@@ -40,11 +35,10 @@ export type JunkService = {
   remove: (input: JunkReferenceRequest) => Promise<void>;
 };
 
-// ====================================================================================================
-// Repository payloads
-// ====================================================================================================
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateJunkPayload = {
+export type InsertJunkPayload = {
+  code: string;
   title: string | null;
   category: string;
   raw_text: string | null;
@@ -75,9 +69,7 @@ export type UpdateJunkPayload = {
   tags?: string[];
 };
 
-// ====================================================================================================
-// Repository responses
-// ====================================================================================================
+// ==========[ Repository responses ]==========================================================================================
 
 export type JunkItemRow = {
   code: string;
@@ -90,7 +82,6 @@ export type JunkItemRow = {
   tags: string[];
   created_at: Date | string;
   updated_at: Date | string;
-  deleted_at: Date | string | null;
 };
 
 export type JunkSequenceRow = {

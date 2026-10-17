@@ -76,11 +76,13 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading workflow HTTP and PostgreSQL integ
     const material = await create({ questions: materialInput.questions.slice(0, 2) });
     expect(material).toMatchObject({
       level: 'B1',
-      target_word_count: 450,
-      target_question_count: 2,
       is_override: false,
       reading_status: 'unread',
     });
+    const [storedSnapshot] = await database<
+      { target_word_count: number; target_question_count: number }[]
+    >`SELECT target_word_count, target_question_count FROM reading_materials WHERE code = ${material.code}`;
+    expect(storedSnapshot).toEqual({ target_word_count: 450, target_question_count: 2 });
     const readingOnly = await create({
       level: 'C1',
       target_word_count: 100,
@@ -89,13 +91,18 @@ describe.skipIf(!hasTestDatabaseUrl)('Reading workflow HTTP and PostgreSQL integ
     });
     expect(readingOnly).toMatchObject({
       level: 'C1',
-      target_word_count: 100,
-      target_question_count: 0,
       is_override: true,
       questions: [],
     });
+    const [storedReadingOnly] = await database<
+      { target_word_count: number; target_question_count: number }[]
+    >`SELECT target_word_count, target_question_count FROM reading_materials WHERE code = ${readingOnly.code}`;
+    expect(storedReadingOnly).toEqual({ target_word_count: 100, target_question_count: 0 });
     await request('settings', 'PATCH', { default_question_count: 0 });
-    expect((await detail(material.code)).target_question_count).toBe(2);
+    const [snapshotAfterSettingsChange] = await database<{ target_question_count: number }[]>`
+      SELECT target_question_count FROM reading_materials WHERE code = ${material.code}
+    `;
+    expect(snapshotAfterSettingsChange?.target_question_count).toBe(2);
     const fromDefault = await create({ questions: undefined });
     expect(fromDefault.questions).toEqual([]);
     expect(fromDefault.is_override).toBe(false);

@@ -19,8 +19,6 @@ const material = {
   level: 'A1',
   genre: 'story',
   tags: ['daily-life'],
-  target_word_count: 300,
-  target_question_count: 1,
   reading_status: 'unread',
   created_at: '2026-10-01T10:00:00.000Z',
   updated_at: '2026-10-01T10:00:00.000Z',
@@ -98,7 +96,6 @@ test('keeps questions collapsed and permits saving a subset without marking read
   const user = userEvent.setup();
   mockResponse({
     ...material,
-    target_question_count: 3,
     questions: [
       ...material.questions,
       { question_number: 2, question_text: 'When does Mira visit?', user_answer: null },
@@ -206,7 +203,7 @@ test('stays in edit mode when saving fails and leaves edit mode when it succeeds
 });
 
 test('omits the question section for a reading-only material', async () => {
-  mockResponse({ ...material, target_question_count: 0, questions: [] });
+  mockResponse({ ...material, questions: [] });
   const parsed = await getReadingMaterial(material.code);
   const mark = vi.fn();
   render(

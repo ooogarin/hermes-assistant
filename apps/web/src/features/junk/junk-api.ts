@@ -14,13 +14,11 @@ const junkItemSchema = z
     tags: z.array(z.string()),
     created_at: z.string(),
     updated_at: z.string(),
-    deleted_at: z.string().nullable(),
   })
-  .transform(({ content_text, created_at, deleted_at, raw_text, source_url, source_name, updated_at, ...item }) => ({
+  .transform(({ content_text, created_at, raw_text, source_url, source_name, updated_at, ...item }) => ({
     ...item,
     contentText: content_text,
     createdAt: created_at,
-    deletedAt: deleted_at,
     rawText: raw_text,
     sourceUrl: source_url,
     sourceName: source_name,

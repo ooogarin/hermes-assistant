@@ -1,10 +1,10 @@
 import { getDatabaseClient } from '../../../core/database/client';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
-import type { CreateGrammarQuestionPayload, GrammarQuestionRow } from './grammar-question.types';
+import type { GrammarQuestionRow, InsertGrammarQuestionPayload } from './grammar-question.types';
 
 export const bulkInsert = async (
   sessionId: number,
-  questions: CreateGrammarQuestionPayload[],
+  questions: InsertGrammarQuestionPayload[],
   trx: DatabaseReservedConnection,
 ): Promise<void> => {
   await trx`

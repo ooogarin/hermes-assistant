@@ -1,8 +1,6 @@
 import type { GrammarAnswerResult } from '../grammar.types';
 
-// ====================================================================================================
-// Service operations
-// ====================================================================================================
+// ==========[ Service operations ]==========================================================================================
 
 export type GrammarQuestion = {
   question_number: number;
@@ -20,11 +18,9 @@ export type GrammarQuestion = {
   } | null;
 };
 
-// ====================================================================================================
-// Repository payloads
-// ====================================================================================================
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateGrammarQuestionPayload = {
+export type InsertGrammarQuestionPayload = {
   question_number: number;
   question_type: string;
   grammar_area: string;
@@ -35,9 +31,7 @@ export type CreateGrammarQuestionPayload = {
   explanation: string;
 };
 
-// ====================================================================================================
-// Repository responses
-// ====================================================================================================
+// ==========[ Repository responses ]==========================================================================================
 
 export type GrammarQuestionRow = {
   id: number;

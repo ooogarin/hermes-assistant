@@ -9,9 +9,7 @@ import type {
 } from './grammar.validator';
 import type { GrammarQuestion } from './grammar-question/grammar-question.types';
 
-// ====================================================================================================
-// Request contracts
-// ====================================================================================================
+// ==========[ Request contracts ]==========================================================================================
 
 export type GrammarMode = 'practice' | 'exam';
 export type GrammarSource = 'cron' | 'request';
@@ -25,9 +23,7 @@ export type ListGrammarSessionsRequest = z.infer<typeof listSessionsSchema>;
 export type GrammarSessionParams = z.infer<typeof sessionCodeSchema>;
 export type GrammarQuestionParams = z.infer<typeof questionReferenceSchema>;
 
-// ====================================================================================================
-// Service operations
-// ====================================================================================================
+// ==========[ Service operations ]==========================================================================================
 
 export type GrammarSession = {
   code: string;
@@ -94,11 +90,9 @@ export type GrammarService = {
   getReport: (code: string) => Promise<GrammarReport>;
 };
 
-// ====================================================================================================
-// Repository payloads
-// ====================================================================================================
+// ==========[ Repository payloads ]==========================================================================================
 
-export type CreateGrammarSessionPayload = {
+export type InsertGrammarSessionPayload = {
   code: string;
   mode: GrammarMode;
   source: GrammarSource;
@@ -132,9 +126,7 @@ export type ListGrammarSessionsQuery = {
   sort: 'newest' | 'oldest';
 };
 
-// ====================================================================================================
-// Repository responses
-// ====================================================================================================
+// ==========[ Repository responses ]==========================================================================================
 
 export type IdRow = {
   id: number;

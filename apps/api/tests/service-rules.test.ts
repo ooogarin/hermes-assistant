@@ -29,7 +29,7 @@ import type {
 } from '../src/modules/writing/writing-material/writing-material.types';
 import type { WritingSettings, WritingSettingsRow } from '../src/modules/writing/writing-setting/writing-setting.types';
 import type {
-  CreateWritingSubmissionPayload,
+  InsertWritingSubmissionPayload,
   SaveWritingAnalysisPayload,
   UpdateWritingSubmissionPayload,
   WritingSubmission,
@@ -86,8 +86,6 @@ const readingMaterial: ReadingMaterial = {
   level: 'A1',
   genre: 'story',
   tags: [],
-  target_word_count: 300,
-  target_question_count: 3,
   reading_status: 'unread',
   created_at: '2026-09-05T10:00:00.000Z',
   updated_at: '2026-09-05T10:00:00.000Z',
@@ -118,8 +116,6 @@ const readingMaterialRow: ReadingMaterialRow = {
   level: readingMaterial.level,
   genre: readingMaterial.genre,
   tags: readingMaterial.tags,
-  target_word_count: readingMaterial.target_word_count,
-  target_question_count: readingMaterial.target_question_count,
   reading_status: readingMaterial.reading_status,
   created_at: readingMaterial.created_at,
   updated_at: readingMaterial.updated_at,
@@ -213,7 +209,7 @@ let writingListResult: WritingMaterialListRow[] = [];
 let writingCountResult: WritingCountRow = { total: 0 };
 let writingGetMaterialCallCount = 0;
 let writingMaterialResult: WritingMaterialRow | null = writingMaterialRow;
-let writingInsertPayload: CreateWritingSubmissionPayload | null = null;
+let writingInsertPayload: InsertWritingSubmissionPayload | null = null;
 let writingUpdatePayload: UpdateWritingSubmissionPayload | null = null;
 let writingAnalysisPayload: SaveWritingAnalysisPayload | null = null;
 const fakeTrx = {} as DatabaseReservedConnection;
@@ -334,8 +330,8 @@ mock.module('../src/modules/reading/reading-setting/reading-setting.repository',
 
 mock.module('../src/modules/reading/reading.repository', () => ({
   getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
-  insertOne: async () => ({ id: readingMaterialRow.id }),
-  insertAllQuestions: async () => undefined,
+  insert: async () => ({ id: readingMaterialRow.id }),
+  bulkInsertQuestions: async () => undefined,
   getOneByCode: async (_code: string, trx?: DatabaseReservedConnection) => {
     readingReadConnections.push(trx);
     if (trx === undefined) readingFindByCodeCallCount += 1;
@@ -367,7 +363,7 @@ mock.module('../src/modules/writing/writing-setting/writing-setting.repository',
 
 mock.module('../src/modules/writing/writing-material/writing-material.repository', () => ({
   getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
-  insertOne: async () => writingMaterialRow,
+  insert: async () => writingMaterialRow,
   getOneByCode: async () => {
     writingGetMaterialCallCount += 1;
     return writingMaterialResult;
@@ -378,12 +374,11 @@ mock.module('../src/modules/writing/writing-material/writing-material.repository
 
 mock.module('../src/modules/writing/writing-submission/writing-submission.repository', () => ({
   getLastSequenceByDateForUpdate: async () => ({ sequence: 0 }),
-  insertOne: async (code: string, input: CreateWritingSubmissionPayload) => {
-    writingInsertPayload = input;
+  insert: async (payload: InsertWritingSubmissionPayload) => {
+    writingInsertPayload = payload;
     return {
       ...writingSubmissionRow,
-      code,
-      ...input,
+      ...payload,
       estimated_topic: null,
       estimated_genre: null,
       estimated_tags: null,
@@ -394,11 +389,11 @@ mock.module('../src/modules/writing/writing-submission/writing-submission.reposi
   },
   getOneByCode: async () => writingSubmissionResult,
   getOneByCodeForUpdate: async () => writingSubmissionResult,
-  updateOne: async (_code: string, _material_code: string | null, input: UpdateWritingSubmissionPayload) => {
+  updateOneByCode: async (_code: string, input: UpdateWritingSubmissionPayload) => {
     writingUpdatePayload = input;
     return { ...writingSubmissionRow, ...input };
   },
-  updateOneAnalysis: async (_code: string, _material_code: string | null, input: SaveWritingAnalysisPayload) => {
+  updateOneAnalysisByCode: async (_code: string, input: SaveWritingAnalysisPayload) => {
     writingAnalysisPayload = input;
     return { ...writingSubmissionRow, ...input };
   },
@@ -696,7 +691,6 @@ test('junk formats category and tags without changing separators needed for filt
     tags: ['advisory-lock', 'api_v1'],
     created_at: '2026-09-28T00:00:00.000Z',
     updated_at: '2026-09-28T00:00:00.000Z',
-    deleted_at: null,
   };
   const detail = await junkService.getDetail({ code: 'JK-20260928-001' });
   expect(detail.category).toBe('Personal-Growth');
@@ -952,7 +946,12 @@ test('writing saves free and prompted submissions without analysis', async () =>
   });
   expect(free.code).toMatch(/^WS-\d{8}-001$/);
   expect(writingGetMaterialCallCount).toBe(0);
-  expect(writingInsertPayload).toEqual({ material_id: null, material_code: null, original_text, word_count: 3 });
+  expect(writingInsertPayload).toEqual({
+    code: free.code,
+    material_id: null,
+    original_text,
+    word_count: 3,
+  });
 
   const prompted = await writingSubmissionService.createSubmission({
     material_code: writingMaterial.code,

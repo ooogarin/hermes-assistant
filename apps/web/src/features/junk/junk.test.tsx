@@ -23,7 +23,6 @@ const item: JunkItem = {
   tags: ['music', 'old', 'pop', 'western', 'live', 'concert', 'acoustic'],
   createdAt: '2026-09-08T09:00:00.000Z',
   updatedAt: '2026-09-08T09:00:00.000Z',
-  deletedAt: null,
 };
 const wireItem = {
   code: item.code,
@@ -36,7 +35,6 @@ const wireItem = {
   tags: item.tags,
   created_at: item.createdAt,
   updated_at: item.updatedAt,
-  deleted_at: null,
 };
 const mockResponse = (data: unknown) => {
   const fetch = vi
