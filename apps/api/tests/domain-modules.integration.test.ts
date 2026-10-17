@@ -37,9 +37,12 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
   });
 
   beforeEach(async () => {
-    const databaseClient = getDatabase();
-    await resetTestDatabase(databaseClient);
-    await migrateDatabase(databaseClient, await loadMigrations(migrationDirectory));
+    // Recreate the client so no pooled connection caches a plan across the schema reset below.
+    await getDatabase().close();
+    database = createTestDatabaseClient();
+    configureDatabaseClient(database);
+    await resetTestDatabase(database);
+    await migrateDatabase(database, await loadMigrations(migrationDirectory));
   });
 
   afterAll(async () => {

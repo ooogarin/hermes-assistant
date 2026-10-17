@@ -9,7 +9,7 @@
     "db:migrate": "bun --env-file=../../.env scripts/migrate.ts migrate",
     "db:status": "bun --env-file=../../.env scripts/migrate.ts status",
     "db:rollback": "bun --env-file=../../.env scripts/migrate.ts rollback",
-    "test:integration": "bun --env-file=../../.env.test test tests/service-rules.test.ts && bun --env-file=../../.env.test test --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts tests",
+    "test:integration": "bun --env-file=../../.env.test test tests/service-rules.test.ts && bun --env-file=../../.env.test test --isolate --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts tests",
     "format": "biome format --write",
     "format:check": "biome format",
     "lint": "biome lint",
@@ -18,7 +18,7 @@
     "check": "biome check",
     "fix": "biome check --write",
     "typecheck": "tsc --noEmit",
-    "test": "bun test tests/service-rules.test.ts && bun test --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts",
+    "test": "bun test tests/service-rules.test.ts && bun test --isolate --max-concurrency=1 --path-ignore-patterns=tests/service-rules.test.ts",
     "verify": "bun run check && bun run typecheck && bun run test"
   },
   "dependencies": {
