@@ -110,6 +110,9 @@ Answers are saved through one bulk endpoint. Every item links to its question by
   unevaluated). After every question is answered, evaluate all answers once through
   `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and
   breakdown.
+- The session `score` is weighted: `correct` counts 1, `partial` counts 0.5, and
+  `incorrect` counts 0, so a score can be a decimal such as `1.5`. `max_score`
+  equals the session question count.
 - Answering in waves is supported: each `PUT` may contain any subset of questions,
   and re-sending a question replaces its saved answer.
 - `400 INVALID_GRAMMAR_ANSWERS` means a `question_number` is unknown to the session

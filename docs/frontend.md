@@ -107,7 +107,7 @@ PATCH /api/v1/grammar/settings
 
 The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` lists sessions with API-backed search, status chips, mode and level filters, newest/oldest ordering, and server-side pagination, and exposes the settings entry point.
 
-Known Grammar session routes display session questions, stored feedback, on-demand explanations, and completed reports. The browser may save unevaluated exam answers. It does not grade practice answers or submit final exam evaluations because those commands require authoritative results supplied by Hermes.
+Known Grammar session routes are read-only: they display session questions, saved answers, stored feedback, on-demand explanations, and completed reports. Answering, practice grading, and final exam evaluation are performed through Hermes because those commands require authoritative results; the browser does not save answers or infer correctness.
 
 Notes and Junk support manual creation, detail-derived editing, and deletion from their full-page detail routes. Create and edit share one form per feature; both retain immutable/internal fields outside browser forms, use changed-fields-only PATCH requests, show deletion through one shared confirmation dialog, and return a short navigation notice after successful writes.
 

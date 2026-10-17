@@ -10,6 +10,7 @@ import type {
   CreateGrammarSessionRequest,
   EvaluateGrammarSessionPayload,
   EvaluateGrammarSessionRequest,
+  GrammarAnswerResult,
   GrammarExplanation,
   GrammarExplanationRow,
   GrammarReport,
@@ -186,7 +187,11 @@ export const saveAnswers = async (code: string, input: SaveAnswersRequest): Prom
       const hasEveryQuestionAnswered = updatedQuestions.every((question) => question.answer !== null);
 
       if (hasEveryQuestionAnswered) {
-        const score = updatedQuestions.filter((question) => question.answer?.result === 'correct').length;
+        const score = updatedQuestions.reduce((total, question) => {
+          const result = question.answer?.result;
+
+          return result === null || result === undefined ? total : total + grammarAnswerScoreWeight(result);
+        }, 0);
 
         await grammarRepository.updateOneCompletionByCode(code, score, session.question_count, trx);
       }
@@ -260,7 +265,7 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
 
     await grammarRepository.updateAllAnswerEvaluationsByCode(code, payload, trx);
 
-    const score = input.answers.filter((answer) => answer.result === 'correct').length;
+    const score = input.answers.reduce((total, answer) => total + grammarAnswerScoreWeight(answer.result), 0);
 
     await grammarRepository.updateOneCompletionByCode(code, score, session.question_count, trx);
 
@@ -299,6 +304,18 @@ export const getReport = async (code: string): Promise<GrammarReport> => {
 
 // ==========[ Helper functions ]==========================================================================================
 
+const grammarAnswerScoreWeight = (result: GrammarAnswerResult): number => {
+  if (result === 'correct') {
+    return 1;
+  }
+
+  if (result === 'partial') {
+    return 0.5;
+  }
+
+  return 0;
+};
+
 const toInsertGrammarSessionPayload = (
   input: CreateGrammarSessionRequest,
   code: string,
@@ -313,9 +330,9 @@ const toInsertGrammarSessionPayload = (
 const toInsertGrammarQuestionPayloads = (input: CreateGrammarSessionRequest): InsertGrammarQuestionPayload[] =>
   input.questions.map((question, index) => ({
     question_number: index + 1,
-    question_type: question.question_type,
-    grammar_area: question.grammar_area,
-    grammar_point: question.grammar_point,
+    question_type: question.question_type.toLowerCase(),
+    grammar_area: question.grammar_area.toLowerCase(),
+    grammar_point: question.grammar_point.toLowerCase(),
     level: question.level,
     question_text: question.question_text,
     correct_answer: question.correct_answer,
@@ -388,7 +405,7 @@ const toGrammarSession = (row: GrammarSessionRow, questions: GrammarQuestion[]):
   status: row.status,
   level: row.level,
   question_count: row.question_count,
-  score: row.score,
+  score: row.score === null ? null : Number(row.score),
   max_score: row.max_score,
   started_at: toIsoTimestamp(row.started_at),
   completed_at: row.completed_at === null ? null : toIsoTimestamp(row.completed_at),
@@ -430,7 +447,7 @@ const toGrammarReport = (rows: GrammarReportRow[]): GrammarReport => {
   return {
     code: first.code,
     status: first.status,
-    score: first.score,
+    score: first.score === null ? null : Number(first.score),
     max_score: first.max_score,
     breakdown: rows.map((row) => ({
       grammar_area: row.grammar_area,

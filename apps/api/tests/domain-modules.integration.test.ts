@@ -275,6 +275,54 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     await expect(grammarService.getSession(practice.code)).rejects.toMatchObject({ code: 'GRAMMAR_SESSION_NOT_FOUND' });
   });
 
+  test('normalizes grammar metadata to lowercase and persists a weighted decimal score', async () => {
+    const session = await grammarService.createSession({
+      mode: 'practice',
+      source: 'request',
+      level: 'B1',
+      questions: [
+        {
+          question_type: 'Fill_Blank',
+          grammar_area: 'Tenses',
+          grammar_point: 'Present Perfect',
+          level: 'B1',
+          question_text: 'She ___ already finished.',
+          correct_answer: 'has',
+          explanation: 'Use has with third-person singular.',
+        },
+        {
+          question_type: 'Error_Correction',
+          grammar_area: 'Agreement',
+          grammar_point: 'Subject Verb Agreement',
+          level: 'B1',
+          question_text: 'He walk every day.',
+          correct_answer: 'He walks every day.',
+          explanation: 'Third-person singular verbs take -s.',
+        },
+      ],
+    });
+
+    expect(session.questions.map((question) => question.grammar_area)).toEqual(['tenses', 'agreement']);
+    expect(session.questions.map((question) => question.grammar_point)).toEqual([
+      'present perfect',
+      'subject verb agreement',
+    ]);
+    expect(session.questions.map((question) => question.question_type)).toEqual(['fill_blank', 'error_correction']);
+
+    await grammarService.saveAnswers(session.code, {
+      answers: [{ question_number: 1, user_answer: 'has', result: 'correct' }],
+    });
+    const completed = await grammarService.saveAnswers(session.code, {
+      answers: [{ question_number: 2, user_answer: 'He walk every day.', result: 'partial', feedback: 'Verb form.' }],
+    });
+
+    expect(completed.status).toBe('completed');
+    expect(completed.score).toBe(1.5);
+    expect(completed.max_score).toBe(2);
+
+    await grammarService.removeSession(session.code);
+  });
+
   test('locks a grammar session before deciding whether it is still active', async () => {
     const exam = await grammarService.createSession({
       mode: 'exam',

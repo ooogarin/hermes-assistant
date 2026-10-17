@@ -117,20 +117,17 @@ PATCH /api/v1/grammar/settings
 ## SCR-GRAM-003 — Grammar session workspace
 
 **Purpose**  
-Answer a known practice or exam session and understand its current state.
+Review a known practice or exam session and understand its current state.
 
 **Data contract**
 
 ```text
 GET /api/v1/grammar/sessions/:code
-PUT /api/v1/grammar/sessions/:code/questions/:questionNumber/answer
-POST /api/v1/grammar/sessions/:code/evaluate
 ```
 
-- Practice answer saves include an evaluated result and optional concise feedback; exam answers are stored unevaluated until the complete exam is evaluated.
 - Ordinary session detail deliberately excludes correct answers and full explanations.
-- Evaluation applies to exam answers and produces SCR-GRAM-005.
-- The browser saves unevaluated exam answers. Practice grading and final exam evaluation remain owned by Hermes because the API requires caller-supplied evaluation results; the frontend does not infer authoritative correctness.
+- The web screen is read-only. Answering happens through Hermes/Telegram: practice answers are evaluated immediately per question, and exam answers are stored unevaluated until the complete exam is evaluated.
+- Practice grading and final exam evaluation remain owned by Hermes because the API requires caller-supplied evaluation results; the frontend does not infer authoritative correctness. When a session completes, the screen shows its stored result and links to SCR-GRAM-005.
 
 ## SCR-GRAM-004 — Grammar explanation
 

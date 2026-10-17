@@ -144,7 +144,7 @@ export type GrammarSessionRow = {
   status: GrammarSessionStatus;
   level: string;
   question_count: number;
-  score: number | null;
+  score: number | string | null;
   max_score: number | null;
   started_at: Date | string;
   completed_at: Date | string | null;
@@ -174,7 +174,7 @@ export type GrammarExplanationRow = {
 export type GrammarReportRow = {
   code: string;
   status: GrammarSessionStatus;
-  score: number | null;
+  score: number | string | null;
   max_score: number | null;
   grammar_area: string;
   correct: number | string;

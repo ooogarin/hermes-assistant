@@ -1,15 +1,14 @@
 import { ArrowLeft, CheckCircle2, CircleMinus, CircleX } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { GrammarSessionHeader } from '../../../components/grammar/grammar-session-header';
 import { Button } from '../../../components/ui/button';
-import { Textarea } from '../../../components/ui/form-field';
 import { ApiError } from '../../../lib/api/api-error';
 import { classNames } from '../../../lib/class-names';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { getGrammarSession, saveGrammarAnswers } from '../grammar-api';
+import { getGrammarSession } from '../grammar-api';
 import type { GrammarQuestion, GrammarSession } from '../grammar-api';
 
 const resultStyle = {
@@ -33,37 +32,11 @@ const QuestionResult = ({ question }: { question: GrammarQuestion }) => {
 };
 
 const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
-  const [session, setSession] = useState(initial);
+  const session = initial;
   const firstOpenQuestion = session.questions.find((question) => question.answer === null)?.questionNumber ?? 1;
   const [questionNumber, setQuestionNumber] = useState(firstOpenQuestion);
   const question = session.questions.find((item) => item.questionNumber === questionNumber) ?? session.questions[0];
-  const [answer, setAnswer] = useState(question.answer?.userAnswer ?? '');
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string>();
   const answeredCount = session.questions.filter((item) => item.answer !== null).length;
-  const canSave = session.mode === 'exam' && session.status === 'active' && answer.trim().length > 0;
-
-  useEffect(() => {
-    setAnswer(question.answer?.userAnswer ?? '');
-    setMessage(undefined);
-  }, [question]);
-
-  const saveAnswer = async () => {
-    if (!canSave) return;
-    setSaving(true);
-    setMessage(undefined);
-    try {
-      const updated = await saveGrammarAnswers(session.code, [
-        { questionNumber: question.questionNumber, userAnswer: answer.trim() },
-      ]);
-      setSession(updated);
-      setMessage('Jawaban tersimpan. Penilaian exam dilakukan setelah sesi dikirim melalui Hermes.');
-    } catch {
-      setMessage('Jawaban belum dapat disimpan. Coba lagi.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const nextQuestion = () => {
     const index = session.questions.findIndex((item) => item.questionNumber === question.questionNumber);
@@ -105,28 +78,13 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
             {question.questionType} · {question.grammarArea} · {question.grammarPoint}
           </p>
           <h2 className='mt-7 text-xl font-medium leading-8 text-ink'>{question.questionText}</h2>
-          <label className='mt-7 block' htmlFor={`grammar-answer-${question.questionNumber}`}>
-            <span className='sr-only'>Jawaban soal {question.questionNumber}</span>
-            <Textarea
-              className='min-h-28 px-4 text-base leading-7'
-              id={`grammar-answer-${question.questionNumber}`}
-              disabled={session.status !== 'active' || session.mode === 'practice'}
-              onChange={(event) => setAnswer(event.target.value)}
-              placeholder='Tulis jawaban...'
-              value={answer}
-            />
-          </label>
+          <div className='mt-7'>
+            <h3 className='text-sm font-semibold text-ink'>Jawaban tersimpan</h3>
+            <p className='mt-2 whitespace-pre-wrap rounded-control border border-border bg-surface-subtle px-4 py-3 text-base leading-7 text-ink'>
+              {question.answer === null ? 'Belum dijawab.' : question.answer.userAnswer}
+            </p>
+          </div>
           <QuestionResult question={question} />
-          {session.mode === 'practice' && question.answer === null ? (
-            <p className='mt-4 text-sm leading-6 text-ink-muted'>
-              Jawaban practice memerlukan hasil evaluasi dari Hermes dan tidak dinilai oleh browser.
-            </p>
-          ) : null}
-          {message === undefined ? null : (
-            <p className='mt-4 text-sm text-ink-muted' role='status'>
-              {message}
-            </p>
-          )}
           <div className='mt-8 flex flex-wrap items-center justify-between gap-3'>
             <Link
               className='inline-flex min-h-11 items-center justify-center rounded-control border border-primary px-4 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle'
@@ -134,20 +92,13 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
             >
               Lihat penjelasan
             </Link>
-            <div className='flex gap-3'>
-              {session.mode === 'exam' && session.status === 'active' ? (
-                <Button disabled={!canSave} onClick={saveAnswer} pending={saving}>
-                  Simpan jawaban
-                </Button>
-              ) : null}
-              <Button
-                disabled={question.questionNumber === session.questions.at(-1)?.questionNumber}
-                onClick={nextQuestion}
-                variant='secondary'
-              >
-                Soal berikutnya
-              </Button>
-            </div>
+            <Button
+              disabled={question.questionNumber === session.questions.at(-1)?.questionNumber}
+              onClick={nextQuestion}
+              variant='secondary'
+            >
+              Soal berikutnya
+            </Button>
           </div>
         </section>
 

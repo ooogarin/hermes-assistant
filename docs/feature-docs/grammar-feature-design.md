@@ -141,6 +141,8 @@ partial
 incorrect
 ```
 
+The aggregate session `score` weights these levels as `correct` = 1, `partial` = 0.5, and `incorrect` = 0, so a session score can carry a `.5` value.
+
 `result` is nullable because exam answers can be stored before evaluation.
 
 Grading differs by `question_type`:
@@ -368,7 +370,7 @@ One row representing current user defaults.
 | `status`         | enum(`active`, `completed`, `abandoned`) | Current session state.                                                     |
 | `level`          | text                                     | Actual level used for this session.                                        |
 | `question_count` | integer                                  | Number of questions in the session.                                        |
-| `score`          | integer, nullable                        | Mainly for exam; daily/practice does not need aggregate score.             |
+| `score`          | numeric(5,2), nullable                        | Weighted score (`correct` = 1, `partial` = 0.5, `incorrect` = 0); set when the session completes.             |
 | `max_score`      | integer, nullable                        | Usually equals `question_count` for exam.                                  |
 | `started_at`     | timestamp                                |                                                                            |
 | `completed_at`   | timestamp, nullable                      | Filled when session is completed.                                          |
@@ -492,7 +494,7 @@ Type "jelasin nomor X GR-20260726-002" to see a question explanation.
 | Practice evaluation       | Immediate per answered question, saved in one bulk request                                             |
 | Practice completion       | Automatic: the API completes the session with its score once every question has an answer               |
 | Exam evaluation           | Delayed until final submission; answers may be stored before results                                   |
-| Score                     | Aggregate score mainly for exam; daily/practice uses per-question result                               |
+| Score                     | Weighted: `correct` = 1, `partial` = 0.5, `incorrect` = 0; stored as `numeric(5,2)`                   |
 | API architecture          | Hermes calls REST API; API stores and queries PostgreSQL                                               |
 | Delete behavior           | Soft delete using `deleted_at` for sessions, questions, and answers                                    |
 
@@ -561,8 +563,9 @@ Hermes saves answered questions through one request to
    answer per question assumption holds for MVP; re-answering remains possible).
 5. When the mode is practice and the upsert leaves every question with an answer,
    the same transaction completes the session: `status` becomes `completed`,
-   `score` becomes the count of `correct` answers, `max_score` becomes the session
-   question count, and `completed_at` is set.
+   `score` becomes the weighted sum of results (`correct` = 1, `partial` = 0.5,
+   `incorrect` = 0), `max_score` becomes the session question count, and
+   `completed_at` is set.
 6. The response is the updated session. Exam sessions never auto-complete; only
    `/evaluate` completes them.
 
@@ -583,6 +586,6 @@ Hermes saves answered questions through one request to
 3. After every question is answered, Hermes evaluates the full exam.
 4. Hermes calls the evaluate endpoint with every `question_number`, `result`, and
    optional feedback exactly once.
-5. The backend validates that all questions and answers are present, updates all evaluations in one transaction, computes `score` as the count of `correct` results, sets response field `max_score` to the session question count, and marks the session `completed`.
+5. The backend validates that all questions and answers are present, updates all evaluations in one transaction, computes `score` as the weighted sum of results (`correct` = 1, `partial` = 0.5, `incorrect` = 0), sets response field `max_score` to the session question count, and marks the session `completed`.
 
 Exam results cannot be written through the individual answer endpoint, and a completed session cannot accept new answers or evaluations.

@@ -797,6 +797,34 @@ test('grammar completes an active practice session once every question has an an
   expect(committedTransactionCount).toBe(1);
 });
 
+test('grammar weights a partial practice answer as half a point', async () => {
+  const answeredAt = '2026-09-05T10:05:00.000Z';
+  grammarLockedSessionResult = {
+    ...grammarSession,
+    questions: [
+      {
+        ...grammarQuestion,
+        answer: {
+          user_answer: 'Went',
+          result: 'partial',
+          feedback: null,
+          answered_at: answeredAt,
+          evaluated_at: answeredAt,
+        },
+      },
+    ],
+  };
+
+  const result = await grammarService.saveAnswers(grammarSession.code, {
+    answers: [{ question_number: 1, user_answer: 'Went', result: 'partial' }],
+  });
+
+  expect(grammarCompletionResult).toEqual({ code: grammarSession.code, score: 0.5, max_score: 1 });
+  expect(result.status).toBe('completed');
+  expect(result.score).toBe(0.5);
+  expect(committedTransactionCount).toBe(1);
+});
+
 test('grammar keeps an incomplete practice session active', async () => {
   const result = await grammarService.saveAnswers(grammarSession.code, {
     answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],

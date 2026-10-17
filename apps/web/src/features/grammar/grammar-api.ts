@@ -172,19 +172,6 @@ export const getGrammarSessions = (
 ): Promise<GrammarSessionList> =>
   apiRequest(`/api/v1/grammar/sessions${buildQueryString(filters)}`, grammarSessionListSchema, { signal });
 
-export type GrammarAnswerInput = { questionNumber: number; userAnswer: string };
-
-export const saveGrammarAnswers = (code: string, answers: GrammarAnswerInput[]): Promise<GrammarSession> =>
-  apiRequest(`/api/v1/grammar/sessions/${encodeURIComponent(code)}/answers`, grammarSessionSchema, {
-    body: {
-      answers: answers.map(({ questionNumber, userAnswer }) => ({
-        question_number: questionNumber,
-        user_answer: userAnswer,
-      })),
-    },
-    method: 'PUT',
-  });
-
 export const getGrammarExplanation = (
   code: string,
   questionNumber: number,
