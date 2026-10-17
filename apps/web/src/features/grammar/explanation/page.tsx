@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { ApiError } from '../../../lib/api/api-error';
+import { formatDisplayLabel } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getGrammarExplanation } from '../grammar-api';
 
@@ -39,7 +40,7 @@ const GrammarExplanationPage = () => {
         <article className='mt-7 rounded-surface border border-border bg-surface p-6 sm:p-9'>
           <p className='text-sm font-semibold text-primary'>Soal {explanation.data.questionNumber}</p>
           <p className='mt-2 text-sm text-ink-muted'>
-            {explanation.data.grammarArea} · {explanation.data.grammarPoint}
+            {formatDisplayLabel(explanation.data.grammarArea)} · {formatDisplayLabel(explanation.data.grammarPoint)}
           </p>
           <h1 className='mt-7 text-2xl font-semibold leading-9 text-ink'>{explanation.data.questionText}</h1>
           <section className='mt-8 border-t border-border pt-7'>

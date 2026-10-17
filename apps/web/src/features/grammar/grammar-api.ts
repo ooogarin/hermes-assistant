@@ -67,9 +67,10 @@ const grammarSessionSchema = z
     completed_at: z.string().nullable(),
     questions: z.array(grammarQuestionSchema),
   })
-  .transform(({ completed_at, question_count, started_at, ...session }) => ({
+  .transform(({ completed_at, max_score, question_count, started_at, ...session }) => ({
     ...session,
     completedAt: completed_at,
+    maxScore: max_score,
     questionCount: question_count,
     startedAt: started_at,
   }));

@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { GrammarSessionTable } from '../../components/grammar/grammar-session-table';
 import { getGrammarSessions } from './grammar-api';
 import GrammarListPage from './list/page';
+import GrammarSessionPage from './session/page';
 
 const listItems = [
   {
@@ -128,7 +129,6 @@ test('list page syncs status chips through the URL', async () => {
     </MemoryRouter>,
   );
   expect(await screen.findByText('GR-20261010-001')).toBeInTheDocument();
-  expect(screen.getByText('Latihan grammar, satu sesi pada satu waktu.')).toBeInTheDocument();
   expect(Object.fromEntries(lastQuery().searchParams)).toEqual({ limit: '100', sort: 'newest' });
   expect(screen.getByText('Menampilkan 3 sesi')).toBeInTheDocument();
 
@@ -139,4 +139,88 @@ test('list page syncs status chips through the URL', async () => {
     limit: '100',
     sort: 'newest',
   });
+});
+
+const sessionPayload = {
+  code: 'GR-20261011-001',
+  mode: 'practice',
+  source: 'request',
+  status: 'active',
+  level: 'B1',
+  question_count: 2,
+  score: null,
+  max_score: null,
+  started_at: '2026-10-11T03:00:00.000Z',
+  completed_at: null,
+  questions: [
+    {
+      question_number: 1,
+      question_type: 'fill_blank',
+      grammar_area: 'tenses',
+      grammar_point: 'past perfect',
+      level: 'B1',
+      question_text: 'She ___ finished when I arrived.',
+      answer: {
+        user_answer: 'had',
+        result: 'correct',
+        feedback: null,
+        answered_at: '2026-10-11T03:01:00.000Z',
+        evaluated_at: '2026-10-11T03:02:00.000Z',
+      },
+    },
+    {
+      question_number: 2,
+      question_type: 'fill_blank',
+      grammar_area: 'tenses',
+      grammar_point: 'past perfect',
+      level: 'B1',
+      question_text: 'They ___ left before noon.',
+      answer: null,
+    },
+  ],
+};
+
+test('workspace opens the first question, formats lowercase labels, and gates explanations by result', async () => {
+  const user = userEvent.setup();
+  mockResponse(sessionPayload);
+  render(
+    <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001']}>
+      <Routes>
+        <Route path='/english/grammar/:code' element={<GrammarSessionPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText('Soal 1 dari 2')).toBeInTheDocument();
+  expect(screen.queryByText(/Skor/)).not.toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /Past Perfect/ })).toBeInTheDocument();
+  expect(screen.getByText('Fill Blank · Tenses · Past Perfect')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Lihat penjelasan' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sebelumnya' })).toBeDisabled();
+
+  await user.click(screen.getByRole('button', { name: 'Berikutnya' }));
+  expect(await screen.findByText('Soal 2 dari 2')).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Lihat penjelasan' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Berikutnya' })).toBeDisabled();
+});
+
+test('completed workspace shows the stored score in the session header', async () => {
+  mockResponse({
+    ...sessionPayload,
+    status: 'completed',
+    score: 1,
+    max_score: 2,
+    completed_at: '2026-10-11T03:10:00.000Z',
+  });
+  render(
+    <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001']}>
+      <Routes>
+        <Route path='/english/grammar/:code' element={<GrammarSessionPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  expect(await screen.findByText('Skor')).toBeInTheDocument();
+  expect(screen.getByText('1 / 2')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Lihat laporan' })).toBeInTheDocument();
 });

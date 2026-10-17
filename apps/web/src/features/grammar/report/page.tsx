@@ -4,7 +4,7 @@ import { ContentState, ErrorState } from '../../../components/feedback/content-s
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { GrammarSessionHeader } from '../../../components/grammar/grammar-session-header';
 import { ApiError } from '../../../lib/api/api-error';
-import { formatPercentage } from '../../../lib/formatting/formatters';
+import { formatDisplayLabel, formatPercentage } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getGrammarReport, getGrammarSession } from '../grammar-api';
 
@@ -68,7 +68,7 @@ const GrammarReportPage = () => {
                         key={area.grammarArea}
                         className='grid gap-3 py-5 sm:grid-cols-[minmax(9rem,1fr)_auto_minmax(12rem,1.3fr)] sm:items-center'
                       >
-                        <h3 className='font-medium text-ink'>{area.grammarArea}</h3>
+                        <h3 className='font-medium text-ink'>{formatDisplayLabel(area.grammarArea)}</h3>
                         <p className='text-sm text-ink-muted'>
                           <span className='text-primary'>{area.correct} benar</span> ·{' '}
                           <span className='text-warning'>{area.partial} sebagian</span> ·{' '}
