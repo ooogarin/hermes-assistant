@@ -36,15 +36,14 @@ Proposed web routes are frontend navigation only. They do not alter the REST API
 ## SCR-GRAM-001 — Grammar session list
 
 **Purpose**  
-Find a session and continue, review, or inspect its result.
+Find a session and review or inspect its result.
 
 **UI composition**
 
-- Header: `Grammar` and the local `Pengaturan` action, with no supporting subtitle.
-- Search, status chips, mode filter, and level filter.
+- Header: `Grammar`, the local `Pengaturan` action, and the supporting subtitle `Latihan grammar, satu sesi pada satu waktu.`
+- Search by session code, status chips, mode filter, and level filter.
 - One grouped table-like list with session code, mode, level, question count, source, date, status, and score where available.
-- Rows carry an action label that matches the destination: `Lanjutkan` for active sessions, `Lihat hasil` for completed sessions, and `Buka sesi` for abandoned sessions.
-- Selecting a row opens SCR-GRAM-003 or SCR-GRAM-005 according to its session state.
+- Rows are single links with no separate action column. Selecting a row opens SCR-GRAM-003 for active or abandoned sessions and SCR-GRAM-005 for completed sessions.
 
 **Data contract**
 

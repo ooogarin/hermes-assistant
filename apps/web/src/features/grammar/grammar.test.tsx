@@ -105,17 +105,14 @@ test('rows open the workspace or report according to session state', async () =>
 
   const activeRow = screen.getByRole('link', { name: /GR-20261010-001/ });
   expect(activeRow).toHaveAttribute('href', '/english/grammar/GR-20261010-001');
-  expect(within(activeRow).getByText('Lanjutkan')).toBeInTheDocument();
   expect(within(activeRow).getByText('Daily practice')).toBeInTheDocument();
 
   const completedRow = screen.getByRole('link', { name: /GR-20261009-001/ });
   expect(completedRow).toHaveAttribute('href', '/english/grammar/GR-20261009-001/report');
-  expect(within(completedRow).getByText('Lihat hasil')).toBeInTheDocument();
   expect(within(completedRow).getByText('8/10')).toBeInTheDocument();
 
   const abandonedRow = screen.getByRole('link', { name: /GR-20261008-001/ });
   expect(abandonedRow).toHaveAttribute('href', '/english/grammar/GR-20261008-001');
-  expect(within(abandonedRow).getByText('Buka sesi')).toBeInTheDocument();
   expect(within(abandonedRow).getByText('Dibatalkan')).toBeInTheDocument();
   expect(within(abandonedRow).getByText('—')).toBeInTheDocument();
 });
@@ -131,6 +128,7 @@ test('list page syncs status chips through the URL', async () => {
     </MemoryRouter>,
   );
   expect(await screen.findByText('GR-20261010-001')).toBeInTheDocument();
+  expect(screen.getByText('Latihan grammar, satu sesi pada satu waktu.')).toBeInTheDocument();
   expect(Object.fromEntries(lastQuery().searchParams)).toEqual({ limit: '100', sort: 'newest' });
   expect(screen.getByText('Menampilkan 3 sesi')).toBeInTheDocument();
 

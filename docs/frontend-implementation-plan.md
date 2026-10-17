@@ -16,7 +16,7 @@ Completed foundation work:
 - Finance daily and range reports plus manual batch create, edit, and confirmed delete flows.
 - Notes list and detail with API-backed keyword, type, category, and tag filtering, direct detail routes, and responsive list/detail behavior.
 - Junk list, preview, and standalone detail with API-backed keyword, category, tag, and source-URL filtering plus safe nullable-title handling.
-- Grammar session list with API-backed search, status chips, mode and level filters, ordering, and server-side pagination.
+- Grammar session list with API-backed search by session code, status chips, mode and level filters, ordering, and a bounded result list.
 
 Finance and Notes validate the current foundation against the existing API contracts. Notes supports keyword, type, category, and tag filters. Controls without API support (source, date range, and alternative ordering) stay visibly unavailable rather than applying incomplete client-side filtering.
 

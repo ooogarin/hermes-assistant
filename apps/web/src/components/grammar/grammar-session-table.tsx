@@ -1,4 +1,4 @@
-import { ChevronRight, MoveHorizontal } from 'lucide-react';
+import { MoveHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -9,8 +9,8 @@ import {
 import { formatDate } from '../../lib/formatting/formatters';
 import type { GrammarSessionListItem } from '../../features/grammar/grammar-api';
 
-const minimumWidth = 'min-w-[calc(clamp(9rem,22cqw,14rem)+53rem)]';
-const columns = `grid ${minimumWidth} grid-cols-[clamp(9rem,22cqw,14rem)_6rem_8rem_4rem_9rem_8rem_7rem_6rem_7rem] gap-4`;
+const minimumWidth = 'min-w-[calc(clamp(9rem,22cqw,14rem)+46rem)]';
+const columns = `grid ${minimumWidth} grid-cols-[clamp(9rem,22cqw,14rem)_6rem_8rem_4rem_9rem_8rem_7rem_6rem] gap-4`;
 
 const badgeClassName = 'inline-flex shrink-0 whitespace-nowrap rounded-full border px-2 py-1 text-xs font-medium';
 const primaryBadgeClassName = `${badgeClassName} border-primary/25 bg-primary-subtle text-primary`;
@@ -37,14 +37,6 @@ const GrammarSessionStatusBadge = ({ status }: { status: GrammarSessionListItem[
 
 const sessionHref = (item: GrammarSessionListItem): string =>
   item.status === 'completed' ? `/english/grammar/${item.code}/report` : `/english/grammar/${item.code}`;
-
-const sessionActionLabel = (item: GrammarSessionListItem): string => {
-  if (item.status === 'active') {
-    return 'Lanjutkan';
-  }
-
-  return item.status === 'completed' ? 'Lihat hasil' : 'Buka sesi';
-};
 
 const scoreLabel = (item: GrammarSessionListItem): string =>
   item.score === null || item.maxScore === null ? '—' : `${item.score}/${item.maxScore}`;
@@ -104,8 +96,7 @@ export const GrammarSessionTable = ({ items }: { items: GrammarSessionListItem[]
             <span className='py-3 whitespace-nowrap'>Sumber</span>
             <span className='py-3 whitespace-nowrap'>Tanggal</span>
             <span className='py-3 whitespace-nowrap'>Status</span>
-            <span className='py-3 whitespace-nowrap'>Skor</span>
-            <span className='py-3 pr-5 whitespace-nowrap'>Aksi</span>
+            <span className='py-3 pr-5 whitespace-nowrap'>Skor</span>
           </div>
           <ul className={minimumWidth}>
             {items.map((item) => (
@@ -143,15 +134,9 @@ export const GrammarSessionTable = ({ items }: { items: GrammarSessionListItem[]
                     <span className='sr-only'>Status: </span>
                     <GrammarSessionStatusBadge status={item.status} />
                   </div>
-                  <div className='min-w-0 py-5 text-sm text-ink-muted'>
+                  <div className='min-w-0 py-5 pr-5 text-sm text-ink-muted'>
                     <span className='sr-only'>Skor: </span>
                     <span className='whitespace-nowrap'>{scoreLabel(item)}</span>
-                  </div>
-                  <div className='min-w-0 py-5 pr-5'>
-                    <p className='inline-flex items-center gap-1 whitespace-nowrap text-sm font-medium text-primary'>
-                      {sessionActionLabel(item)}
-                      <ChevronRight aria-hidden='true' size={15} />
-                    </p>
                   </div>
                 </Link>
               </li>

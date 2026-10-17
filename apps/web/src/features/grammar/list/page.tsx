@@ -60,7 +60,11 @@ const GrammarListPage = () => {
 
   return (
     <div className='space-y-7'>
-      <PageHeader title='Grammar' actions={<EnglishSettingsLink to='/english/grammar/settings' />} />
+      <PageHeader
+        actions={<EnglishSettingsLink to='/english/grammar/settings' />}
+        subtitle='Latihan grammar, satu sesi pada satu waktu.'
+        title='Grammar'
+      />
       <div className='space-y-4'>
         <div className='flex flex-col gap-3 lg:flex-row lg:items-stretch'>
           <SearchForm

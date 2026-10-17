@@ -105,7 +105,7 @@ GET   /api/v1/grammar/settings
 PATCH /api/v1/grammar/settings
 ```
 
-The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` lists sessions with API-backed search, status chips, mode and level filters, newest/oldest ordering, and server-side pagination, and exposes the settings entry point.
+The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` lists sessions with API-backed search by session code, status chips, mode and level filters, newest/oldest ordering, and a bounded result list, and exposes the settings entry point.
 
 Known Grammar session routes are read-only: they display session questions, saved answers, stored feedback, on-demand explanations, and completed reports. Answering, practice grading, and final exam evaluation are performed through Hermes because those commands require authoritative results; the browser does not save answers or infer correctness.
 
