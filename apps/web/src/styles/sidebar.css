@@ -32,9 +32,9 @@
     left var(--sidebar-motion-duration) var(--sidebar-motion-ease);
 }
 
-/* 68px = 16px container padding + 12px brand margin + 40px button, so the button ends where the brand row does. */
+/* 57px = 1px border + 16px container padding + 40px button, so the button lines up with the nav rows' right edge. */
 .app-sidebar[data-expanded="true"] .sidebar-toggle {
-  left: calc(var(--sidebar-width) - 68px);
+  left: calc(var(--sidebar-width) - 57px);
 }
 
 /* Collapsed, the button replaces the feather only while the brand row is hovered or focused. */
