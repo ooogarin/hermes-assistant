@@ -6,7 +6,8 @@ import { navigationItems } from '../../app/navigation';
 import { classNames } from '../../lib/class-names';
 import { confirmDiscardChanges } from '../../lib/hooks/use-unsaved-changes';
 import { IconButton } from '../ui/icon-button';
-import type { NavigationItem } from '../../app/navigation';
+import { useTooltip } from '../ui/tooltip';
+import type { NavigationChild, NavigationItem } from '../../app/navigation';
 
 type NavigationProps = {
   collapsed?: boolean;
@@ -31,6 +32,60 @@ const navItemClassName =
       isActive ? 'sidebar-nav-active text-white' : 'text-ink hover:bg-surface-subtle',
     );
 
+const NavigationLink = ({ collapsed = false, item, onNavigate }: NavigationProps & { item: NavigationItem }) => {
+  const { tooltip, triggerProps, triggerRef } = useTooltip<HTMLAnchorElement>({
+    content: item.label,
+    enabled: collapsed,
+  });
+  const Icon = item.icon;
+
+  return (
+    <li>
+      <NavLink
+        aria-label={collapsed ? item.label : undefined}
+        className={navItemClassName()}
+        to={item.to ?? '/'}
+        end={item.to === '/'}
+        onClick={onNavigate}
+        ref={triggerRef}
+        {...triggerProps}
+      >
+        <Icon aria-hidden='true' size={21} strokeWidth={1.8} />
+        <NavigationLabel collapsed={collapsed} label={item.label} />
+      </NavLink>
+      {tooltip}
+    </li>
+  );
+};
+
+const NavigationChildLink = ({
+  collapsed = false,
+  child,
+  onNavigate,
+}: NavigationProps & { child: NavigationChild }) => {
+  const { tooltip, triggerProps, triggerRef } = useTooltip<HTMLAnchorElement>({
+    content: child.label,
+    enabled: collapsed,
+  });
+
+  return (
+    <li>
+      <NavLink
+        aria-label={collapsed ? child.label : undefined}
+        className={navItemClassName(true)}
+        to={child.to}
+        onClick={onNavigate}
+        ref={triggerRef}
+        {...triggerProps}
+      >
+        <span className='sidebar-dot' aria-hidden='true' />
+        <NavigationLabel collapsed={collapsed} label={child.label} />
+      </NavLink>
+      {tooltip}
+    </li>
+  );
+};
+
 const NavigationGroup = ({
   collapsed = false,
   item,
@@ -42,6 +97,10 @@ const NavigationGroup = ({
   const [expanded, setExpanded] = useState(groupIsActive);
   const regionId = `navigation-${item.label.toLowerCase()}`;
   const Icon = item.icon;
+  const { tooltip, triggerProps, triggerRef } = useTooltip<HTMLButtonElement>({
+    content: item.label,
+    enabled: collapsed,
+  });
 
   useEffect(() => {
     if (groupIsActive) {
@@ -70,6 +129,8 @@ const NavigationGroup = ({
         aria-expanded={expanded}
         aria-label={collapsed ? item.label : undefined}
         onClick={toggle}
+        ref={triggerRef}
+        {...triggerProps}
       >
         <Icon aria-hidden='true' size={21} strokeWidth={1.8} />
         <NavigationLabel collapsed={collapsed} label={item.label} />
@@ -81,20 +142,11 @@ const NavigationGroup = ({
           />
         </span>
       </button>
+      {tooltip}
       {expanded ? (
         <ul id={regionId} className='sidebar-submenu' data-collapsed={collapsed}>
           {item.children?.map((child) => (
-            <li key={child.to}>
-              <NavLink
-                aria-label={collapsed ? child.label : undefined}
-                className={navItemClassName(true)}
-                to={child.to}
-                onClick={onNavigate}
-              >
-                <span className='sidebar-dot' aria-hidden='true' />
-                <NavigationLabel collapsed={collapsed} label={child.label} />
-              </NavLink>
-            </li>
+            <NavigationChildLink collapsed={collapsed} child={child} key={child.to} onNavigate={onNavigate} />
           ))}
         </ul>
       ) : null}
@@ -118,21 +170,7 @@ const Navigation = ({ collapsed = false, onExpand, onNavigate }: NavigationProps
           );
         }
 
-        const Icon = item.icon;
-        return (
-          <li key={item.label}>
-            <NavLink
-              aria-label={collapsed ? item.label : undefined}
-              className={navItemClassName()}
-              to={item.to ?? '/'}
-              end={item.to === '/'}
-              onClick={onNavigate}
-            >
-              <Icon aria-hidden='true' size={21} strokeWidth={1.8} />
-              <NavigationLabel collapsed={collapsed} label={item.label} />
-            </NavLink>
-          </li>
-        );
+        return <NavigationLink collapsed={collapsed} item={item} key={item.label} onNavigate={onNavigate} />;
       })}
     </ul>
   </nav>
@@ -151,6 +189,10 @@ const LogoutAction = ({ collapsed = false, onError }: { collapsed?: boolean; onE
   const { logout } = useAuth();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
+  const { tooltip, triggerProps, triggerRef } = useTooltip<HTMLButtonElement>({
+    content: 'Keluar',
+    enabled: collapsed,
+  });
 
   const handleLogout = async () => {
     if (pending || !confirmDiscardChanges()) {
@@ -177,12 +219,14 @@ const LogoutAction = ({ collapsed = false, onError }: { collapsed?: boolean; onE
         aria-label={collapsed ? 'Keluar' : undefined}
         aria-busy={pending || undefined}
         disabled={pending}
-        title={collapsed ? 'Keluar' : undefined}
         onClick={() => void handleLogout()}
+        ref={triggerRef}
+        {...triggerProps}
       >
         <LogOut aria-hidden='true' size={21} strokeWidth={1.8} />
         <NavigationLabel collapsed={collapsed} label={pending ? 'Mengeluarkan…' : 'Keluar'} />
       </button>
+      {tooltip}
       {error ? (
         <p className='mt-2 text-xs text-danger' role='alert'>
           Belum bisa keluar. Coba lagi.
@@ -198,6 +242,11 @@ type DesktopSidebarProps = {
 };
 
 const DesktopSidebar = ({ expanded, onExpandedChange }: DesktopSidebarProps) => {
+  const { tooltip, triggerProps, triggerRef } = useTooltip<HTMLButtonElement>({
+    content: expanded ? 'Ciutkan sidebar' : 'Buka sidebar',
+    enabled: !expanded,
+  });
+
   return (
     <aside
       className={classNames(
@@ -212,9 +261,12 @@ const DesktopSidebar = ({ expanded, onExpandedChange }: DesktopSidebarProps) => 
         aria-expanded={expanded}
         aria-label={expanded ? 'Ciutkan sidebar' : 'Buka sidebar'}
         onClick={() => onExpandedChange(!expanded)}
+        ref={triggerRef}
+        {...triggerProps}
       >
         <PanelLeft aria-hidden='true' size={24} strokeWidth={1.8} />
       </button>
+      {tooltip}
       <div className='flex h-full flex-col overflow-hidden px-4 pb-4 pt-7'>
         <div className='sidebar-brand'>
           <Brand collapsed={!expanded} />
