@@ -95,7 +95,14 @@ export const getSession = async (code: string): Promise<GrammarSession> => {
   }
 
   const questionRows = await grammarQuestionRepository.getAllBySessionId(sessionRow.id);
-  const questions = questionRows.map(toGrammarQuestion);
+
+  // Only a finished exam embeds its explanations; practice always reads them through the single-question endpoint.
+  const exposesExplanations = sessionRow.mode === 'exam' && sessionRow.status === 'completed';
+  const explanations = exposesExplanations
+    ? await getExplanationsBySessionId(sessionRow.id)
+    : new Map<number, string>();
+
+  const questions = questionRows.map((row) => toGrammarQuestion(row, explanations.get(row.question_number) ?? null));
 
   return toGrammarSession(sessionRow, questions);
 };
@@ -136,7 +143,7 @@ export const saveAnswers = async (code: string, input: SaveAnswersRequest): Prom
 
     const sessionRow = await getSessionForUpdate(code, trx);
     const questionRows = await grammarQuestionRepository.getAllBySessionId(sessionRow.id, trx);
-    const questions = questionRows.map(toGrammarQuestion);
+    const questions = questionRows.map((row) => toGrammarQuestion(row));
 
     const session = toGrammarSession(sessionRow, questions);
 
@@ -180,7 +187,7 @@ export const saveAnswers = async (code: string, input: SaveAnswersRequest): Prom
     await grammarRepository.upsertAllAnswersByCodeAndQuestionNumbers(code, payload, trx);
 
     const updatedQuestionRows = await grammarQuestionRepository.getAllBySessionId(sessionRow.id, trx);
-    const updatedQuestions = updatedQuestionRows.map(toGrammarQuestion);
+    const updatedQuestions = updatedQuestionRows.map((row) => toGrammarQuestion(row));
 
     // A practice session completes itself as soon as its last open question has been answered.
     if (session.mode === 'practice') {
@@ -230,6 +237,10 @@ export const getExplanation = async (code: string, question_number: number): Pro
     throw questionNotFound();
   }
 
+  if (explanationRow.answer_result === null) {
+    throw explanationNotAvailable();
+  }
+
   return toGrammarExplanation(explanationRow);
 };
 
@@ -241,7 +252,7 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
 
     const sessionRow = await getSessionForUpdate(code, trx);
     const questionRows = await grammarQuestionRepository.getAllBySessionId(sessionRow.id, trx);
-    const questions = questionRows.map(toGrammarQuestion);
+    const questions = questionRows.map((row) => toGrammarQuestion(row));
 
     const session = toGrammarSession(sessionRow, questions);
 
@@ -369,13 +380,20 @@ const getSessionForUpdate = async (code: string, trx: DatabaseReservedConnection
   return session;
 };
 
-const toGrammarQuestion = (row: GrammarQuestionRow): GrammarQuestion => ({
+const getExplanationsBySessionId = async (sessionId: number): Promise<Map<number, string>> => {
+  const explanationRows = await grammarQuestionRepository.getAllExplanationsBySessionId(sessionId);
+
+  return new Map(explanationRows.map((row) => [row.question_number, row.explanation]));
+};
+
+const toGrammarQuestion = (row: GrammarQuestionRow, explanation: string | null = null): GrammarQuestion => ({
   question_number: row.question_number,
   question_type: row.question_type,
   grammar_area: row.grammar_area,
   grammar_point: row.grammar_point,
   level: row.level,
   question_text: row.question_text,
+  explanation,
   answer:
     row.user_answer === null
       ? null
@@ -395,6 +413,7 @@ const toNewGrammarQuestion = (question: InsertGrammarQuestionPayload): GrammarQu
   grammar_point: question.grammar_point,
   level: question.level,
   question_text: question.question_text,
+  explanation: null,
   answer: null,
 });
 
@@ -464,6 +483,14 @@ const sessionNotFound = (): AppError => {
 
 const questionNotFound = (): AppError => {
   return notFoundError('GRAMMAR_QUESTION_NOT_FOUND', 'Grammar question not found');
+};
+
+const explanationNotAvailable = (): AppError => {
+  return new AppError({
+    code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE',
+    statusCode: 409,
+    message: 'Grammar explanation is available after the question is evaluated',
+  });
 };
 
 const invalidAnswers = (): AppError => {

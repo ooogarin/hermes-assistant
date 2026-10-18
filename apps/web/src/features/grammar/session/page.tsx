@@ -1,8 +1,12 @@
 import { ArrowLeft, CheckCircle2, CircleMinus, CircleX } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
+import {
+  GrammarExplanationDrawer,
+  GrammarExplanationToggle,
+} from '../../../components/grammar/grammar-explanation-drawer';
 import { GrammarSessionHeader } from '../../../components/grammar/grammar-session-header';
 import { GrammarSessionTabs } from '../../../components/grammar/grammar-session-tabs';
 import { Button } from '../../../components/ui/button';
@@ -47,6 +51,8 @@ const SessionMetaRow = ({ label, children }: { label: string; children: ReactNod
 const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
   const session = initial;
   const [questionNumber, setQuestionNumber] = useState(session.questions[0]?.questionNumber ?? 1);
+  const [expandedQuestionNumber, setExpandedQuestionNumber] = useState<number | null>(null);
+  const explanationCache = useRef<Record<number, string>>({});
   const question = session.questions.find((item) => item.questionNumber === questionNumber) ?? session.questions[0];
   const questionIndex = session.questions.findIndex((item) => item.questionNumber === question.questionNumber);
   const previousQuestion = session.questions[questionIndex - 1];
@@ -56,6 +62,12 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
   const resultMeta = result === null ? null : resultStyle[result];
   const ResultIcon = resultMeta?.icon;
   const showScore = session.status === 'completed' && session.score !== null && session.maxScore !== null;
+  const isExplanationExpanded = expandedQuestionNumber === question.questionNumber;
+
+  // Keep fetched explanations across drawer openings without re-rendering the open drawer.
+  const cacheExplanation = useCallback((loadedQuestionNumber: number, text: string) => {
+    explanationCache.current[loadedQuestionNumber] = text;
+  }, []);
 
   const boxClass = (item: (typeof session.questions)[number], selected: boolean) => {
     const meta = item.answer === null || item.answer.result === null ? null : resultStyle[item.answer.result];
@@ -106,14 +118,21 @@ const SessionWorkspace = ({ initial }: { initial: GrammarSession }) => {
                 {resultMeta.label}
               </span>
               {question.answer?.feedback ? <span className='text-sm'>{question.answer.feedback}</span> : null}
-              <Link
-                className='ml-auto text-sm font-semibold underline-offset-2 hover:underline'
-                to={`/english/grammar/${session.code}/questions/${question.questionNumber}/explanation`}
-              >
-                Lihat penjelasan
-              </Link>
+              <GrammarExplanationToggle
+                expanded={isExplanationExpanded}
+                onToggle={() => setExpandedQuestionNumber(isExplanationExpanded ? null : question.questionNumber)}
+              />
             </div>
           )}
+
+          {resultMeta !== null && isExplanationExpanded ? (
+            <GrammarExplanationDrawer
+              cached={explanationCache.current[question.questionNumber]}
+              code={session.code}
+              onLoaded={cacheExplanation}
+              question={question}
+            />
+          ) : null}
         </section>
 
         <div className='space-y-6'>

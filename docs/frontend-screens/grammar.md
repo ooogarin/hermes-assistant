@@ -6,7 +6,7 @@
 
 Grammar provides daily practice, on-request practice, and exam sessions. Persistent defaults control only the level and number of questions for daily practice. A one-off practice or exam may change its level, grammar focus, type, and question count without changing those defaults.
 
-The initial web scope is to update persistent defaults, open a known session, answer questions, request explanations, and review an available report. Session generation remains owned by Hermes/Telegram and the API.
+The initial web scope is to update persistent defaults, open a known session, read explanations, and review an available report. Session generation remains owned by Hermes/Telegram and the API.
 
 ## Screen map
 
@@ -17,10 +17,9 @@ The initial web scope is to update persistent defaults, open a known session, an
 │   └── SCR-GRAM-002  Grammar settings
 └── /:code
     ├── SCR-GRAM-003  Grammar session workspace
-    ├── /questions/:number/explanation
-    │   └── SCR-GRAM-004  Grammar explanation
+    │   └── Inline explanation drawer
     └── /report
-        └── SCR-GRAM-005  Grammar report
+        └── SCR-GRAM-004  Grammar report
 ```
 
 | ID | Screen | Proposed route | Initial status | API status |
@@ -28,8 +27,7 @@ The initial web scope is to update persistent defaults, open a known session, an
 | SCR-GRAM-001 | Grammar session list | `/english/grammar` | Implemented | Available |
 | SCR-GRAM-002 | Grammar settings | `/english/grammar/settings` | Implemented | Available |
 | SCR-GRAM-003 | Grammar session workspace | `/english/grammar/:code` | Implemented for a known code | Available |
-| SCR-GRAM-004 | Grammar explanation | `/english/grammar/:code/questions/:number/explanation` | Implemented on demand | Available |
-| SCR-GRAM-005 | Grammar report | `/english/grammar/:code/report` | Implemented for evaluated sessions | Available |
+| SCR-GRAM-004 | Grammar report | `/english/grammar/:code/report` | Implemented for evaluated sessions | Available |
 
 Proposed web routes are frontend navigation only. They do not alter the REST API contract.
 
@@ -122,9 +120,10 @@ Review a known practice or exam session and understand its current state.
 
 ```text
 GET /api/v1/grammar/sessions/:code
+GET /api/v1/grammar/sessions/:code/questions/:questionNumber/explanation
 ```
 
-- Ordinary session detail deliberately excludes correct answers and full explanations.
+- Session detail never includes `correct_answer`. It includes `explanation` only for a completed exam session; practice responses always carry `explanation: null`.
 - The web screen is read-only. Answering happens through Hermes/Telegram: practice answers are evaluated immediately per question, and exam answers are stored unevaluated until the complete exam is evaluated.
 - Practice grading and final exam evaluation remain owned by Hermes because the API requires caller-supplied evaluation results; the frontend does not infer authoritative correctness. When a session completes, the screen shows its stored result and its report becomes available.
 - The workspace and its report are two tabs, `Soal` and `Laporan`, shown under the header. The `Laporan` tab stays visible but inactive with an explanatory tooltip until the session is completed; both tabs return to the list through `Semua Grammar`.
@@ -132,25 +131,25 @@ GET /api/v1/grammar/sessions/:code
 - The header shows the mode and focus as its title. The session code sits in the side session summary with a copy action, together with the other session metadata (level, question count, date, source, and status).
 - The workspace opens on the first question. `Sebelumnya` and `Berikutnya` sit inside the side question-list card, which shows each question as a number box whose background color marks its stored result; users can also pick a question directly from the list.
 - The saved answer is shown as read-only quoted text, and an evaluated question shows a colored result banner with its feedback.
-- The explanation link is part of the result banner and appears only for questions that already have an evaluation result, so exam explanations stay hidden until evaluation.
 - Question type, grammar area, and grammar point are displayed in title case even though the API stores them in lowercase.
 - A completed session shows its stored score in the side session summary.
 
-## SCR-GRAM-004 — Grammar explanation
+### Inline explanation drawer
 
-**Purpose**  
-Read the stored explanation for one explicitly requested question.
+The stored explanation opens in a collapsible drawer inside the question card instead of a separate page, so reading it never navigates or changes the selected question.
 
-**Data contract**
+- The result banner holds a `Lihat penjelasan` / `Sembunyikan penjelasan` toggle with `aria-expanded` and `aria-controls`. The drawer is closed by default.
+- The toggle is offered only for questions that already have an evaluation result (`answer.result !== null`), so exam explanations stay hidden until the exam is evaluated.
+- The drawer shows only the explanation text; the question text, saved answer, result banner, and feedback already render in the workspace.
+- Explanation source depends on the mode. A completed exam uses the `explanation` embedded in the session response and opens instantly. Practice always reads the single-question endpoint on first open, then caches the text in workspace memory so reopening is instant.
+- A failed explanation request shows a non-blocking message with a `Coba lagi` action inside the drawer; the rest of the workspace stays usable.
+- Opening or closing the drawer does not change the selected question, and switching questions closes it.
 
-```text
-GET /api/v1/grammar/sessions/:code/questions/:questionNumber/explanation
-```
+### Explanation availability
 
-- Present the question, grammar area, grammar point, and explanation in a constrained reading layout.
-- The workspace only offers this screen for questions that already have an evaluation result; it never links explanations for unanswered or unevaluated questions.
+`GET /api/v1/grammar/sessions/:code/questions/:questionNumber/explanation` returns the stored explanation only after that question has been evaluated. Requesting it earlier returns `409 GRAMMAR_EXPLANATION_NOT_AVAILABLE`; an unknown session or question returns `404`. Correct answers are never returned.
 
-## SCR-GRAM-005 — Grammar report
+## SCR-GRAM-004 — Grammar report
 
 **Purpose**  
 Review the score and grammar-area breakdown of an evaluated session.
@@ -171,5 +170,6 @@ GET /api/v1/grammar/sessions/:code/report
 
 1. SCR-GRAM-002 Settings, because its API contract is complete and independent of the missing collection endpoint.
 2. SCR-GRAM-003 for a known session code, including distinct practice and exam states.
-3. SCR-GRAM-004 explanations and SCR-GRAM-005 reports after their session states are verified.
-4. SCR-GRAM-001 once the collection endpoint became available. Implemented.
+3. The inline explanation drawer inside SCR-GRAM-003, replacing the former separate explanation screen.
+4. SCR-GRAM-004 reports after session states are verified.
+5. SCR-GRAM-001 once the collection endpoint became available. Implemented.

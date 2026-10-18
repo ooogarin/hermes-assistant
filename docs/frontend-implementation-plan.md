@@ -287,7 +287,7 @@ Implement screens that already have detail contracts:
 
 1. Reading material, complete submission, and expected-answer review.
 2. Writing prompt, draft submission, feedback review, and corrected text.
-3. Grammar practice/exam session, explanations, and report. Implemented; authoritative evaluation remains outside FE.
+3. Grammar practice/exam session, inline explanation drawer, and report. Implemented; authoritative evaluation remains outside FE.
 
 These screens must support direct navigation with a known public code. They must not rely on a collection screen that the API cannot yet populate.
 

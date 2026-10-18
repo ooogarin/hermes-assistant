@@ -169,6 +169,7 @@ export type GrammarExplanationRow = {
   grammar_area: string;
   grammar_point: string;
   explanation: string;
+  answer_result: GrammarAnswerResult | null;
 };
 
 export type GrammarReportRow = {

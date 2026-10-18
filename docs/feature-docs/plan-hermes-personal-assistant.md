@@ -243,7 +243,8 @@ Key decisions:
 - exam grading is delayed until final submission;
 - `code` is the user-facing grammar session reference;
 - metadata uses `grammar_area + grammar_point + question_type`;
-- explanations are generated with questions and shown on demand;
+- explanations are generated with questions and shown on demand once the question is evaluated;
+- a completed exam embeds its explanations in the session response; practice reads them one question at a time;
 - deeper follow-up explanations are conversational and not stored.
 
 ### Reading

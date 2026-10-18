@@ -3,6 +3,7 @@ import { writingAnalysis } from './fixtures/writing';
 import type { DatabaseReservedConnection } from '../src/core/database/database.types';
 import type { FinanceDailySummaryQuery, FinanceDailySummaryRow } from '../src/modules/finance/finance.types';
 import type {
+  GrammarExplanationRow,
   GrammarSession,
   GrammarSessionListRow,
   GrammarSessionRow,
@@ -43,6 +44,7 @@ const grammarQuestion: GrammarQuestion = {
   grammar_point: 'simple past',
   level: 'A1',
   question_text: 'She ___ (go) yesterday.',
+  explanation: null,
   answer: null,
 };
 
@@ -186,6 +188,7 @@ let financeCategories: Array<{ id: number; code: string; name: string; descripti
 let financeDailySummaryResult: FinanceDailySummaryRow[] = [];
 let grammarLockedSessionResult: GrammarSession = grammarSession;
 let grammarListResult: GrammarSessionListRow[] = [];
+let grammarExplanationResult: GrammarExplanationRow | null = null;
 
 let grammarAnswerWriteCount = 0;
 let grammarAnswersPayloadResult: SaveAnswersPayload | null = null;
@@ -285,6 +288,11 @@ mock.module('../src/modules/junk/junk.repository', () => ({
 
 mock.module('../src/modules/grammar/grammar-question/grammar-question.repository', () => ({
   bulkInsert: async () => undefined,
+  getAllExplanationsBySessionId: async () =>
+    grammarLockedSessionResult.questions.map((question, index) => ({
+      explanation: question.explanation ?? `Explanation for ${index + 1}`,
+      question_number: question.question_number,
+    })),
   getAllBySessionId: async (_sessionId: number, trx?: DatabaseReservedConnection) => {
     grammarReadConnections.push(trx);
 
@@ -302,6 +310,7 @@ mock.module('../src/modules/grammar/grammar.repository', () => ({
 
     return toGrammarSessionRow(grammarLockedSessionResult);
   },
+  getOneExplanationByCodeAndQuestionNumber: async () => grammarExplanationResult,
   upsertAllAnswersByCodeAndQuestionNumbers: async (
     _code: string,
     payload: SaveAnswersPayload,
@@ -414,6 +423,7 @@ beforeEach(() => {
   financeDailySummaryResult = [];
   grammarLockedSessionResult = grammarSession;
   grammarListResult = [];
+  grammarExplanationResult = null;
   grammarAnswerWriteCount = 0;
   grammarAnswersPayloadResult = null;
   grammarCompletionWriteCount = 0;
@@ -663,6 +673,76 @@ test('grammar service composes list responses from repository rows', async () =>
       },
     ],
   });
+});
+
+test('grammar rejects an explanation request until the question is evaluated', async () => {
+  grammarExplanationResult = {
+    question_number: 1,
+    question_text: grammarQuestion.question_text,
+    grammar_area: grammarQuestion.grammar_area,
+    grammar_point: grammarQuestion.grammar_point,
+    explanation: 'Use the simple past.',
+    answer_result: null,
+  };
+
+  await expect(grammarService.getExplanation(grammarSession.code, 1)).rejects.toMatchObject({
+    code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE',
+    statusCode: 409,
+  });
+});
+
+test('grammar returns an explanation once the question is evaluated', async () => {
+  grammarExplanationResult = {
+    question_number: 1,
+    question_text: grammarQuestion.question_text,
+    grammar_area: grammarQuestion.grammar_area,
+    grammar_point: grammarQuestion.grammar_point,
+    explanation: 'Use the simple past.',
+    answer_result: 'correct',
+  };
+
+  await expect(grammarService.getExplanation(grammarSession.code, 1)).resolves.toEqual({
+    question_number: 1,
+    question_text: grammarQuestion.question_text,
+    grammar_area: grammarQuestion.grammar_area,
+    grammar_point: grammarQuestion.grammar_point,
+    explanation: 'Use the simple past.',
+  });
+});
+
+test('grammar embeds explanations only for a completed exam session', async () => {
+  grammarLockedSessionResult = { ...grammarSession, mode: 'exam', status: 'active' };
+
+  const activeExam = await grammarService.getSession(grammarSession.code);
+
+  expect(activeExam.questions[0]?.explanation).toBeNull();
+
+  grammarLockedSessionResult = {
+    ...grammarSession,
+    mode: 'exam',
+    status: 'completed',
+    score: 1,
+    max_score: 1,
+    completed_at: '2026-09-05T11:00:00.000Z',
+  };
+
+  const completedExam = await grammarService.getSession(grammarSession.code);
+
+  expect(completedExam.questions[0]?.explanation).toBe('Explanation for 1');
+});
+
+test('grammar keeps practice explanations out of the session response', async () => {
+  grammarLockedSessionResult = {
+    ...grammarSession,
+    status: 'completed',
+    score: 1,
+    max_score: 1,
+    completed_at: '2026-09-05T11:00:00.000Z',
+  };
+
+  const completedPractice = await grammarService.getSession(grammarSession.code);
+
+  expect(completedPractice.questions[0]?.explanation).toBeNull();
 });
 
 test('notes returns a stable domain error when a note is absent', async () => {

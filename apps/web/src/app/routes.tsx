@@ -11,7 +11,6 @@ const FinanceDailyPage = lazy(() => import('../features/finance/daily/page'));
 const FinanceCreatePage = lazy(() => import('../features/finance/create/page'));
 const FinanceEditPage = lazy(() => import('../features/finance/edit/page'));
 const FinanceReportPage = lazy(() => import('../features/finance/report/page'));
-const GrammarExplanationPage = lazy(() => import('../features/grammar/explanation/page'));
 const GrammarListPage = lazy(() => import('../features/grammar/list/page'));
 const GrammarReportPage = lazy(() => import('../features/grammar/report/page'));
 const GrammarSessionPage = lazy(() => import('../features/grammar/session/page'));
@@ -177,14 +176,6 @@ export const AppRoutes = () => (
         element={
           <Suspense fallback={<CollectionSkeleton rows={5} />}>
             <GrammarSettingsPage />
-          </Suspense>
-        }
-      />
-      <Route
-        path='english/grammar/:code/questions/:number/explanation'
-        element={
-          <Suspense fallback={<CollectionSkeleton rows={5} />}>
-            <GrammarExplanationPage />
           </Suspense>
         }
       />

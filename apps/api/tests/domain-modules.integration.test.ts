@@ -208,6 +208,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     expect(completedPractice.score).toBe(1);
     expect(completedPractice.max_score).toBe(2);
     expect(completedPractice.completed_at).not.toBeNull();
+    expect((await grammarService.getSession(practice.code)).questions[0]?.explanation).toBeNull();
 
     const exam = await grammarService.createSession({
       mode: 'exam',
@@ -238,6 +239,10 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     await grammarService.saveAnswers(exam.code, {
       answers: [{ question_number: 2, user_answer: 'He walk every day.' }],
     });
+    await expect(grammarService.getExplanation(exam.code, 1)).rejects.toMatchObject({
+      code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE',
+      statusCode: 409,
+    });
     const report = await grammarService.evaluateSession(exam.code, {
       answers: [
         { question_number: 1, result: 'correct', feedback: null },
@@ -247,6 +252,12 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     expect(report).toMatchObject({ status: 'completed', score: 1, max_score: 2 });
     expect(report.breakdown).toHaveLength(2);
+
+    const completedExam = await grammarService.getSession(exam.code);
+    expect(completedExam.questions.map(({ explanation }) => explanation)).toEqual([
+      'Use the simple past.',
+      'Third-person singular verbs take -s.',
+    ]);
 
     const completedSessions = await grammarService.listSessions({
       q: exam.code,

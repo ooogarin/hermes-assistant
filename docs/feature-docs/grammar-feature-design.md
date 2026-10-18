@@ -125,9 +125,18 @@ kenapa nomor 3 salah?
 jelasin nomor 3 GR-20260726-001
 ```
 
+An explanation is readable only after its question has been evaluated:
+
+- practice evaluates each answer immediately, so the explanation becomes available as soon as that question is answered;
+- exam evaluates answers only at the end, so explanations stay unavailable until `/evaluate` completes the session.
+
+Requesting an explanation earlier returns `409 GRAMMAR_EXPLANATION_NOT_AVAILABLE`; an unknown session or question returns `404`. This keeps an unfinished exam from leaking its answers.
+
 The stored explanation can be requested multiple times. Hermes simply fetches `grammar_questions.explanation` and shows it again.
 
 The user may also ask for a deeper explanation, similar to General English Q&A. Hermes can answer with a more detailed explanation conversationally, but this extra explanation does not need to be stored.
+
+Session detail (`GET /api/v1/grammar/sessions/:code`) embeds every explanation only for a completed exam session. Practice responses always carry `explanation: null` because each question is read through the single-question endpoint as it is evaluated. The web workspace uses the embedded exam text directly and fetches practice explanations on demand.
 
 ---
 
@@ -301,6 +310,11 @@ If session/question mapping is ambiguous, Hermes asks for confirmation
         |
         v
 Hermes fetches the stored explanation
+        |
+        v
+If question 3 has no evaluation result yet, the API returns
+409 GRAMMAR_EXPLANATION_NOT_AVAILABLE and Hermes explains that
+grading must finish first
         |
         v
 Hermes shows the explanation
@@ -488,7 +502,7 @@ Type "jelasin nomor X GR-20260726-002" to see a question explanation.
 | Grammar metadata          | `grammar_area + grammar_point + question_type`                                                         |
 | Tags                      | Not included in Grammar MVP                                                                            |
 | Question type             | Soft list stored as text                                                                               |
-| Explanation               | Generated with the question; shown on demand; deeper follow-up explanations are allowed but not stored |
+| Explanation               | Generated with the question; shown on demand after that question is evaluated; deeper follow-up explanations are allowed but not stored |
 | Grading                   | `correct`, `partial`, `incorrect`; result is nullable until evaluated                                  |
 | Answer submission         | One bulk `PUT .../answers` request; each item links to its question by `question_number`; subsets and overwrites are supported |
 | Practice evaluation       | Immediate per answered question, saved in one bulk request                                             |
@@ -512,10 +526,10 @@ Request bodies and every response field use `snake_case` recursively.
 | `PATCH` | `/api/v1/grammar/settings` | Update `default_level` and/or `daily_question_count`. |
 | `POST` | `/api/v1/grammar/sessions` | Save a generated practice or exam session with all questions, correct answers, and explanations. The backend generates the session code. |
 | `GET` | `/api/v1/grammar/sessions` | List active, completed, or abandoned sessions with search, filters, and sorting. Soft-deleted sessions are excluded. |
-| `GET` | `/api/v1/grammar/sessions/:code` | Read a session, its questions, and saved user answers. Correct answers and explanations are deliberately excluded. |
+| `GET` | `/api/v1/grammar/sessions/:code` | Read a session, its questions, and saved user answers. Correct answers are never returned; explanations are included only for a completed exam session. |
 | `DELETE` | `/api/v1/grammar/sessions/:code` | Soft delete the session, questions, and answers together. |
 | `PUT` | `/api/v1/grammar/sessions/:code/answers` | Save or replace one or more user answers in one request. Practice includes immediate evaluation per answer; exam stores unevaluated answers. |
-| `GET` | `/api/v1/grammar/sessions/:code/questions/:question_number/explanation` | Fetch the stored explanation only when Hermes/user explicitly requests it. |
+| `GET` | `/api/v1/grammar/sessions/:code/questions/:question_number/explanation` | Fetch the stored explanation only when Hermes/user explicitly requests it, and only after that question has been evaluated. |
 | `POST` | `/api/v1/grammar/sessions/:code/evaluate` | Save all exam results, calculate the score, and complete the session. |
 | `GET` | `/api/v1/grammar/sessions/:code/report` | Return score and result breakdown grouped by grammar area. |
 
@@ -536,7 +550,7 @@ The collection reads only `grammar_sessions`; it does not join questions or answ
 
 ### Create session
 
-Hermes generates every question, correct answer, and explanation before calling the API. The backend stores the complete session and question batch in one transaction, generates `GR-YYYYMMDD-###` with the Jakarta calendar date, and then returns a safe session representation. `correct_answer` and `explanation` are never included in the ordinary session response.
+Hermes generates every question, correct answer, and explanation before calling the API. The backend stores the complete session and question batch in one transaction, generates `GR-YYYYMMDD-###` with the Jakarta calendar date, and then returns a safe session representation. `correct_answer` is never included in any session response, and a newly created session always returns `explanation: null`.
 
 ### Bulk answer flow
 
@@ -567,7 +581,27 @@ Hermes saves answered questions through one request to
    `incorrect` = 0), `max_score` becomes the session question count, and
    `completed_at` is set.
 6. The response is the updated session. Exam sessions never auto-complete; only
-   `/evaluate` completes them.
+   `/evaluate` completes them. Answer responses never include `explanation`, because
+   the write path only runs while a session is still `active`.
+
+### Session detail and explanation reads
+
+`GET /api/v1/grammar/sessions/:code` always returns the session, its questions, and
+saved answers. It embeds `explanation` only when the session is an exam whose status
+is `completed`; every other response carries `explanation: null` per question. That
+keeps an unfinished exam from leaking its answers and lets the web workspace open
+exam drawers without extra requests.
+
+Practice explanations are read one question at a time through
+`GET /api/v1/grammar/sessions/:code/questions/:question_number/explanation`. The
+endpoint returns the stored explanation only when that question already has an
+evaluation result. Otherwise it returns `409 GRAMMAR_EXPLANATION_NOT_AVAILABLE`;
+an unknown session or question returns `404 GRAMMAR_QUESTION_NOT_FOUND`. `correct_answer`
+is never returned.
+
+Because practice evaluates each answer immediately, its explanations become readable
+question by question. Exam answers carry no result until `/evaluate`, so every exam
+explanation stays unavailable until the session is completed.
 
 ### Practice answer flow
 

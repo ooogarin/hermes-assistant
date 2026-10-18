@@ -19,7 +19,6 @@ const protectedPaths = [
   '/english/grammar/settings',
   '/english/grammar/:code',
   '/english/grammar/:code/report',
-  '/english/grammar/:code/questions/:number/explanation',
   '/english/reading',
   '/english/reading/settings',
   '/english/reading/:code',

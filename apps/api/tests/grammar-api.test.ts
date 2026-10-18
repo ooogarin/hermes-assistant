@@ -1,4 +1,5 @@
 import { expect, mock, test } from 'bun:test';
+import { AppError } from '../src/core/errors/app-error';
 import { toSnakeCaseJson } from '../src/shared/response/api-response';
 import { testWebAuth } from './fixtures/auth';
 import type {
@@ -44,6 +45,7 @@ const session: GrammarSession = {
       grammar_point: 'simple past',
       level: 'A1',
       question_text: 'She ___ (go) to school yesterday.',
+      explanation: null,
       answer: null,
     },
   ],
@@ -420,6 +422,26 @@ test('returns an explanation through its dedicated endpoint', async () => {
 
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson(explanation) });
+});
+
+test('rejects an explanation request until the question is evaluated', async () => {
+  const response = await createGrammarApp({
+    getExplanation: async () => {
+      throw new AppError({
+        code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE',
+        statusCode: 409,
+        message: 'Grammar explanation is available after the question is evaluated',
+      });
+    },
+  }).request('http://localhost/api/v1/grammar/sessions/GR-20260905-002/questions/1/explanation', {
+    headers: { Authorization: 'Bearer test-api-key' },
+  });
+
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({
+    success: false,
+    error: { code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE' },
+  });
 });
 
 test('returns the stored grammar report', async () => {

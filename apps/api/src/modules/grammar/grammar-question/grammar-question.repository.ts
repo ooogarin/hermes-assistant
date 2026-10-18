@@ -1,6 +1,10 @@
 import { getDatabaseClient } from '../../../core/database/client';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
-import type { GrammarQuestionRow, InsertGrammarQuestionPayload } from './grammar-question.types';
+import type {
+  GrammarQuestionExplanationRow,
+  GrammarQuestionRow,
+  InsertGrammarQuestionPayload,
+} from './grammar-question.types';
 
 export const bulkInsert = async (
   sessionId: number,
@@ -39,6 +43,21 @@ export const bulkInsert = async (
       correct_answer TEXT,
       explanation TEXT
     )
+  `;
+};
+
+export const getAllExplanationsBySessionId = async (sessionId: number): Promise<GrammarQuestionExplanationRow[]> => {
+  const database = getDatabaseClient();
+
+  return database<GrammarQuestionExplanationRow[]>`
+    SELECT
+      grammar_questions.question_number,
+      grammar_questions.explanation
+    FROM grammar_questions
+    WHERE grammar_questions.session_id = ${sessionId}
+      AND grammar_questions.deleted_at IS NULL
+    ORDER BY
+      grammar_questions.question_number ASC
   `;
 };
 

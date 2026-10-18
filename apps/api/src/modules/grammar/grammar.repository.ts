@@ -221,15 +221,18 @@ export const getOneExplanationByCodeAndQuestionNumber = async (
 ): Promise<GrammarExplanationRow | null> => {
   const database = getDatabaseClient();
 
+  // The stored answer is joined only to decide whether the explanation may be shown yet.
   const [row] = await database<GrammarExplanationRow[]>`
     SELECT
       grammar_questions.question_number,
       grammar_questions.question_text,
       grammar_questions.grammar_area,
       grammar_questions.grammar_point,
-      grammar_questions.explanation
+      grammar_questions.explanation,
+      grammar_answers.result AS answer_result
     FROM grammar_questions
     JOIN grammar_sessions ON grammar_sessions.id = grammar_questions.session_id
+    LEFT JOIN grammar_answers ON grammar_answers.question_id = grammar_questions.id AND grammar_answers.deleted_at IS NULL
     WHERE grammar_sessions.code = ${code}
       AND grammar_sessions.deleted_at IS NULL
       AND grammar_questions.question_number = ${question_number}

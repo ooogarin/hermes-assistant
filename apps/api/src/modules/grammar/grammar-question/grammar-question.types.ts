@@ -9,6 +9,7 @@ export type GrammarQuestion = {
   grammar_point: string;
   level: string;
   question_text: string;
+  explanation: string | null;
   answer: {
     user_answer: string;
     result: GrammarAnswerResult | null;
@@ -32,6 +33,11 @@ export type InsertGrammarQuestionPayload = {
 };
 
 // ==========[ Repository responses ]==========================================================================================
+
+export type GrammarQuestionExplanationRow = {
+  question_number: number;
+  explanation: string;
+};
 
 export type GrammarQuestionRow = {
   id: number;

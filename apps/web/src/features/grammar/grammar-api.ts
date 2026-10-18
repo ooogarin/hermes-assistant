@@ -24,6 +24,7 @@ const grammarQuestionSchema = z
     grammar_point: z.string(),
     level: z.string(),
     question_text: z.string(),
+    explanation: z.string().nullable(),
     answer: z
       .object({
         user_answer: z.string(),

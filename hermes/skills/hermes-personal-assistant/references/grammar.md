@@ -7,7 +7,7 @@ Grammar supports practice and exam sessions. Hermes generates questions, correct
 - `GET|PATCH /api/v1/grammar/settings`
 - `POST /api/v1/grammar/sessions`
 - `GET /api/v1/grammar/sessions` lists sessions; filters include `q`, `status`, `mode`,
-  `level`, `page`, `limit`, and `sort=newest|oldest`.
+  `level`, `limit`, and `sort=newest|oldest`.
 - `GET|DELETE /api/v1/grammar/sessions/:code`
 - `PUT /api/v1/grammar/sessions/:code/answers`
 - `GET /api/v1/grammar/sessions/:code/questions/:question_number/explanation`
@@ -119,6 +119,13 @@ Answers are saved through one bulk endpoint. Every item links to its question by
   or duplicated; do not retry the same body, resolve the session state instead.
 - Explanation requests must use the explanation endpoint. A deeper conversational
   explanation need not be persisted.
+- Explanations are readable only after the question is evaluated. Practice evaluates
+  each answer immediately, so its explanations open question by question. Exam
+  explanations stay unavailable until `/evaluate` completes the session; requesting
+  one earlier returns `409 GRAMMAR_EXPLANATION_NOT_AVAILABLE`, so do not retry it and
+  do not reveal the answer instead. `404` means the session or question is unknown.
+- Session detail includes `explanation` only for a completed exam. Practice responses
+  always carry `explanation: null`; read practice explanations one question at a time.
 
 For practice, the order is: evaluate the answers in context, save them in one
 request, then send concise feedback. For an exam, save answers without results
@@ -147,4 +154,4 @@ normal Telegram chat format, `preview payload only` shows only the request body,
 `full preview` shows both plus request details. Default/full previews mark the session
 as not created; payload-only renders the exact JSON body only.
 
-Use an explicit `GR-...` code and question number when provided. If a delayed answer could belong to multiple sessions or questions, ask before saving or grading. Ordinary session responses deliberately omit correct answers and explanations; never claim they came from that response.
+Use an explicit `GR-...` code and question number when provided. If a delayed answer could belong to multiple sessions or questions, ask before saving or grading. Ordinary session responses never include correct answers; a completed exam includes explanations, while practice does not. Never claim an explanation came from a response that did not carry one.

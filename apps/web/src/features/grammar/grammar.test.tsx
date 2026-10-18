@@ -161,6 +161,7 @@ const sessionPayload = {
       grammar_point: 'past perfect',
       level: 'B1',
       question_text: 'She ___ finished when I arrived.',
+      explanation: null,
       answer: {
         user_answer: 'had',
         result: 'correct',
@@ -176,14 +177,36 @@ const sessionPayload = {
       grammar_point: 'past perfect',
       level: 'B1',
       question_text: 'They ___ left before noon.',
+      explanation: null,
       answer: null,
     },
   ],
 };
 
+const explanationPayload = {
+  question_number: 1,
+  question_text: 'She ___ finished when I arrived.',
+  grammar_area: 'tenses',
+  grammar_point: 'past perfect',
+  explanation: 'Gunakan had + past participle untuk kejadian yang selesai sebelum kejadian lain.',
+};
+
+const mockSessionAndExplanation = (session: unknown, explanation: unknown = explanationPayload) =>
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async (input: unknown) => {
+      const url = String(input);
+      const data = url.includes('/explanation') ? explanation : session;
+      return new Response(JSON.stringify({ success: true, data }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }),
+  );
+
 test('workspace opens the first question, formats lowercase labels, and gates explanations by result', async () => {
   const user = userEvent.setup();
-  mockResponse(sessionPayload);
+  mockSessionAndExplanation(sessionPayload);
   render(
     <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001']}>
       <Routes>
@@ -196,7 +219,7 @@ test('workspace opens the first question, formats lowercase labels, and gates ex
   expect(screen.queryByText(/Skor/)).not.toBeInTheDocument();
   expect(screen.getByRole('heading', { name: /Past Perfect/ })).toBeInTheDocument();
   expect(screen.getByText('Fill Blank · Tenses · Past Perfect')).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Lihat penjelasan' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Lihat penjelasan/ })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Soal' })).toHaveAttribute('href', '/english/grammar/GR-20261011-001');
   expect(screen.queryByRole('link', { name: 'Laporan' })).not.toBeInTheDocument();
   expect(screen.getByText('Laporan')).toBeInTheDocument();
@@ -204,12 +227,100 @@ test('workspace opens the first question, formats lowercase labels, and gates ex
 
   await user.click(screen.getByRole('button', { name: 'Berikutnya' }));
   expect(await screen.findByText('Soal 2 dari 2')).toBeInTheDocument();
-  expect(screen.queryByRole('link', { name: 'Lihat penjelasan' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Lihat penjelasan/ })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Berikutnya' })).toBeDisabled();
 });
 
+test('explanation drawer opens and closes in place without losing the selected question', async () => {
+  const user = userEvent.setup();
+  mockSessionAndExplanation(sessionPayload);
+  render(
+    <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001']}>
+      <Routes>
+        <Route path='/english/grammar/:code' element={<GrammarSessionPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  const toggle = await screen.findByRole('button', { name: /Lihat penjelasan/ });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByText(explanationPayload.explanation)).not.toBeInTheDocument();
+
+  await user.click(toggle);
+  expect(await screen.findByText(explanationPayload.explanation)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Sembunyikan penjelasan/ })).toHaveAttribute('aria-expanded', 'true');
+  expect(screen.getByText('Soal 1 dari 2')).toBeInTheDocument();
+
+  await user.click(screen.getByRole('button', { name: /Sembunyikan penjelasan/ }));
+  expect(screen.queryByText(explanationPayload.explanation)).not.toBeInTheDocument();
+  expect(screen.getByText('Soal 1 dari 2')).toBeInTheDocument();
+});
+
+test('completed exam workspace renders embedded explanations without another request', async () => {
+  const user = userEvent.setup();
+  const examSession = {
+    ...sessionPayload,
+    mode: 'exam',
+    status: 'completed',
+    score: 1,
+    max_score: 2,
+    completed_at: '2026-10-11T03:10:00.000Z',
+    questions: [
+      {
+        ...sessionPayload.questions[0],
+        explanation: 'Penjelasan tersimpan dari sesi.',
+      },
+      sessionPayload.questions[1],
+    ],
+  };
+  mockSessionAndExplanation(examSession);
+  render(
+    <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001']}>
+      <Routes>
+        <Route path='/english/grammar/:code' element={<GrammarSessionPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  await user.click(await screen.findByRole('button', { name: /Lihat penjelasan/ }));
+  expect(await screen.findByText('Penjelasan tersimpan dari sesi.')).toBeInTheDocument();
+  expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+});
+
+test('explanation drawer shows a retry state when the request fails', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(async (input: unknown) => {
+      if (String(input).includes('/explanation')) {
+        return new Response(JSON.stringify({ error: { code: 'REQUEST_FAILED', message: 'Gagal' }, success: false }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 500,
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, data: sessionPayload }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      });
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={['/english/grammar/GR-20261011-001']}>
+      <Routes>
+        <Route path='/english/grammar/:code' element={<GrammarSessionPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  await user.click(await screen.findByRole('button', { name: /Lihat penjelasan/ }));
+  expect(await screen.findByText('Penjelasan belum dapat dimuat.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Coba lagi' })).toBeInTheDocument();
+  expect(screen.getByText('Soal 1 dari 2')).toBeInTheDocument();
+});
+
 test('completed workspace shows the stored score in the session header', async () => {
-  mockResponse({
+  mockSessionAndExplanation({
     ...sessionPayload,
     status: 'completed',
     score: 1,
