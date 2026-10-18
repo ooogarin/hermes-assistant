@@ -244,8 +244,13 @@ type DesktopSidebarProps = {
 const DesktopSidebar = ({ expanded, onExpandedChange }: DesktopSidebarProps) => {
   const { tooltip, triggerProps, triggerRef } = useTooltip<HTMLButtonElement>({
     content: expanded ? 'Ciutkan sidebar' : 'Buka sidebar',
-    enabled: !expanded,
+    enabled: true,
   });
+
+  // Collapsed, the button is invisible until the brand row is hovered, so the row itself starts the tooltip.
+  const brandHoverProps = expanded
+    ? {}
+    : { onPointerEnter: triggerProps.onPointerEnter, onPointerLeave: triggerProps.onPointerLeave };
 
   return (
     <aside
@@ -254,22 +259,24 @@ const DesktopSidebar = ({ expanded, onExpandedChange }: DesktopSidebarProps) => 
         'app-sidebar lg:block',
         expanded ? 'w-(--sidebar-width)' : 'w-(--sidebar-collapsed-width)',
       )}
+      data-expanded={expanded}
     >
-      <button
-        type='button'
-        className='absolute -right-5 top-[27px] z-20 grid size-10 place-items-center rounded-control border border-border bg-surface text-ink shadow-sm transition-colors hover:border-border-strong hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
-        aria-expanded={expanded}
-        aria-label={expanded ? 'Ciutkan sidebar' : 'Buka sidebar'}
-        onClick={() => onExpandedChange(!expanded)}
-        ref={triggerRef}
-        {...triggerProps}
-      >
-        <PanelLeft aria-hidden='true' size={24} strokeWidth={1.8} />
-      </button>
-      {tooltip}
       <div className='flex h-full flex-col overflow-hidden px-4 pb-4 pt-7'>
-        <div className='sidebar-brand'>
+        {/* The button lives in the brand row so hovering the revealed button still counts as hovering the brand. */}
+        <div className='sidebar-brand' {...brandHoverProps}>
           <Brand collapsed={!expanded} />
+          <button
+            type='button'
+            className='sidebar-toggle grid size-10 place-items-center rounded-control border border-border bg-surface text-ink shadow-sm hover:border-border-strong hover:bg-surface-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Ciutkan sidebar' : 'Buka sidebar'}
+            onClick={() => onExpandedChange(!expanded)}
+            ref={triggerRef}
+            {...triggerProps}
+          >
+            <PanelLeft aria-hidden='true' size={24} strokeWidth={1.8} />
+          </button>
+          {tooltip}
         </div>
         <Navigation collapsed={!expanded} onExpand={() => onExpandedChange(true)} />
         <LogoutAction collapsed={!expanded} onError={() => onExpandedChange(true)} />

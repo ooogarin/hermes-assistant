@@ -19,6 +19,44 @@
   margin: 0 12px 29px;
 }
 
+/* The toggle is anchored to the sidebar so it can slide with the rail; the brand row only reveals it. */
+.sidebar-toggle {
+  position: absolute;
+  top: 27px;
+  left: 22px;
+  z-index: 20;
+  transition:
+    opacity 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    left var(--sidebar-motion-duration) var(--sidebar-motion-ease);
+}
+
+/* 68px = 16px container padding + 12px brand margin + 40px button, so the button ends where the brand row does. */
+.app-sidebar[data-expanded="true"] .sidebar-toggle {
+  left: calc(var(--sidebar-width) - 68px);
+}
+
+/* Collapsed, the button replaces the feather only while the brand row is hovered or focused. */
+.app-sidebar[data-expanded="false"] .sidebar-toggle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.app-sidebar[data-expanded="false"] .sidebar-brand:hover .sidebar-toggle,
+.app-sidebar[data-expanded="false"] .sidebar-brand:focus-within .sidebar-toggle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Touch devices have no hover, so the button must stay reachable. */
+@media (hover: none) {
+  .app-sidebar[data-expanded="false"] .sidebar-toggle {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 /* Keep label widths and icon positions fixed; the sidebar clips the text as it narrows. */
 .sidebar-label {
   flex-shrink: 0;
@@ -187,6 +225,7 @@
   .sidebar-label,
   .sidebar-nav-row,
   .sidebar-chevron,
+  .sidebar-toggle,
   .sidebar-nav-child,
   .sidebar-nav-child::before {
     transition: none;

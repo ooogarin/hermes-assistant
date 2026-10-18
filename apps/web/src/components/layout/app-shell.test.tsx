@@ -121,4 +121,30 @@ describe('sidebar rail tooltips', () => {
 
     expect(queryTooltip()).toBeNull();
   });
+
+  test('keeps the toggle inside the brand row and marks the sidebar state', async () => {
+    window.localStorage.setItem(sidebarStorageKey, 'false');
+    renderShell();
+
+    const toggle = await screen.findByRole('button', { name: 'Buka sidebar' });
+    const brandRow = document.querySelector('.sidebar-brand');
+
+    expect(brandRow).toContainElement(toggle);
+    expect(document.querySelector('.app-sidebar')).toHaveAttribute('data-expanded', 'false');
+    expect(toggle).toHaveClass('sidebar-toggle');
+  });
+
+  test('offers the collapse action while the sidebar is expanded', async () => {
+    window.localStorage.setItem(sidebarStorageKey, 'true');
+    const user = userEvent.setup();
+    renderShell();
+
+    const toggle = await screen.findByRole('button', { name: 'Ciutkan sidebar' });
+
+    expect(document.querySelector('.app-sidebar')).toHaveAttribute('data-expanded', 'true');
+
+    await user.hover(toggle);
+
+    await waitFor(() => expect(queryTooltip()).toHaveTextContent('Ciutkan sidebar'));
+  });
 });
