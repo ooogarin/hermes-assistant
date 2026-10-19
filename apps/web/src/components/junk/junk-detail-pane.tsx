@@ -2,10 +2,10 @@ import { ExternalLink, Maximize2, X } from 'lucide-react';
 import { useState } from 'react';
 import { getJunkTitle, getSafeSourceUrl, getSourceName } from '../../features/junk/junk-display';
 import { formatDate } from '../../lib/formatting/formatters';
+import { CopyButton } from '../ui/copy-button';
 import { detailContentClassName } from '../ui/detail-layout';
 import { IconButton } from '../ui/icon-button';
 import { JunkCategoryLabel, JunkTags } from './junk-badges';
-import { JunkCopyButton } from './junk-copy-button';
 import type { ReactNode } from 'react';
 import type { JunkItem } from '../../features/junk/junk-api';
 
@@ -69,7 +69,7 @@ export const JunkDetailPane = ({
                   <span className='truncate'>{sourceName ?? 'Buka sumber'}</span>
                   <span className='sr-only'> (tab baru)</span>
                 </a>
-                <JunkCopyButton key={sourceUrl} value={sourceUrl} label='Salin tautan' />
+                <CopyButton key={sourceUrl} value={sourceUrl} label='Salin tautan' />
               </>
             ) : (
               <span className='text-sm text-ink-muted'>{sourceName ?? 'Tanpa sumber'}</span>
@@ -109,7 +109,7 @@ export const JunkDetailPane = ({
               <dt className='text-ink-muted'>Kode</dt>
               <dd className='flex min-w-0 flex-wrap items-center gap-2'>
                 <span className='break-all text-sm text-ink-muted'>{item.code}</span>
-                <JunkCopyButton value={item.code} label='Salin kode' />
+                <CopyButton value={item.code} label='Salin kode' />
               </dd>
             </div>
             <div className='grid min-h-7 grid-cols-[8rem_minmax(0,1fr)] items-center gap-3'>

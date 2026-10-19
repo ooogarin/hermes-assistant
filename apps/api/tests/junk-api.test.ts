@@ -159,6 +159,23 @@ test('passes search filters to the junk service', async () => {
   expect(await response.json()).toEqual({ success: true, data: toSnakeCaseJson({ items: [junkItem] }) });
 });
 
+test('canonicalizes category and tag filters so the browser does not have to normalize them', async () => {
+  let searchInput: ListJunkRequest | undefined;
+  const app = createJunkApp({
+    list: async (input) => {
+      searchInput = input;
+      return [junkItem];
+    },
+  });
+
+  const response = await app.request('http://localhost/api/v1/junk?category=Article&tag=Programming', {
+    headers: { Authorization: 'Bearer test-api-key' },
+  });
+
+  expect(response.status).toBe(200);
+  expect(searchInput).toMatchObject({ category: 'article', tag: 'programming' });
+});
+
 test('returns the standard not-found response for an unknown junk item', async () => {
   const response = await createJunkApp({
     getDetail: async () => {

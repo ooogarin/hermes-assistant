@@ -44,8 +44,6 @@ export type CreateJunkInput = Pick<
 >;
 export type UpdateJunkInput = Partial<CreateJunkInput>;
 
-const normalizeFilter = (value: string | undefined): string | undefined => value?.trim().toLowerCase();
-
 const toPayload = ({ contentText, sourceUrl, sourceName, ...input }: UpdateJunkInput) => ({
   ...input,
   content_text: contentText,
@@ -55,7 +53,17 @@ const toPayload = ({ contentText, sourceUrl, sourceName, ...input }: UpdateJunkI
 
 export const getJunkItems = (filters: JunkListFilters, signal?: AbortSignal): Promise<JunkItem[]> =>
   apiRequest(
-    `/api/v1/junk${buildQueryString({ category: normalizeFilter(filters.category), q: filters.q, tag: normalizeFilter(filters.tag), source_url: filters.sourceUrl, source: filters.source, from: filters.from, to: filters.to, sort: filters.sort, limit: 100 })}`,
+    `/api/v1/junk${buildQueryString({
+      category: filters.category,
+      q: filters.q,
+      tag: filters.tag,
+      source: filters.source,
+      source_url: filters.sourceUrl,
+      from: filters.from,
+      to: filters.to,
+      sort: filters.sort,
+      limit: 100,
+    })}`,
     junkListSchema,
     { signal },
   );

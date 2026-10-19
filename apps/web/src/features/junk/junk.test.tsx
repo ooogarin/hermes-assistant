@@ -298,3 +298,44 @@ test('list sends source_url filter and accepts legacy items without source_name'
   expect(String(fetch.mock.calls[0]?.[0])).toContain('source_url=');
   expect(String(fetch.mock.calls[0]?.[0])).not.toContain('sourceUrl=');
 });
+
+test('reads the source URL filter from the browser URL and forwards it to the API', async () => {
+  const fetch = vi.fn(async (path: string) => {
+    const data = path.startsWith('/api/v1/junk?') ? { items: [wireItem] } : wireItem;
+    return new Response(JSON.stringify({ success: true, data }), { status: 200 });
+  });
+  vi.stubGlobal('fetch', fetch);
+
+  render(
+    <MemoryRouter initialEntries={['/junk?source_url=https%3A%2F%2Fexample.com%2Fwatch']}>
+      <Routes>
+        <Route path='/junk' element={<JunkListPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  await screen.findByRole('heading', { name: 'A saved video' });
+  const requestedPath = String(fetch.mock.calls[0]?.[0]);
+  expect(requestedPath).toContain('source_url=https%3A%2F%2Fexample.com%2Fwatch');
+  expect(requestedPath).not.toContain('sourceUrl=');
+});
+
+test('still accepts the legacy sourceUrl browser parameter', async () => {
+  const fetch = vi.fn(async (path: string) => {
+    const data = path.startsWith('/api/v1/junk?') ? { items: [wireItem] } : wireItem;
+    return new Response(JSON.stringify({ success: true, data }), { status: 200 });
+  });
+  vi.stubGlobal('fetch', fetch);
+
+  render(
+    <MemoryRouter initialEntries={['/junk?sourceUrl=https%3A%2F%2Fexample.com%2Fwatch']}>
+      <Routes>
+        <Route path='/junk' element={<JunkListPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+  await screen.findByRole('heading', { name: 'A saved video' });
+  const requestedPath = String(fetch.mock.calls[0]?.[0]);
+  expect(requestedPath).toContain('source_url=https%3A%2F%2Fexample.com%2Fwatch');
+});

@@ -123,6 +123,7 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
         OR code = UPPER(${query}::TEXT)
         OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${query}::TEXT)) > 0
         OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${query}::TEXT)) > 0
+        OR STRPOS(LOWER(category), LOWER(${query}::TEXT)) > 0
       )
       AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
       AND (${category}::TEXT IS NULL OR category = ${category})
@@ -144,12 +145,10 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   return rows;
 };
 
-export const updateOneByCode = async (
-  code: string,
-  input: UpdateJunkPayload,
-  trx?: DatabaseReservedConnection,
-): Promise<JunkItemRow | null> => {
-  const database = trx ?? getDatabaseClient();
+// A repository method that later needs an explicit transaction takes a required
+// `trx: DatabaseReservedConnection` as its final parameter and runs through it directly.
+export const updateOneByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {
+  const database = getDatabaseClient();
 
   const allowedColumns = ['title', 'category', 'content_text', 'source_url', 'source_name', 'tags'] as const;
 

@@ -167,6 +167,25 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     await expect(junkService.getDetail({ code: first.code })).rejects.toMatchObject({ code: 'JUNK_ITEM_NOT_FOUND' });
   });
 
+  test('finds junk items by a partial category keyword', async () => {
+    const item = await junkService.create({
+      title: 'Programming note',
+      category: 'tech/programming',
+      raw_text: null,
+      content_text: 'A note about programming.',
+      source_url: null,
+      source_name: null,
+      tags: [],
+    });
+
+    expect((await junkService.list({ q: 'program', sort: 'newest', limit: 20 })).map(({ code }) => code)).toEqual([
+      item.code,
+    ]);
+    expect(
+      (await junkService.list({ category: 'tech/programming', sort: 'newest', limit: 20 })).map(({ code }) => code),
+    ).toEqual([item.code]);
+  });
+
   test('persists practice and completes an evaluated grammar exam', async () => {
     const practice = await grammarService.createSession({
       mode: 'practice',

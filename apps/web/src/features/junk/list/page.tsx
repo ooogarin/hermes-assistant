@@ -21,9 +21,9 @@ const getOptionalValue = (value: string | null): string | undefined => value?.tr
 const toSearchParams = (filters: JunkListFilters, previewCode?: string): URLSearchParams => {
   const params = new URLSearchParams();
   if (filters.q !== undefined) params.set('q', filters.q);
-  if (filters.category !== undefined) params.set('category', filters.category.toLowerCase());
-  if (filters.tag !== undefined) params.set('tag', filters.tag.toLowerCase());
-  if (filters.sourceUrl !== undefined) params.set('sourceUrl', filters.sourceUrl);
+  if (filters.category !== undefined) params.set('category', filters.category);
+  if (filters.tag !== undefined) params.set('tag', filters.tag);
+  if (filters.sourceUrl !== undefined) params.set('source_url', filters.sourceUrl);
   if (filters.source !== undefined) params.set('source', filters.source);
   if (filters.from !== undefined) params.set('from', filters.from);
   if (filters.to !== undefined) params.set('to', filters.to);
@@ -38,10 +38,10 @@ const JunkListPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedCode = getOptionalValue(searchParams.get('preview'));
   const filters: JunkListFilters = {
-    category: getOptionalValue(searchParams.get('category'))?.toLowerCase(),
+    category: getOptionalValue(searchParams.get('category')),
     q: getOptionalValue(searchParams.get('q')),
-    sourceUrl: getOptionalValue(searchParams.get('sourceUrl')),
-    tag: getOptionalValue(searchParams.get('tag'))?.toLowerCase(),
+    sourceUrl: getOptionalValue(searchParams.get('source_url') ?? searchParams.get('sourceUrl')),
+    tag: getOptionalValue(searchParams.get('tag')),
     source: getOptionalValue(searchParams.get('source')),
     from: getOptionalValue(searchParams.get('from')),
     to: getOptionalValue(searchParams.get('to')),
@@ -76,9 +76,9 @@ const JunkListPage = () => {
   const applyFilters = () => {
     updateFilters({
       ...filters,
-      category: getOptionalValue(category)?.toLowerCase(),
+      category: getOptionalValue(category),
       sourceUrl: getOptionalValue(sourceUrl),
-      tag: getOptionalValue(tag)?.toLowerCase(),
+      tag: getOptionalValue(tag),
       source: getOptionalValue(source),
       from: getOptionalValue(from),
       to: getOptionalValue(to),
@@ -113,7 +113,7 @@ const JunkListPage = () => {
     });
   };
   const applyQuickCategory = (nextCategory?: string) => {
-    setCategory(nextCategory?.toLowerCase() ?? '');
+    setCategory(nextCategory ?? '');
     updateFilters({ ...filters, category: nextCategory });
   };
   const activeFilterCount = [
