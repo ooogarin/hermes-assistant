@@ -90,7 +90,7 @@ GET /api/v1/junk?q=<keyword>&tag=<tag>&category=<category>&source=<name-or-domai
 ```
 
 - `q` searches title, content text, category, tags, code, and source name/URL. It is sent only after an enabled `Cari` action.
-- `tag`, `category`, and `source_url` are optional exact API filters. `source` matches a source name or URL substring; `from` and `to` filter Jakarta calendar dates inclusively. Category and tag values are sent lowercase, while display labels preserve punctuation. FE models and navigation query parameters use `sourceUrl`; the API adapter maps this to `source_url`.
+- `tag`, `category`, and `source_url` are optional exact API filters. `source` matches a source name or URL substring; `from` and `to` filter Jakarta calendar dates inclusively. Category and tag values are sent as typed and canonicalized to lowercase by the API, while display labels preserve punctuation. The FE model exposes `sourceUrl`; the navigation query parameter and the API request both use `source_url`.
 - UI tag chips may display `#` for readability, but the request sends the stored tag value without assuming that prefix is persisted.
 - The frontend formats dates in the Indonesian locale and never displays an internal database ID.
 - If `title` is null, the row uses a concise display fallback from available `contentText`, `sourceUrl`, or `rawText`; this is display-only and does not write a generated title back to the API.

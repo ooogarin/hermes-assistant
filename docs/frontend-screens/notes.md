@@ -88,7 +88,7 @@ GET /api/v1/notes?q=<keyword>&type=<type>&tag=<tag>&category=<category>&source=<
 
 - `q` searches title, content text, category, tags, code, and external source name/URL. It is sent only after an enabled `Cari` action.
 - `type` is an optional exact filter over the fixed note-type enum.
-- `tag` and `category` are optional exact lowercase filters. `source` matches a source name or URL substring; `from` and `to` filter Jakarta calendar dates inclusively. `sort` controls saved-date order.
+- `tag` and `category` are optional exact filters that the API canonicalizes to lowercase. `source` matches a source name or URL substring; `from` and `to` filter Jakarta calendar dates inclusively. `sort` controls saved-date order.
 - UI tag chips may display `#` for readability, but the request sends the stored tag value without assuming that prefix is persisted.
 - Dates use the Indonesian locale. The frontend never displays an internal database ID.
 

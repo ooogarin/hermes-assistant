@@ -187,6 +187,8 @@ Notes support two search modes:
 -> direct tag filter
 ```
 
+The keyword also matches `code`, `category`, `source_name`, and `source_url` as case-insensitive substrings, so a stable code, a category word, or a source host finds the note even when the full-text tokenizer does not split it into a whole token.
+
 Search results should return enough data for the user to pick accurately:
 
 ```text
@@ -396,6 +398,6 @@ Request bodies and every response field use `snake_case` recursively.
 
 Codes are generated atomically by the backend in the format `NT-YYYYMMDD-###`, using the `Asia/Jakarta` calendar date. The daily suffix is sequential and codes are never reused.
 
-The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content text, category, and tags. A row trigger refreshes it on insert and whenever one of those source fields changes. Code and external source name/URL are also searchable through the list query. Category and tags are lowercase in PostgreSQL; API responses capitalize labels without changing separators. The browser derives excerpts from `content_text` without a stored preview column.
+The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content text, category, and tags. A row trigger refreshes it on insert and whenever one of those source fields changes. Code, category, and the external source name/URL are also matched as case-insensitive substrings through the list query. Category and tags are lowercase in PostgreSQL; the API canonicalizes writes and filters to that form, so the browser sends values unchanged, and responses capitalize labels without changing separators. The browser derives excerpts from `content_text` without a stored preview column.
 
 Migration `0009_align_notes_junk_schema.ts` renames `content` to `content_text` and `source` to `source_name`, adds nullable `raw_text` and `source_url`, and updates the search-vector trigger. It does not backfill or repair existing rows. Existing `source` values remain unchanged under `source_name`, including values that are URLs; any desired separation into `source_name` and `source_url` is a manual data decision. The migration rejects existing non-null source values that are blank or longer than 200 characters rather than changing them. Existing search vectors are not rebuilt, but future inserts and relevant updates use the new trigger. Apply the migration separately before using the updated Notes backend.

@@ -16,7 +16,7 @@
 - Use a named intermediate result when an awaited operation is nested inside a condition or another function call. Fetch the result, validate or compose it, then continue.
 - Extract long or compound conditions into clearly named boolean variables, such as `hasDuplicateQuestionNumbers` and `hasUnknownQuestionNumbers`, so the `if` statement reads the validation intent. Use simple membership checks when they make nested collection predicates easier to understand.
 - In transaction workflows, keep `startTransaction`, validation, writes, result reads, `commitTransaction`, return, and rollback visibly separated. Preserve the existing error handling and connection lifecycle while improving readability.
-- Biome handles syntax formatting; manually maintain the blank lines that explain the workflow. Use the Reading `createMaterial` service's layout as the reference for a readable transaction flow.
+- Biome handles syntax formatting; manually maintain the blank lines that explain the workflow. Use the Notes `create` service in `apps/api/src/modules/notes/notes.service.ts` as the reference for a readable transaction flow.
 
 ## Formatting and imports
 
@@ -30,13 +30,30 @@
 
 - Routes wire method, path, middleware, validator, and handler only.
 - Validators use Zod through the shared `appValidator(...)` wrapper around `@hono/zod-validator`. A route applies it before its handler; handlers read only validated input through `getBody(...)`, `getParam(...)`, or `getQuery(...)`, which delegate to Hono's `request.valid(...)`.
-- Every request body, query, and nested object schema ends with `.strict()` so unknown fields are rejected with 400, even when the schema currently has no other refinement. Path parameter schemas that only describe route segments may omit it.
+- Every request body, query, and nested object schema ends with `.strict()` so unknown fields are rejected with 400, even when the schema currently has no other refinement. Path parameter schemas that only describe route segments may omit it. A misspelled field name must fail loudly instead of being dropped, because the caller cannot tell that a value it sent was never stored.
 - Handlers export named operations directly, compose explicit `*Request` contracts from validated input and request scope, map HTTP input/output, and select status codes. They contain no SQL or core business rules.
 - Services export named operations directly, own business rules, workflows, and transaction boundaries, and do not receive Hono context or return Hono responses.
 - Repositories are the only layer that accesses `bun:sql`; they contain parameterized raw SQL and return raw database rows or primitive write results. Domain mapping, response composition, public-code formatting, and question numbering belong in services.
 - A module's `*.types.ts` owns its reusable request contracts, domain maps, repository payloads/rows, and service interfaces used by tests or consumers. Group these with clearly labeled sections (for example: request contracts, service operations, repository payloads, repository responses). Keep service and repository files focused on executable behavior, not local type declarations.
 - Modules interact through services/use cases, not another module's repository.
 - Put independently maintained subfeatures in `<module>/<module>-<submodule>/`. Subfeatures with their own HTTP surface (for example settings) get route, validator, handler, service, repository, and types files; parent routes compose child routes and parent services call child services. Data-only subfeatures (for example `grammar/grammar-question/`), whose table belongs to the parent workflow and has no endpoint of its own, keep only repository and types files; the parent service calls their repository directly. Apply the same structure across modules; settings code must not be mixed into the parent files.
+
+## Reference implementation and enforced contract
+
+The Notes module is the reference implementation for a personal-content module. Its route, validator, handler, service, repository, and types files show the expected shape of every layer, the naming of repository operations, the placement of transaction boundaries, and the composition of domain objects.
+
+`apps/api/tests/module-contract.test.ts` enforces the rules that hold in every module, so the reference cannot drift:
+
+| Rule | Requirement |
+| --- | --- |
+| Repository transactions | A repository method's `trx` parameter matches how its callers actually use it. Pool-only methods take no `trx`, transaction-only methods require it, and only genuinely mixed methods accept `trx?`. |
+| Database access | Only `*.repository.ts` files and `core/database/` reach PostgreSQL. |
+| SQL placement | Handlers and services contain no SQL statements. |
+| Strict request schemas | Every request body, query, and nested object schema rejects unknown fields. Schemas registered as path parameters are exempt. |
+
+Each failure names the file and the rule it breaks, so a red run points at the file to change.
+
+The Notes frontend follows the same reference. `apps/web/src/features/notes/notes-api.ts` validates every response with Zod and maps the wire contract to a camelCase view model in one place, `apps/web/src/features/notes/list/page.tsx` keeps the browser URL as the single source of truth for filters, and `apps/web/src/components/notes/` holds the visual components that belong to the feature.
 
 ## Repository naming
 
@@ -58,7 +75,7 @@
 - Keep one result responsibility per repository method. For paginated data, expose separate list-row and count-row methods; the service calls both and builds collection metadata.
 - A service opens a transaction only when multiple dependent operations must succeed or fail together; keep it short. Use `startTransaction`, `commitTransaction`, and `rollbackTransaction` explicitly. Pass the same reserved connection to each participating repository write, clear the local transaction reference before commit, and do not let a rollback failure hide the original error.
 - Name variables and parameters that hold a PostgreSQL transaction executor `trx`. Keep `transaction` for Finance domain values where it means a financial transaction.
-- In every module, derive repository connection parameters from actual callers: pool-only methods have no `trx` parameter and use `getDatabaseClient()` internally; transaction-only methods require a final `trx: DatabaseReservedConnection` and execute directly through it. Only methods actually called both with and without a transaction accept a final `trx?: DatabaseReservedConnection` and select the executor with `const database = trx ?? getDatabaseClient()`. Multiple callers alone do not justify an optional parameter when all use the same connection mode. Keep the SQL directly in that method; do not add pool/transaction wrappers or a private `WithExecutor` helper for the same query. The service supplies the same `trx` to all dependent reads and writes, including locking operations.
+- In every module, derive repository connection parameters from actual callers: pool-only methods have no `trx` parameter and use `getDatabaseClient()` internally; transaction-only methods require a final `trx: DatabaseReservedConnection` and execute directly through it. Only methods actually called both with and without a transaction accept a final `trx?: DatabaseReservedConnection` and select the executor with `const database = trx ?? getDatabaseClient()`. Multiple callers alone do not justify an optional parameter when all use the same connection mode. A method that later needs a transaction declares `trx` as a required final parameter and runs the statement through it, instead of keeping the optional form as a placeholder. Keep the SQL directly in that method; do not add pool/transaction wrappers or a private `WithExecutor` helper for the same query. The service supplies the same `trx` to all dependent reads and writes, including locking operations.
 - Name migrations `<four-digit-sequence>_<description>.ts`, export `up(trx)` and `down(trx)`, and use raw SQL.
 - Never edit an applied migration. Create a new migration and review destructive changes carefully.
 - The migration runner records applied filenames in `_migrations`. Each migration and its tracking-row update run in one transaction; migration commands refuse to proceed if an applied file is missing from disk and serialize migrations/rollbacks with a PostgreSQL advisory lock.
@@ -73,6 +90,7 @@
 - Unit-test service behavior. Integration-test routes, repositories, migrations, and transactions where PostgreSQL/Hono behavior matters.
 - Tests must be deterministic and use an isolated test database.
 - Database integration tests read `TEST_DATABASE_URL` and reset only databases whose name ends in `_test`. Never point it at a development or production database.
+- `apps/api/tests/module-contract.test.ts` runs on every test run and rejects module code that breaks a shared rule, so a change that weakens a convention fails in CI instead of waiting for review.
 
 ## Before handoff
 

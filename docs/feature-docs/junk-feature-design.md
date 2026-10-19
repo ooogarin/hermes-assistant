@@ -208,6 +208,8 @@ Junk supports two search modes:
 -> direct tag filter
 ```
 
+The keyword also matches `code`, `category`, `source_name`, and `source_url` as case-insensitive substrings, so a stable code, a category word, or a source host finds the item even when the full-text tokenizer does not split it into a whole token.
+
 Search results should return enough data for the user to pick accurately:
 
 ```text
@@ -253,7 +255,7 @@ Supported MVP corrections:
 - add/remove/replace `tags`;
 - soft delete using `deleted_at`.
 
-Category and tags are trimmed and stored lowercase whenever they are created or replaced; duplicate tags are removed after normalization. Category/tag filters are normalized to lowercase at the API boundary, and repositories use exact matching against this canonical lowercase data. Existing data is assumed to already follow this invariant; no backfill is planned. Services capitalize category and tag labels in API responses while preserving punctuation and separators, so values remain usable when sent back as filters or edits.
+Category and tags are trimmed and stored lowercase whenever they are created or replaced; duplicate tags are removed after normalization. Category/tag filters are normalized to lowercase at the API boundary, and repositories use exact matching against this canonical lowercase data. The browser sends filter values unchanged and relies on that boundary, so the canonical form is owned in exactly one place. Existing data is assumed to already follow this invariant; no backfill is planned. Services capitalize category and tag labels in API responses while preserving punctuation and separators, so values remain usable when sent back as filters or edits.
 
 Hermes should clean and format update parameters before calling the API. The API validates and persists the update.
 
@@ -418,11 +420,11 @@ Migration `0008_add_junk_source_name.ts` adds the nullable column and length/non
 | Method | Path | Purpose |
 | ------ | ---- | ------- |
 | `POST` | `/api/v1/junk` | Create a junk item. The backend generates the `code`. |
-| `GET` | `/api/v1/junk` | List/search active items. Optional filters: `q`, `tag`, `category`, `source_url`, `source` (name or URL substring), `from`, `to`, `sort` (`newest`/`oldest`), and `limit` (default `20`, maximum `100`). Filters combine with AND. Dates use the Asia/Jakarta calendar. |
+| `GET` | `/api/v1/junk` | List/search active items. Optional filters: `q`, `tag`, `category`, `source_url`, `source` (name or URL substring), `from`, `to`, `sort` (`newest`/`oldest`), and `limit` (default `20`, maximum `100`). Filters combine with AND. Dates use the Asia/Jakarta calendar. `q` matches title, content text, category, tags, code, and the source name/URL. |
 | `GET` | `/api/v1/junk/:code` | Fetch one active junk item. |
 | `PATCH` | `/api/v1/junk/:code` | Update supplied fields. A `tags` payload replaces the full tag list. `raw_text` is preserved and cannot be changed. |
 | `DELETE` | `/api/v1/junk/:code` | Soft delete a junk item. |
 
 Codes are generated atomically by the backend in the format `JK-YYYYMMDD-###`, using the `Asia/Jakarta` calendar date. The daily suffix is sequential and codes are never reused.
 
-The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content text, category, and tags. A row trigger refreshes it on insert and whenever one of those source fields changes. Code and source name/URL are also searchable through the list query. `raw_text` preserves input whitespace exactly and only HTTP(S) source URLs are accepted. Migration `0009_align_notes_junk_schema.ts` adds the minimum-content database constraint without changing existing rows; it will fail if an existing item has only a category and no title, raw text, content text, or source URL.
+The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content text, category, and tags. A row trigger refreshes it on insert and whenever one of those source fields changes. Code, category, and the source name/URL are also matched as case-insensitive substrings through the list query. `raw_text` preserves input whitespace exactly and only HTTP(S) source URLs are accepted. Migration `0009_align_notes_junk_schema.ts` adds the minimum-content database constraint without changing existing rows; it will fail if an existing item has only a category and no title, raw text, content text, or source URL.

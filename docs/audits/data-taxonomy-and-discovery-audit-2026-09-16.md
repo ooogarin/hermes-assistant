@@ -1,9 +1,10 @@
 # Data Taxonomy and Discovery Audit — 2026-09-16
 
-> Status: Deferred implementation. This is a decision and delivery backlog, not an
-> approved schema or API change. No recommendation in this document changes current
-> behavior until its open decisions are approved and implemented through the normal
-> migration, API, frontend, and Hermes-skill workflow.
+> Status: Partially implemented. The normalization and search items in this document
+> are in place for Notes and Junk. The remaining items are a decision and delivery
+> backlog, not an approved schema or API change. No recommendation in this document
+> changes current behavior until its open decisions are approved and implemented
+> through the normal migration, API, frontend, and Hermes-skill workflow.
 
 ## Scope
 
@@ -19,8 +20,8 @@ user answers. The Telegram preview-output contract is tracked separately in
 ## Summary
 
 Free text is suitable for human content. It is not sufficient by itself for data used
-as a facet, quick filter, rotation rule, or report grouping. The current application
-mixes those two purposes, which already causes search and filter failures.
+as a facet, quick filter, rotation rule, or report grouping. The application mixes
+those two purposes, which causes search and filter failures.
 
 The desired model has four groups:
 
@@ -33,53 +34,23 @@ The desired model has four groups:
 
 ## Evidence and current failure modes
 
-### P0 — Junk category quick filters can hide visible data
+### P0 — Legacy category values can hide visible data
 
 The active Junk data observed during the audit contained the categories `Music`,
-`Musik`, and `Quotes`. The web quick filter uses `music` and `quote`, while the API
-uses exact case-sensitive comparison. Read-only API checks returned:
+`Musik`, and `Quotes`, while the web quick filter uses `music` and `quote`.
 
-| Query | Matching items |
-| --- | ---: |
-| `category=music` | 0 |
-| `category=Music` | 1 |
-| `category=Musik` | 1 |
-| `tag=musik` | 0 |
-| `tag=Musik` | 2 |
+The API owns the canonical form. Categories and tags are normalized to lowercase at
+the request boundary, for writes and for filters alike, so `category=music` and
+`category=Music` select the same rows. Notes and Junk behave the same way, and
+repositories compare exactly against that canonical lowercase data.
 
-The same failure mode exists for Notes: `category=tech/programming` returned no
-results while `category=Tech/Programming` returned two; `tag=Postgres` returned no
-results while `tag=postgres` returned two.
+Rows written before the boundary normalized still hold their original casing and are
+not backfilled, so a legacy `Music` row stays invisible to `category=music`. The fix
+for historical rows is a reviewed backfill, not a looser comparison.
 
-The API performs exact `category` and `tag` comparison in
-[notes.repository.ts](../../apps/api/src/modules/notes/notes.repository.ts) and
-[junk.repository.ts](../../apps/api/src/modules/junk/junk.repository.ts). The Junk
-quick-filter values are hardcoded in
+See [junk.validator.ts](../../apps/api/src/modules/junk/junk.validator.ts),
+[notes.validator.ts](../../apps/api/src/modules/notes/notes.validator.ts), and
 [junk-toolbar.tsx](../../apps/web/src/components/junk/junk-toolbar.tsx).
-
-### P0 — Junk frontend and API use different field names
-
-The Junk API requires snake_case `content_text` and `source_url` fields and rejects
-unknown keys. The frontend creates request objects using `contentText` and `sourceUrl`;
-the list also serializes `sourceUrl` rather than `source_url`. As a result, a source
-URL filter is rejected with `400`, and create/edit requests containing the camelCase
-fields do not meet the strict API contract.
-
-This transport mismatch must be fixed before taxonomy work because it blocks normal
-Junk create and filter flows. See [junk.validator.ts](../../apps/api/src/modules/junk/junk.validator.ts),
-[junk-api.ts](../../apps/web/src/features/junk/junk-api.ts), and
-[Junk list page](../../apps/web/src/features/junk/list/page.tsx).
-
-### P1 — Search promise and search index differ
-
-The Junk search placeholder promises title, quote, tag, source, and code search, but
-its `search_vector` excludes `code`, `source_url`, and `raw_text`. Notes keyword
-search similarly excludes `category`, `source`, and code. A user should be able to
-paste a stable code or remember a source host without needing to know an exact filter
-value.
-
-See [Notes migration](../../apps/api/migrations/0001_create_notes.ts) and
-[Junk migration](../../apps/api/migrations/0002_create_junk_items.ts).
 
 ### P1 — Free-text genre is filtered exactly
 
@@ -99,6 +70,33 @@ Writing level accept arbitrary text. Grammar also stores `grammar_area`,
 `grammar_point`, and `question_type` as arbitrary text despite using them for rotation,
 search, grading behavior, and reporting. Unnormalized variants would fragment filters
 and aggregate reports.
+
+## Resolved findings
+
+### Search promise and search index differ
+
+The Junk search placeholder promises title, quote, tag, source, and code search, while
+its `search_vector` covers only title, content text, category, and tags. Notes keyword
+search has the same shape.
+
+Notes and Junk answer this outside the index. The list query matches `code`,
+`category`, `source_name`, and `source_url` as case-insensitive substrings in addition
+to the full-text vector, so a user can paste a stable code or remember a source host
+without needing to know an exact filter value. `raw_text` stays out of the index
+because it is the untouched original input, not the searchable representation.
+
+See [Notes migration](../../apps/api/migrations/0001_create_notes.ts),
+[Junk migration](../../apps/api/migrations/0002_create_junk_items.ts),
+[notes.repository.ts](../../apps/api/src/modules/notes/notes.repository.ts), and
+[junk.repository.ts](../../apps/api/src/modules/junk/junk.repository.ts).
+
+### Junk frontend and API use different field names
+
+The Junk API requires snake_case `content_text` and `source_url` fields and rejects
+unknown keys. The frontend adapter in
+[junk-api.ts](../../apps/web/src/features/junk/junk-api.ts) maps the camelCase FE
+model to those snake_case request fields, and the browser navigation query parameter
+uses the same `source_url` name as the API filter.
 
 ## Field decisions
 
@@ -162,13 +160,15 @@ semantics remain unambiguous.
 
 ## Data-normalization rules
 
-These rules are proposed, not yet implemented:
+Notes and Junk normalize categories and tags at the API write and filter boundary and compare them exactly against that canonical lowercase form. The rules below extend that treatment to the remaining fields and domains. The parts that are still proposals are marked as such.
 
 1. Normalize managed terms at the API write boundary, not only in the browser or
-   Telegram skill.
+   Telegram skill. **Applied to Notes and Junk categories and tags.**
 2. Match category and tag input case-insensitively after Unicode normalization, trim,
-   and whitespace collapse.
+   and whitespace collapse. **Trim and case are applied to Notes and Junk. Unicode
+   normalization and whitespace collapse remain proposed.**
 3. Remove a leading `#` from tags and reject duplicates after canonicalization.
+   **Duplicates are rejected for Notes and Junk. The leading `#` is not yet stripped.**
 4. Store tags in one stable form. Lowercase kebab-case is the default proposal, for
    example `remote-work`; final formatting is an open decision for non-Latin text.
 5. Store managed values by canonical code and show a separate display label. Use aliases
@@ -178,18 +178,15 @@ These rules are proposed, not yet implemented:
 
 ## Delivery order
 
-1. Fix the Junk camelCase/snake_case request and query mismatch.
-2. Decide canonical category mappings and tag representation; backfill current Notes
-   and Junk metadata in a reversible, reviewed migration.
-3. Add server-side normalization and case-insensitive canonical lookup at every write
-   boundary, including Telegram-sourced writes.
-4. Update list/search queries to use canonical fields and include the promised broad
-   search fields.
-5. Add facet APIs and change Notes/Junk/Reading/Writing filters to selectable values.
-6. Introduce managed vocabularies for genre and Grammar metadata, then migrate historic
-   values and update reporting.
-7. Add integration tests covering aliases, case variants, tags with `#`, legacy values,
-   exact URL lookup, source-domain filtering, and multi-tag semantics.
+| Step | Status |
+| --- | --- |
+| Fix the Junk camelCase/snake_case request and query mismatch. | Done. The adapter maps the FE model to snake_case, and the browser query parameter uses the API field name. |
+| Add server-side normalization and case-insensitive canonical lookup at every write boundary, including Telegram-sourced writes. | Done for Notes and Junk categories and tags. |
+| Update list/search queries to use canonical fields and include the promised broad search fields. | Done. The list query matches code, category, and the source name/URL as case-insensitive substrings. |
+| Decide canonical category mappings and tag representation; backfill current Notes and Junk metadata in a reversible, reviewed migration. | Pending. Requires the approved mappings below. |
+| Add facet APIs and change Notes/Junk/Reading/Writing filters to selectable values. | Pending. |
+| Introduce managed vocabularies for genre and Grammar metadata, then migrate historic values and update reporting. | Pending. |
+| Add integration tests covering aliases, case variants, tags with `#`, legacy values, exact URL lookup, source-domain filtering, and multi-tag semantics. | Partial. Category and tag normalization, canonical filters, and the broad keyword search are covered. Aliases, `#` tags, legacy values, and multi-tag semantics still need coverage once the behavior is decided. |
 
 ## Open decisions
 
@@ -209,18 +206,21 @@ The following require an explicit product decision before implementation:
    recommends a migration path that preserves legacy display data while rejecting new
    non-CEFR writes.
 
-## Acceptance criteria for a future implementation
+## Acceptance criteria
 
 - A quick filter returns records displayed under its matching category, independent of
-  historical casing or approved aliases.
+  historical casing or approved aliases. **Casing is satisfied. Approved aliases
+  require the vocabulary decisions below.**
 - Creating `Music`, `musik`, or `music` cannot create three separate canonical
-  categories.
+  categories. **Satisfied for casing. `Musik` and `Quotes` remain separate legacy
+  values until a backfill is approved.**
 - `#Postgres` and `postgres` cannot create duplicate canonical tags.
 - The default browser filters can be selected from server-authoritative vocabulary
   values and do not apply incomplete client-side filtering.
 - Junk URL filtering sends the documented snake_case API field; create and edit payloads
-  also use the documented field names.
-- Broad search behavior matches visible UI copy and includes stable codes.
+  also use the documented field names. **Satisfied.**
+- Broad search behavior matches visible UI copy and includes stable codes. **Satisfied
+  for Notes and Junk.**
 - Finance category behavior remains unchanged.
 - Existing active records stay readable and are covered by migration and integration
   tests before the new exact-filter contract is enforced.
