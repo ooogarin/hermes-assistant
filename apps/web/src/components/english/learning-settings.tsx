@@ -1,9 +1,10 @@
 import { ArrowDown, ArrowLeft, ArrowUp, CircleGauge, List, Tag } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { classNames } from '../../lib/class-names';
 import { formatDate } from '../../lib/formatting/formatters';
 import { useApiQuery } from '../../lib/hooks/use-api-query';
+import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
 import { ErrorState } from '../feedback/content-state';
 import { Skeleton } from '../feedback/skeleton';
 import { Button } from '../ui/button';
@@ -134,16 +135,10 @@ const SettingsForm = ({
     values.minWordCount <= values.defaultWordCount &&
     values.defaultWordCount <= values.maxWordCount;
   const rootPath = `/english/${feature.toLowerCase()}`;
-
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  const canLeave = useUnsavedChanges(dirty);
 
   const leave = () => {
-    if (!dirty || window.confirm('Perubahan belum disimpan. Tetap kembali?')) navigate(rootPath);
+    if (canLeave()) navigate(rootPath);
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
