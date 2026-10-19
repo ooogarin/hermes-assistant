@@ -1,0 +1,148 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip_frontend:
+        description: Deploy only the API
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: '1.4.2'
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hermes_test
+          POSTGRES_PASSWORD: hermes_test
+          POSTGRES_DB: hermes_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hermes_test -d hermes_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check formatting and lint
+        run: bun run check
+
+      - name: Type check
+        run: bun run typecheck
+
+      - name: Run tests
+        env:
+          TEST_DATABASE_URL: postgresql://hermes_test:hermes_test@127.0.0.1:5432/hermes_test
+        run: bun run test
+
+      - name: Build frontend
+        run: bun run --filter @hermes/web build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: Deploy
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://hermes-project.ooogarin.my.id
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
+
+      - name: Prepare SSH
+        run: |
+          set -euo pipefail
+
+          install -d -m 0700 "${HOME}/.ssh"
+          printf '%s\n' "${DEPLOY_SSH_KEY}" > "${HOME}/.ssh/deploy_key"
+          printf '%s\n' "${DEPLOY_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
+          chmod 0600 "${HOME}/.ssh/deploy_key" "${HOME}/.ssh/known_hosts"
+
+      - name: Upload release
+        run: |
+          set -euo pipefail
+
+          remote_target="${DEPLOY_USER}@${DEPLOY_HOST}"
+          remote_dir="/opt/hermes/deploy/incoming/${GITHUB_SHA}"
+          ssh_options="-i ${HOME}/.ssh/deploy_key -o IdentitiesOnly=yes"
+
+          ssh ${ssh_options} "${remote_target}" "mkdir -p '${remote_dir}'"
+          rsync -az --delete -e "ssh ${ssh_options}" apps/web/dist/ "${remote_target}:${remote_dir}/dist/"
+          rsync -az -e "ssh ${ssh_options}" scripts/deploy/deploy.sh "${remote_target}:${remote_dir}/deploy.sh"
+
+      - name: Run remote deploy
+        run: |
+          set -euo pipefail
+
+          remote_target="${DEPLOY_USER}@${DEPLOY_HOST}"
+          remote_dir="/opt/hermes/deploy/incoming/${GITHUB_SHA}"
+          ssh_options="-i ${HOME}/.ssh/deploy_key -o IdentitiesOnly=yes"
+          remote_arguments="${GITHUB_SHA} ${remote_dir}/dist"
+
+          if [[ "${{ inputs.skip_frontend }}" == "true" ]]; then
+            remote_arguments="${GITHUB_SHA}"
+          fi
+
+          ssh ${ssh_options} "${remote_target}" "bash '${remote_dir}/deploy.sh' ${remote_arguments}"
+          ssh ${ssh_options} "${remote_target}" "rm -rf '${remote_dir}'"
+
+      - name: Verify public endpoints
+        run: |
+          login_status="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 https://hermes-project.ooogarin.my.id/login)"
+
+          if [[ "${login_status}" != "200" ]]; then
+            echo "Frontend login page returned ${login_status}." >&2
+            exit 1
+          fi
+
+          echo "Public frontend is healthy."
+
+      - name: Remove SSH key
+        if: always()
+        run: rm -f "${HOME}/.ssh/deploy_key"
