@@ -188,3 +188,16 @@ test('preview actions require confirmation before deleting a note', async () => 
   expect(remove).toHaveBeenCalledWith(note.code);
   expect(onDeleted).toHaveBeenCalledOnce();
 });
+
+test('sends category and tag filters unchanged because the server normalizes them', async () => {
+  const fetch = vi.fn(
+    async (_path: string) => new Response(JSON.stringify({ success: true, data: { items: [] } }), { status: 200 }),
+  );
+  vi.stubGlobal('fetch', fetch);
+
+  await api.getNotes({ category: 'Tech/Programming', tag: 'Postgres' });
+
+  const requestedPath = String(fetch.mock.calls[0]?.[0]);
+  expect(requestedPath).toContain('category=Tech%2FProgramming');
+  expect(requestedPath).toContain('tag=Postgres');
+});

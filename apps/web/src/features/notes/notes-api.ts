@@ -69,11 +69,7 @@ export type CreateNoteInput = Pick<
 export const parseNoteType = (value: string | null): NoteType | undefined => noteTypeSchema.safeParse(value).data;
 
 export const getNotes = (filters: NoteListFilters, signal?: AbortSignal): Promise<Note[]> =>
-  apiRequest(
-    `/api/v1/notes${buildQueryString({ ...filters, category: filters.category?.toLowerCase(), tag: filters.tag?.toLowerCase(), limit: 100 })}`,
-    noteListSchema,
-    { signal },
-  );
+  apiRequest(`/api/v1/notes${buildQueryString({ ...filters, limit: 100 })}`, noteListSchema, { signal });
 
 export const getNote = (code: string, signal?: AbortSignal): Promise<Note> =>
   apiRequest(`/api/v1/notes/${encodeURIComponent(code)}`, noteSchema, { signal });

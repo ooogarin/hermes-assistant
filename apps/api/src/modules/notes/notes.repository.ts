@@ -157,12 +157,10 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
   return rows;
 };
 
-export const updateOneByCode = async (
-  code: string,
-  input: UpdateNotePayload,
-  trx?: DatabaseReservedConnection,
-): Promise<NoteRow | null> => {
-  const database = trx ?? getDatabaseClient();
+// A repository method that later needs an explicit transaction takes a required
+// `trx: DatabaseReservedConnection` as its final parameter and runs through it directly.
+export const updateOneByCode = async (code: string, input: UpdateNotePayload): Promise<NoteRow | null> => {
+  const database = getDatabaseClient();
 
   const allowedColumns = [
     'title',
