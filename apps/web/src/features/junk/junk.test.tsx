@@ -6,9 +6,10 @@ import { JunkActions } from '../../components/junk/junk-actions';
 import { JunkDetailPane } from '../../components/junk/junk-detail-pane';
 import { JunkForm } from '../../components/junk/junk-form';
 import { JunkList } from '../../components/junk/junk-list';
+import { getSafeSourceUrl, getSourceName } from '../../lib/formatting/source';
 import JunkDetailPage from './detail/page';
 import * as api from './junk-api';
-import { getJunkExcerpt, getSafeSourceUrl, getSourceName } from './junk-display';
+import { getJunkExcerpt } from './junk-display';
 import JunkListPage from './list/page';
 import type { JunkItem } from './junk-api';
 

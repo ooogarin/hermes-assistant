@@ -4,8 +4,6 @@ const currencyFormatter = new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 0,
 });
 
-const numberFormatter = new Intl.NumberFormat('id-ID');
-
 const percentageFormatter = new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 1,
   minimumFractionDigits: 1,
@@ -32,7 +30,6 @@ const toDate = (value: Date | string): Date => {
 };
 
 export const formatCurrency = (value: number): string => currencyFormatter.format(value);
-export const formatNumber = (value: number): string => numberFormatter.format(value);
 export const formatPercentage = (ratio: number): string => percentageFormatter.format(ratio);
 export const formatDate = (value: Date | string): string => dateFormatter.format(toDate(value));
 export const formatMonth = (value: Date | string): string => monthFormatter.format(toDate(value));

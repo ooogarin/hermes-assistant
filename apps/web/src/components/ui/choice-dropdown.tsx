@@ -4,7 +4,7 @@ import { classNames } from '../../lib/class-names';
 import { Chip } from './chip';
 import { SearchField } from './search-form';
 
-export type ChoiceOption<Value extends string = string> = {
+type ChoiceOption<Value extends string = string> = {
   disabled?: boolean;
   keywords?: string[];
   label: string;

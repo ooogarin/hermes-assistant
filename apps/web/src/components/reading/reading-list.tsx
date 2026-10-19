@@ -8,7 +8,7 @@ import type { ReadingMaterialListItem } from '../../features/reading/reading-api
 const minimumWidth = 'min-w-[calc(clamp(10rem,35cqw,26rem)+42rem)]';
 const columns = `grid ${minimumWidth} grid-cols-[clamp(10rem,35cqw,26rem)_8rem_6rem_minmax(12rem,1fr)_10rem] gap-4`;
 
-export const ReadingStatusLabel = ({ status }: { status: 'read' | 'unread' }) => (
+const ReadingStatusLabel = ({ status }: { status: 'read' | 'unread' }) => (
   <span
     className={
       status === 'read'

@@ -1,8 +1,9 @@
 import { MoveHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getJunkExcerpt, getJunkTitle, getSourceName } from '../../features/junk/junk-display';
+import { getJunkExcerpt, getJunkTitle } from '../../features/junk/junk-display';
 import { formatDate } from '../../lib/formatting/formatters';
+import { getSourceName } from '../../lib/formatting/source';
 import { JunkCategoryLabel, JunkTags } from './junk-badges';
 import type { JunkItem } from '../../features/junk/junk-api';
 

@@ -1,6 +1,6 @@
-export type SourceReference = { sourceName: string | null; sourceUrl: string | null };
+type SourceReference = { sourceName: string | null; sourceUrl: string | null };
 
-export const getSourceHost = (sourceUrl: string | null): string | null => {
+const getSourceHost = (sourceUrl: string | null): string | null => {
   if (sourceUrl === null) return null;
   try {
     return new URL(sourceUrl).hostname.replace(/^www\./, '') || null;

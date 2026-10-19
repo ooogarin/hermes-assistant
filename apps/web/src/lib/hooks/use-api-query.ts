@@ -9,6 +9,7 @@ export const useApiQuery = <Data>(key: string, loadQuery: (signal: AbortSignal) 
   loadQueryRef.current = loadQuery;
 
   const load = useCallback(() => {
+    // The key identifies the query, so a new key has to restart the request.
     void key;
     controllerRef.current?.abort();
     const controller = new AbortController();

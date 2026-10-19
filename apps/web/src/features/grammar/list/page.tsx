@@ -1,6 +1,5 @@
 import { ArrowDownUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
@@ -12,6 +11,8 @@ import { FilterChip } from '../../../components/ui/filter-chip';
 import { FilterPopover } from '../../../components/ui/filter-popover';
 import { SearchForm } from '../../../components/ui/search-form';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
+import { useDraftValue } from '../../../lib/hooks/use-draft-value';
+import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
 import { getGrammarSessions } from '../grammar-api';
 import type { GrammarSessionListFilters } from '../grammar-api';
 
@@ -21,42 +22,30 @@ const sessionLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const sessionListLimit = 100;
 
 const GrammarListPage = () => {
-  const [params, setParams] = useSearchParams();
-  const rawMode = params.get('mode');
-  const rawLevel = params.get('level');
+  const {
+    clearParams,
+    key,
+    query: appliedQuery,
+    searchParams,
+    setParams,
+    setStatus,
+    sort,
+    status,
+  } = useLearningListParams({ statusParam: 'status', statuses: sessionStatuses });
   const filters: GrammarSessionListFilters = {
-    q: params.get('q')?.trim() || undefined,
-    status: sessionStatuses.find((status) => status === params.get('status')),
-    mode: sessionModes.find((mode) => mode === rawMode),
-    level: rawLevel?.trim() || undefined,
+    q: appliedQuery,
+    status,
+    mode: sessionModes.find((mode) => mode === searchParams.get('mode')),
+    level: searchParams.get('level')?.trim() || undefined,
     limit: sessionListLimit,
-    sort: params.get('sort') === 'oldest' ? 'oldest' : 'newest',
+    sort,
   };
-  const [query, setQuery] = useState(filters.q ?? '');
-  const [draftMode, setDraftMode] = useState<GrammarSessionListFilters['mode']>(filters.mode);
-  const [draftLevel, setDraftLevel] = useState(filters.level ?? '');
+  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
+  const [draftMode, setDraftMode] = useDraftValue(filters.mode);
+  const [draftLevel, setDraftLevel] = useDraftValue(filters.level ?? '');
   const [open, setOpen] = useState(false);
-  const sessions = useApiQuery(params.toString(), (signal) => getGrammarSessions(filters, signal));
+  const sessions = useApiQuery(key, (signal) => getGrammarSessions(filters, signal));
   const hasFilters = Boolean(filters.q || filters.status || filters.mode || filters.level);
-
-  useEffect(() => {
-    setDraftMode(sessionModes.find((mode) => mode === rawMode));
-    setDraftLevel(rawLevel?.trim() ?? '');
-  }, [rawMode, rawLevel]);
-
-  const update = (changes: Record<string, string | number | undefined>) => {
-    const next = new URLSearchParams(params);
-
-    for (const [name, value] of Object.entries(changes)) {
-      if (value === undefined || value === '') {
-        next.delete(name);
-      } else {
-        next.set(name, String(value));
-      }
-    }
-
-    setParams(next);
-  };
 
   return (
     <div className='space-y-7'>
@@ -69,9 +58,9 @@ const GrammarListPage = () => {
             value={query}
             onChange={(value) => {
               setQuery(value);
-              if (!value) update({ q: undefined });
+              if (!value) setParams({ q: undefined });
             }}
-            onSearch={() => update({ q: query.trim() || undefined })}
+            onSearch={() => setParams({ q: query.trim() || undefined })}
           />
           <FilterPopover
             activeCount={Number(Boolean(filters.mode)) + Number(Boolean(filters.level))}
@@ -109,7 +98,7 @@ const GrammarListPage = () => {
                   onClick={() => {
                     setDraftMode(undefined);
                     setDraftLevel('');
-                    update({ level: undefined, mode: undefined });
+                    setParams({ level: undefined, mode: undefined });
                     setOpen(false);
                   }}
                 >
@@ -117,7 +106,7 @@ const GrammarListPage = () => {
                 </Button>
                 <Button
                   onClick={() => {
-                    update({ level: draftLevel.trim() || undefined, mode: draftMode });
+                    setParams({ level: draftLevel.trim() || undefined, mode: draftMode });
                     setOpen(false);
                   }}
                 >
@@ -129,20 +118,20 @@ const GrammarListPage = () => {
           <Button
             className='h-12 lg:shrink-0'
             variant='secondary'
-            onClick={() => update({ sort: filters.sort === 'oldest' ? 'newest' : 'oldest' })}
+            onClick={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
           >
-            Urutkan: {filters.sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
+            Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
           </Button>
         </div>
         <fieldset className='flex flex-wrap gap-2'>
           <legend className='sr-only'>Status sesi</legend>
-          <FilterChip active={!filters.status} onClick={() => update({ status: undefined })}>
+          <FilterChip active={!status} onClick={() => setStatus(undefined)}>
             Semua
           </FilterChip>
-          <FilterChip active={filters.status === 'active'} onClick={() => update({ status: 'active' })}>
+          <FilterChip active={status === 'active'} onClick={() => setStatus('active')}>
             Aktif
           </FilterChip>
-          <FilterChip active={filters.status === 'completed'} onClick={() => update({ status: 'completed' })}>
+          <FilterChip active={status === 'completed'} onClick={() => setStatus('completed')}>
             Selesai
           </FilterChip>
         </fieldset>
@@ -162,7 +151,7 @@ const GrammarListPage = () => {
             }
             action={
               hasFilters ? (
-                <Button variant='secondary' onClick={() => setParams(new URLSearchParams())}>
+                <Button variant='secondary' onClick={clearParams}>
                   Hapus filter
                 </Button>
               ) : undefined

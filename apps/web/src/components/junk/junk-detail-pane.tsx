@@ -1,7 +1,8 @@
 import { ExternalLink, Maximize2, X } from 'lucide-react';
 import { useState } from 'react';
-import { getJunkTitle, getSafeSourceUrl, getSourceName } from '../../features/junk/junk-display';
+import { getJunkTitle } from '../../features/junk/junk-display';
 import { formatDate } from '../../lib/formatting/formatters';
+import { getSafeSourceUrl, getSourceName } from '../../lib/formatting/source';
 import { CopyButton } from '../ui/copy-button';
 import { detailContentClassName } from '../ui/detail-layout';
 import { IconButton } from '../ui/icon-button';

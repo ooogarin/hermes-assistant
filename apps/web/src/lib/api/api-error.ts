@@ -1,9 +1,4 @@
-export type ApiErrorCode =
-  | 'INVALID_RESPONSE'
-  | 'NETWORK_ERROR'
-  | 'REQUEST_FAILED'
-  | 'RESOURCE_NOT_FOUND'
-  | 'UNAUTHORIZED';
+type ApiErrorCode = 'INVALID_RESPONSE' | 'NETWORK_ERROR' | 'REQUEST_FAILED' | 'RESOURCE_NOT_FOUND' | 'UNAUTHORIZED';
 
 type ApiErrorOptions = {
   code: ApiErrorCode | string;

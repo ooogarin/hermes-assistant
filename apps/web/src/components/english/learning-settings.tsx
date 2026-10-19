@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/form-field';
 import type { FormEvent } from 'react';
 
-export type LearningSettings = {
+type LearningSettings = {
   defaultLevel: string;
   defaultWordCount: number;
   defaultQuestionCount?: number;

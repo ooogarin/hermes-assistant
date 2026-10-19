@@ -1,6 +1,5 @@
 import { ArrowDownUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
@@ -13,43 +12,41 @@ import { FilterPopover } from '../../../components/ui/filter-popover';
 import { TextField } from '../../../components/ui/form-field';
 import { SearchForm } from '../../../components/ui/search-form';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
+import { useDraftValue } from '../../../lib/hooks/use-draft-value';
+import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
 import { getReadingMaterials } from '../reading-api';
 import type { ReadingListFilters } from '../reading-api';
 
+const readingStatuses = ['read', 'unread'] as const;
+
 const ReadingListPage = () => {
-  const [params, setParams] = useSearchParams();
-  const rawStatus = params.get('reading_status');
-  const levelsKey = params.get('levels') ?? '';
+  const {
+    clearParams,
+    key,
+    query: appliedQuery,
+    searchParams,
+    setParams,
+    setStatus,
+    sort,
+    status,
+  } = useLearningListParams({ statusParam: 'reading_status', statuses: readingStatuses });
+  const levelsKey = searchParams.get('levels') ?? '';
   const filters: ReadingListFilters = {
-    q: params.get('q')?.trim() || undefined,
-    reading_status: rawStatus === 'read' || rawStatus === 'unread' ? rawStatus : undefined,
+    q: appliedQuery,
+    reading_status: status,
     levels: levelsKey.split(',').filter(Boolean),
-    genre: params.get('genre')?.trim() || undefined,
+    genre: searchParams.get('genre')?.trim() || undefined,
     limit: 100,
-    sort: params.get('sort') === 'oldest' ? 'oldest' : 'newest',
+    sort,
   };
-  const [query, setQuery] = useState(filters.q ?? '');
-  const [levels, setLevels] = useState(filters.levels ?? []);
-  const [genre, setGenre] = useState(filters.genre ?? '');
+  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
+  const [draftLevelsKey, setDraftLevelsKey] = useDraftValue(levelsKey);
+  const [draftGenre, setDraftGenre] = useDraftValue(filters.genre ?? '');
   const [open, setOpen] = useState(false);
-  const key = JSON.stringify(filters);
-  useEffect(() => {
-    setQuery(filters.q ?? '');
-    setGenre(filters.genre ?? '');
-    setLevels(levelsKey.split(',').filter(Boolean));
-  }, [filters.q, filters.genre, levelsKey]);
-  const update = (changes: Partial<ReadingListFilters>) => {
-    const next = { ...filters, ...changes };
-    const value = new URLSearchParams();
-    if (next.q) value.set('q', next.q);
-    if (next.reading_status) value.set('reading_status', next.reading_status);
-    if (next.genre) value.set('genre', next.genre);
-    if (next.levels?.length) value.set('levels', next.levels.join(','));
-    if (next.sort === 'oldest') value.set('sort', 'oldest');
-    setParams(value);
-  };
   const materials = useApiQuery(key, (signal) => getReadingMaterials(filters, signal));
   const hasFilters = Boolean(filters.q || filters.reading_status || filters.levels?.length || filters.genre);
+  const draftLevels = draftLevelsKey.split(',').filter(Boolean);
+
   return (
     <div className='space-y-7'>
       <PageHeader title='Reading' actions={<EnglishSettingsLink to='/english/reading/settings' />} />
@@ -61,9 +58,9 @@ const ReadingListPage = () => {
             value={query}
             onChange={(value) => {
               setQuery(value);
-              if (!value) update({ q: undefined });
+              if (!value) setParams({ q: undefined });
             }}
-            onSearch={() => update({ q: query.trim() || undefined })}
+            onSearch={() => setParams({ q: query.trim() || undefined })}
           />
           <FilterPopover
             activeCount={Number(Boolean(filters.genre)) + (filters.levels?.length ?? 0)}
@@ -78,23 +75,23 @@ const ReadingListPage = () => {
                 mode='multiple'
                 label='Filter level'
                 placeholder='Semua level'
-                value={levels}
-                onChange={setLevels}
+                value={draftLevels}
+                onChange={(value) => setDraftLevelsKey(value.join(','))}
                 options={['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((value) => ({ value, label: value }))}
               />
               <TextField
                 label='Genre'
                 placeholder='Semua genre'
-                value={genre}
-                onChange={(event) => setGenre(event.target.value)}
+                value={draftGenre}
+                onChange={(event) => setDraftGenre(event.target.value)}
               />
               <div className='flex justify-between gap-3'>
                 <Button
                   variant='secondary'
                   onClick={() => {
-                    setGenre('');
-                    setLevels([]);
-                    update({ genre: undefined, levels: [] });
+                    setDraftGenre('');
+                    setDraftLevelsKey('');
+                    setParams({ genre: undefined, levels: undefined });
                     setOpen(false);
                   }}
                 >
@@ -102,7 +99,7 @@ const ReadingListPage = () => {
                 </Button>
                 <Button
                   onClick={() => {
-                    update({ genre: genre.trim() || undefined, levels });
+                    setParams({ genre: draftGenre.trim() || undefined, levels: draftLevelsKey });
                     setOpen(false);
                   }}
                 >
@@ -114,20 +111,20 @@ const ReadingListPage = () => {
           <Button
             className='h-12 lg:shrink-0'
             variant='secondary'
-            onClick={() => update({ sort: filters.sort === 'oldest' ? 'newest' : 'oldest' })}
+            onClick={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
           >
-            Urutkan: {filters.sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
+            Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
           </Button>
         </div>
         <fieldset className='flex flex-wrap gap-2'>
           <legend className='sr-only'>Status baca</legend>
-          <FilterChip active={!filters.reading_status} onClick={() => update({ reading_status: undefined })}>
+          <FilterChip active={!status} onClick={() => setStatus(undefined)}>
             Semua
           </FilterChip>
-          <FilterChip active={filters.reading_status === 'unread'} onClick={() => update({ reading_status: 'unread' })}>
+          <FilterChip active={status === 'unread'} onClick={() => setStatus('unread')}>
             Belum dibaca
           </FilterChip>
-          <FilterChip active={filters.reading_status === 'read'} onClick={() => update({ reading_status: 'read' })}>
+          <FilterChip active={status === 'read'} onClick={() => setStatus('read')}>
             Sudah dibaca
           </FilterChip>
         </fieldset>
@@ -145,7 +142,7 @@ const ReadingListPage = () => {
             }
             action={
               hasFilters ? (
-                <Button variant='secondary' onClick={() => setParams(new URLSearchParams())}>
+                <Button variant='secondary' onClick={clearParams}>
                   Hapus filter
                 </Button>
               ) : undefined

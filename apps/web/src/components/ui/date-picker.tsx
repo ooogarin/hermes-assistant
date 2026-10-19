@@ -1,10 +1,9 @@
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { classNames } from '../../lib/class-names';
-import { formatDate } from '../../lib/formatting/formatters';
+import { formatDate, formatMonth } from '../../lib/formatting/formatters';
 
 const weekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-const monthFormatter = new Intl.DateTimeFormat('id-ID', { month: 'long', year: 'numeric' });
 
 const toDateValue = (date: Date): string => {
   const year = date.getFullYear();
@@ -158,7 +157,7 @@ export const DatePicker = ({
             >
               <ChevronLeft aria-hidden='true' size={18} />
             </button>
-            <strong className='text-sm font-semibold capitalize text-ink'>{monthFormatter.format(visibleMonth)}</strong>
+            <strong className='text-sm font-semibold capitalize text-ink'>{formatMonth(visibleMonth)}</strong>
             <button
               type='button'
               className='grid size-9 place-items-center rounded-control text-ink-muted hover:bg-surface-subtle hover:text-ink disabled:cursor-not-allowed disabled:opacity-35'

@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { Button } from '../../../components/ui/button';
@@ -10,8 +8,9 @@ import { WritingNavigation } from '../../../components/writing/writing-navigatio
 import { WritingSubmissionList } from '../../../components/writing/writing-submission-list';
 import { WritingToolbar } from '../../../components/writing/writing-toolbar';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
+import { useDraftValue } from '../../../lib/hooks/use-draft-value';
+import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
 import { getAllWritingSubmissions } from '../writing-api';
-import type { WritingSubmissionFilters } from '../writing-api';
 
 const statuses = ['not_analyzed', 'analyzed'] as const;
 const writingTypes = ['free', 'prompted'] as const;
@@ -22,60 +21,49 @@ const statusOptions = [
 ] as const;
 
 const WritingListPage = () => {
-  const [params, setParams] = useSearchParams();
-  const appliedQuery = params.get('q')?.trim() || undefined;
-  const [query, setQuery] = useState(appliedQuery ?? '');
-  const analysisStatus = statuses.find((status) => status === params.get('analysis_status'));
-  const writingType = writingTypes.find((type) => type === params.get('writing_type'));
-  const [draftWritingType, setDraftWritingType] = useState<WritingSubmissionFilters['writingType']>(writingType);
-  const sort = params.get('sort') === 'oldest' ? 'oldest' : 'newest';
-  const submissions = useApiQuery(params.toString(), (signal) =>
-    getAllWritingSubmissions({ q: appliedQuery, analysisStatus, writingType, sort }, signal),
+  const {
+    clearParams,
+    key,
+    query: appliedQuery,
+    searchParams,
+    setParams,
+    setStatus,
+    sort,
+    status,
+  } = useLearningListParams({ statusParam: 'analysis_status', statuses });
+  const writingType = writingTypes.find((type) => type === searchParams.get('writing_type'));
+  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
+  const [draftWritingType, setDraftWritingType] = useDraftValue(writingType);
+  const submissions = useApiQuery(key, (signal) =>
+    getAllWritingSubmissions({ q: appliedQuery, analysisStatus: status, writingType, sort }, signal),
   );
-  const hasFilters = Boolean(appliedQuery || analysisStatus || writingType);
-
-  useEffect(() => setQuery(appliedQuery ?? ''), [appliedQuery]);
-
-  const update = (changes: Record<string, string | number | undefined>) => {
-    const next = new URLSearchParams(params);
-    next.delete('page');
-
-    for (const [name, value] of Object.entries(changes)) {
-      if (value === undefined || value === '') {
-        next.delete(name);
-      } else {
-        next.set(name, String(value));
-      }
-    }
-
-    setParams(next);
-  };
+  const hasFilters = Boolean(appliedQuery || status || writingType);
 
   return (
     <div className='space-y-7'>
       <WritingNavigation />
       <WritingToolbar
         activeFilterCount={writingType === undefined ? 0 : 1}
-        onApplyFilters={() => update({ writing_type: draftWritingType })}
+        onApplyFilters={() => setParams({ writing_type: draftWritingType })}
         onOpenFilters={() => setDraftWritingType(writingType)}
         onQueryChange={(value) => {
           setQuery(value);
 
           if (value === '') {
-            update({ q: undefined });
+            setParams({ q: undefined });
           }
         }}
         onResetFilters={() => {
           setDraftWritingType(undefined);
-          update({ writing_type: undefined });
+          setParams({ writing_type: undefined });
         }}
-        onSearch={() => update({ q: query.trim() })}
-        onSortChange={() => update({ sort: sort === 'newest' ? 'oldest' : 'newest' })}
-        onStatusChange={(value) => update({ analysis_status: value })}
+        onSearch={() => setParams({ q: query.trim() })}
+        onSortChange={() => setParams({ sort: sort === 'newest' ? 'oldest' : 'newest' })}
+        onStatusChange={(value) => setStatus(value)}
         query={query}
         searchLabel='Cari tulisan'
         sort={sort}
-        status={analysisStatus}
+        status={status}
         statuses={[...statusOptions]}
       >
         <Field label='Jenis tulisan'>
@@ -105,7 +93,7 @@ const WritingListPage = () => {
           }
           action={
             hasFilters ? (
-              <Button variant='secondary' onClick={() => setParams(new URLSearchParams())}>
+              <Button variant='secondary' onClick={clearParams}>
                 Hapus filter
               </Button>
             ) : (

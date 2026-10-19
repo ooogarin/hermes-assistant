@@ -1,7 +1,5 @@
 import type { JunkItem } from './junk-api';
 
-export { getSafeSourceUrl, getSourceHost, getSourceName } from '../../lib/formatting/source';
-
 const truncate = (value: string, length: number): string =>
   value.length > length ? `${value.slice(0, length).trimEnd()}…` : value;
 

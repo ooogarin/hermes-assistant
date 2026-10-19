@@ -1,60 +1,59 @@
-import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-const optional = (value: string | null): string | undefined => value?.trim() || undefined;
-const list = (value: string | null): string[] => [
-  ...new Set(
-    (value ?? '')
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean),
-  ),
-];
+export type ListParamValue = string | string[] | undefined;
 
-export const useLearningListParams = <Status extends string>(statuses: readonly Status[]) => {
+type LearningListParamsOptions<Status extends string> = {
+  statusParam: string;
+  statuses: readonly Status[];
+};
+
+/**
+ * Owns the browser URL as the single source of truth for a learning list page.
+ *
+ * The page reads the applied filters from the returned values and writes changes
+ * back with `setParams`, so a shared link always reproduces the same list.
+ */
+export const useLearningListParams = <Status extends string>({
+  statusParam,
+  statuses,
+}: LearningListParamsOptions<Status>) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const appliedQuery = optional(searchParams.get('q'));
-  const appliedGenre = optional(searchParams.get('genre'));
-  const levels = list(searchParams.get('levels') ?? searchParams.get('level'));
-  const rawStatus = optional(searchParams.get('status'));
+
+  const setParams = (changes: Record<string, ListParamValue>) => {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+
+      for (const [name, value] of Object.entries(changes)) {
+        if (value === undefined || value === '') {
+          next.delete(name);
+        } else if (Array.isArray(value)) {
+          next.set(name, value.join(','));
+        } else {
+          next.set(name, value);
+        }
+      }
+
+      return next;
+    });
+  };
+
+  const clearParams = () => setSearchParams(new URLSearchParams());
+
+  const query = searchParams.get('q')?.trim() || undefined;
+  const sort: 'newest' | 'oldest' = searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest';
+  const rawStatus = searchParams.get(statusParam)?.trim();
   const status = statuses.find((value) => value === rawStatus);
-  const rawPage = Number(searchParams.get('page') ?? '1');
-  const page = Number.isInteger(rawPage) && rawPage > 0 ? rawPage : 1;
-  const [query, setQuery] = useState(appliedQuery ?? '');
-  const [genre, setGenre] = useState(appliedGenre ?? '');
 
-  useEffect(() => setQuery(appliedQuery ?? ''), [appliedQuery]);
-  useEffect(() => setGenre(appliedGenre ?? ''), [appliedGenre]);
-
-  const update = (changes: Record<string, string | number | undefined>) => {
-    const next = new URLSearchParams(searchParams);
-    for (const [name, value] of Object.entries(changes)) {
-      if (value === undefined || value === '') next.delete(name);
-      else next.set(name, String(value));
-    }
-    setSearchParams(next);
-  };
-  const changeQuery = (value: string) => {
-    setQuery(value);
-    if (value === '' && appliedQuery !== undefined) update({ page: 1, q: undefined });
-  };
-  const changeGenre = (value: string) => {
-    setGenre(value);
-    if (value === '' && appliedGenre !== undefined) update({ genre: undefined, page: 1 });
-  };
+  const setStatus = (value?: Status) => setParams({ [statusParam]: value });
 
   return {
-    clearFilters: () => setSearchParams(new URLSearchParams()),
-    filters: { genre: appliedGenre, levels, page, q: appliedQuery, status },
-    genre,
+    clearParams,
     key: searchParams.toString(),
     query,
-    setGenre: changeGenre,
-    setLevels: (value: string[]) => update({ level: undefined, levels: value.join(',') || undefined, page: 1 }),
-    setPage: (value: number) => update({ page: value }),
-    setQuery: changeQuery,
-    setStatus: (value?: Status) => update({ page: 1, status: value }),
-    submitGenre: () => update({ genre: optional(genre), page: 1 }),
-    submitQuery: () => update({ page: 1, q: optional(query) }),
+    searchParams,
+    setParams,
+    setStatus,
+    sort,
+    status,
   };
 };

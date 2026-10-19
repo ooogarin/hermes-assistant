@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 
+const discardMessage = 'Perubahan belum disimpan. Tetap kembali?';
+
 const dirtyForms = new Set<symbol>();
 
-export const confirmDiscardChanges = (): boolean =>
-  dirtyForms.size === 0 || window.confirm('Perubahan belum disimpan. Tetap kembali?');
+export const confirmDiscardChanges = (): boolean => dirtyForms.size === 0 || window.confirm(discardMessage);
 
 export const useUnsavedChanges = (dirty: boolean) => {
   useEffect(() => {
@@ -22,5 +23,5 @@ export const useUnsavedChanges = (dirty: boolean) => {
     };
   }, [dirty]);
 
-  return () => !dirty || window.confirm('Perubahan belum disimpan. Tetap kembali?');
+  return () => !dirty || window.confirm(discardMessage);
 };

@@ -1,4 +1,4 @@
-import { CloudAlert, FileQuestion, SearchX } from 'lucide-react';
+import { CloudAlert, FileQuestion } from 'lucide-react';
 import { Button } from '../ui/button';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -19,19 +19,6 @@ export const ContentState = ({ action, description, icon: Icon = FileQuestion, t
     <p className='mt-2 max-w-md text-sm leading-6 text-ink-muted'>{description}</p>
     {action === undefined ? null : <div className='mt-6'>{action}</div>}
   </section>
-);
-
-export const NoResultsState = ({ onClear }: { onClear: () => void }) => (
-  <ContentState
-    title='Tidak ada hasil yang cocok'
-    description='Coba gunakan kata kunci atau filter lain.'
-    icon={SearchX}
-    action={
-      <Button variant='secondary' onClick={onClear}>
-        Hapus pencarian
-      </Button>
-    }
-  />
 );
 
 export const ErrorState = ({ onRetry }: { onRetry: () => void }) => (

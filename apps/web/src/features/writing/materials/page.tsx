@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { Button } from '../../../components/ui/button';
@@ -9,83 +7,77 @@ import { WritingList } from '../../../components/writing/writing-list';
 import { WritingNavigation } from '../../../components/writing/writing-navigation';
 import { WritingToolbar } from '../../../components/writing/writing-toolbar';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
+import { useDraftValue } from '../../../lib/hooks/use-draft-value';
+import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
 import { getAllWritingMaterials } from '../writing-api';
 import type { WritingListFilters } from '../writing-api';
 
 const statuses = ['unsubmitted', 'submitted', 'reviewed'] as const;
+const statusOptions = [
+  { label: 'Semua' },
+  { label: 'Belum ada tulisan', value: 'unsubmitted' },
+  { label: 'Belum dianalisis', value: 'submitted' },
+  { label: 'Ada analisis', value: 'reviewed' },
+] as const;
 
 const WritingMaterialsPage = () => {
-  const [params, setParams] = useSearchParams();
-  const appliedQuery = params.get('q')?.trim() || undefined;
-  const genre = params.get('genre')?.trim() || undefined;
-  const levels = (params.get('levels') ?? '').split(',').filter(Boolean);
-  const status = statuses.find((value) => value === params.get('status'));
-  const [query, setQuery] = useState(appliedQuery ?? '');
-  const [draftGenre, setDraftGenre] = useState(genre ?? '');
-  const [draftLevels, setDraftLevels] = useState(levels);
-  const sort = params.get('sort') === 'oldest' ? 'oldest' : 'newest';
+  const {
+    clearParams,
+    key,
+    query: appliedQuery,
+    searchParams,
+    setParams,
+    setStatus,
+    sort,
+    status,
+  } = useLearningListParams({ statusParam: 'status', statuses });
+  const genre = searchParams.get('genre')?.trim() || undefined;
+  const levelsKey = searchParams.get('levels') ?? '';
+  const levels = levelsKey.split(',').filter(Boolean);
   const filters: Omit<WritingListFilters, 'page' | 'limit'> = { q: appliedQuery, genre, levels, status, sort };
-
-  useEffect(() => setQuery(appliedQuery ?? ''), [appliedQuery]);
-
-  const update = (changes: Record<string, string | undefined>) => {
-    const next = new URLSearchParams(params);
-    next.delete('page');
-
-    for (const [name, value] of Object.entries(changes)) {
-      if (value === undefined || value === '') {
-        next.delete(name);
-      } else {
-        next.set(name, value);
-      }
-    }
-
-    setParams(next);
-  };
-  const materials = useApiQuery(params.toString(), (signal) => getAllWritingMaterials(filters, signal));
+  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
+  const [draftGenre, setDraftGenre] = useDraftValue(genre ?? '');
+  const [draftLevelsKey, setDraftLevelsKey] = useDraftValue(levelsKey);
+  const materials = useApiQuery(key, (signal) => getAllWritingMaterials(filters, signal));
   const hasFilters = Boolean(filters.q || filters.status || levels.length || filters.genre);
+  const draftLevels = draftLevelsKey.split(',').filter(Boolean);
 
   return (
     <div className='space-y-7'>
       <WritingNavigation />
       <WritingToolbar
         activeFilterCount={Number(Boolean(filters.genre)) + Number(levels.length > 0)}
-        onApplyFilters={() => update({ genre: draftGenre.trim(), levels: draftLevels.join(','), level: undefined })}
+        onApplyFilters={() => setParams({ genre: draftGenre.trim(), levels: draftLevelsKey, level: undefined })}
         onOpenFilters={() => {
-          setDraftGenre(filters.genre ?? '');
-          setDraftLevels(levels);
+          setDraftGenre(genre ?? '');
+          setDraftLevelsKey(levelsKey);
         }}
         onQueryChange={(value) => {
           setQuery(value);
 
           if (value === '') {
-            update({ q: undefined });
+            setParams({ q: undefined });
           }
         }}
         onResetFilters={() => {
           setDraftGenre('');
-          setDraftLevels([]);
-          update({ genre: undefined, levels: undefined, level: undefined });
+          setDraftLevelsKey('');
+          setParams({ genre: undefined, levels: undefined, level: undefined });
         }}
-        onSearch={() => update({ q: query.trim() })}
-        onSortChange={() => update({ sort: sort === 'newest' ? 'oldest' : 'newest' })}
-        onStatusChange={(value) => update({ status: value })}
+        onSearch={() => setParams({ q: query.trim() })}
+        onSortChange={() => setParams({ sort: sort === 'newest' ? 'oldest' : 'newest' })}
+        onStatusChange={(value) => setStatus(value)}
         query={query}
         searchLabel='Cari prompt'
         sort={sort}
-        status={filters.status}
-        statuses={[
-          { label: 'Semua' },
-          { label: 'Belum ada tulisan', value: 'unsubmitted' },
-          { label: 'Belum dianalisis', value: 'submitted' },
-          { label: 'Ada analisis', value: 'reviewed' },
-        ]}
+        status={status}
+        statuses={[...statusOptions]}
       >
         <Field label='Level'>
           <ChoiceDropdown
             label='Filter level'
             mode='multiple'
-            onChange={setDraftLevels}
+            onChange={(value) => setDraftLevelsKey(value.join(','))}
             options={['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((value) => ({ label: value, value }))}
             placeholder='Semua level'
             searchable={false}
@@ -113,7 +105,7 @@ const WritingMaterialsPage = () => {
           }
           action={
             hasFilters ? (
-              <Button variant='secondary' onClick={() => setParams(new URLSearchParams())}>
+              <Button variant='secondary' onClick={clearParams}>
                 Hapus filter
               </Button>
             ) : undefined

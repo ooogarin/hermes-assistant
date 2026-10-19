@@ -124,9 +124,6 @@ export const updateFinanceTransaction = (
     method: 'PATCH',
   });
 
-export const deleteFinanceTransaction = (date: string, dailyNumber: number): Promise<void> =>
-  apiRequest(`/api/v1/finance/transactions/${date}/${dailyNumber}`, z.undefined(), { method: 'DELETE' });
-
 export const getFinanceDailySummary = async (
   range: FinanceRange,
   signal?: AbortSignal,
