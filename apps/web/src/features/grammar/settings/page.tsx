@@ -1,10 +1,10 @@
-import { ArrowLeft, CircleGauge, Info, ListChecks, Repeat2 } from 'lucide-react';
+import { ArrowLeft, CircleGauge, ListChecks, Repeat2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SettingsLevelPicker, SettingsNumberField, SettingsSummary } from '../../../components/english/settings-parts';
 import { ErrorState } from '../../../components/feedback/content-state';
 import { Skeleton } from '../../../components/feedback/skeleton';
 import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/form-field';
 import { classNames } from '../../../lib/class-names';
 import { formatDate } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
@@ -12,8 +12,6 @@ import { useUnsavedChanges } from '../../../lib/hooks/use-unsaved-changes';
 import { getGrammarSettings, updateGrammarSettings } from '../grammar-api';
 import type { FormEvent } from 'react';
 import type { GrammarSettings, GrammarSettingsInput } from '../grammar-api';
-
-const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 const LoadingState = () => (
   <div className='grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)]'>
@@ -41,23 +39,10 @@ const Summary = ({ settings }: { settings: GrammarSettings }) => {
   ];
 
   return (
-    <aside className='border-t border-border pt-8 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0'>
-      <h2 className='text-xl font-semibold text-ink'>Ringkasan default</h2>
-      <dl className='mt-5'>
-        {rows.map(({ icon: Icon, label, value }) => (
-          <div key={label} className='grid grid-cols-[1.5rem_1fr_auto] items-center gap-4 border-b border-border py-5'>
-            <Icon aria-hidden='true' className='text-primary' size={20} strokeWidth={1.8} />
-            <dt className='text-sm text-ink'>{label}</dt>
-            <dd className='text-right text-sm font-medium text-ink'>{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className='mt-6 flex gap-3 text-sm leading-6 text-ink-muted'>
-        <Info aria-hidden='true' className='mt-0.5 shrink-0 text-primary' size={20} />
-        Latihan on-request dan exam dapat memakai level, area, point, tipe, atau jumlah soal berbeda tanpa mengubah
-        pengaturan default ini.
-      </p>
-    </aside>
+    <SettingsSummary
+      note='Latihan on-request dan exam dapat memakai level, area, point, tipe, atau jumlah soal berbeda tanpa mengubah pengaturan default ini.'
+      rows={rows}
+    />
   );
 };
 
@@ -119,48 +104,26 @@ const SettingsForm = ({ initial }: { initial: GrammarSettings }) => {
       <div className='mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)]'>
         <form onSubmit={submit}>
           <fieldset disabled={saving}>
-            <legend className='text-xl font-semibold text-ink'>Level default</legend>
-            <p className='mt-2 text-sm leading-6 text-ink-muted'>
-              Pilih level CEFR default untuk latihan grammar baru.
-            </p>
-            <div className='mt-5 grid grid-cols-3 overflow-hidden rounded-control border border-border sm:grid-cols-6'>
-              {levels.map((level) => (
-                <button
-                  key={level}
-                  className={classNames(
-                    'min-h-14 border-b border-r border-border text-sm font-semibold transition-colors last:border-r-0 sm:border-b-0',
-                    defaultLevel === level
-                      ? 'bg-primary-subtle text-primary ring-1 ring-inset ring-primary'
-                      : 'bg-surface text-ink hover:bg-surface-subtle',
-                  )}
-                  onClick={() => setDefaultLevel(level)}
-                  type='button'
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-            {levels.includes(saved.defaultLevel) ? null : (
-              <p className='mt-3 text-sm text-ink-muted'>Nilai tersimpan sebelumnya: {saved.defaultLevel}</p>
-            )}
+            <SettingsLevelPicker
+              description='Pilih level CEFR default untuk latihan grammar baru.'
+              level={defaultLevel}
+              savedLevel={saved.defaultLevel}
+              onChange={setDefaultLevel}
+            />
 
             <section className='mt-9 border-t border-border pt-8'>
               <h2 className='text-xl font-semibold text-ink'>Latihan harian</h2>
-              <label className='mt-5 grid gap-2 text-sm font-medium text-ink' htmlFor='grammar-daily-question-count'>
-                Jumlah soal per latihan
-                <span className='flex min-h-12 items-center overflow-hidden rounded-control border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15'>
-                  <Input
-                    className='min-h-0 min-w-0 flex-1 border-0 bg-transparent px-4 focus:ring-0'
-                    id='grammar-daily-question-count'
-                    min={1}
-                    max={100}
-                    type='number'
-                    value={Number.isNaN(dailyQuestionCount) ? '' : dailyQuestionCount}
-                    onChange={(event) => setDailyQuestionCount(event.target.valueAsNumber)}
-                  />
-                  <span className='border-l border-border px-4 text-ink-muted'>soal</span>
-                </span>
-              </label>
+              <SettingsNumberField
+                divided
+                disabled={saving}
+                id='grammar-daily-question-count'
+                label='Jumlah soal per latihan'
+                max={100}
+                min={1}
+                unit='soal'
+                value={dailyQuestionCount}
+                onChange={setDailyQuestionCount}
+              />
               <p className={classNames('mt-3 text-sm', valid ? 'text-ink-muted' : 'text-danger')}>
                 {valid
                   ? 'Digunakan untuk latihan grammar dari daily practice.'

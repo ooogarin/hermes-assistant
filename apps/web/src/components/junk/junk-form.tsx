@@ -1,16 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
-import { Button } from '../ui/button';
+import { ContentForm } from '../personal-content/content-form';
 import { TextAreaField, TextField } from '../ui/form-field';
 import { TagInput } from '../ui/tag-input';
-import type { FormEvent } from 'react';
 
 export type JunkFormValues = {
   category: string;
   contentText: string | null;
-  sourceUrl: string | null;
   sourceName: string | null;
+  sourceUrl: string | null;
   tags: string[];
   title: string | null;
 };
@@ -23,15 +20,37 @@ type JunkFormProps = {
   submitLabel: string;
 };
 
+type JunkFormState = {
+  category: string;
+  contentText: string;
+  sourceName: string;
+  sourceUrl: string;
+  tags: string[];
+  title: string;
+};
+
 const emptyValues: JunkFormValues = {
   category: '',
   contentText: null,
-  sourceUrl: null,
   sourceName: null,
+  sourceUrl: null,
   tags: [],
   title: null,
 };
+
+const toState = (values: JunkFormValues): JunkFormState => ({
+  category: values.category,
+  contentText: values.contentText ?? '',
+  sourceName: values.sourceName ?? '',
+  sourceUrl: values.sourceUrl ?? '',
+  tags: values.tags,
+  title: values.title ?? '',
+});
+
 const optionalValue = (value: string): string | null => value.trim() || null;
+
+const isValidUrl = (value: string): boolean =>
+  value.trim() === '' || (URL.canParse(value.trim()) && ['http:', 'https:'].includes(new URL(value.trim()).protocol));
 
 export const JunkForm = ({
   cancelTo,
@@ -40,116 +59,82 @@ export const JunkForm = ({
   onSubmit,
   submitLabel,
 }: JunkFormProps) => {
-  const navigate = useNavigate();
-  const [title, setTitle] = useState(initial.title ?? '');
-  const [category, setCategory] = useState(initial.category);
-  const [contentText, setContentText] = useState(initial.contentText ?? '');
-  const [sourceUrl, setSourceUrl] = useState(initial.sourceUrl ?? '');
-  const [sourceName, setSourceName] = useState(initial.sourceName ?? '');
-  const [tags, setTags] = useState(initial.tags);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string>();
-  const validUrl =
-    sourceUrl.trim() === '' ||
-    (URL.canParse(sourceUrl.trim()) && ['http:', 'https:'].includes(new URL(sourceUrl.trim()).protocol));
-  const valid =
-    category.trim().length > 0 &&
-    (hasRawText || [title, contentText, sourceUrl].some((value) => value.trim().length > 0)) &&
-    tags.length <= 50 &&
-    tags.every((tag) => tag.length <= 64) &&
-    validUrl;
-  const dirty =
-    title !== (initial.title ?? '') ||
-    category !== initial.category ||
-    contentText !== (initial.contentText ?? '') ||
-    sourceUrl !== (initial.sourceUrl ?? '') ||
-    sourceName !== (initial.sourceName ?? '') ||
-    tags.length !== initial.tags.length ||
-    tags.some((tag, index) => tag !== initial.tags[index]);
-  const canLeave = useUnsavedChanges(dirty);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!dirty || !valid) return;
-    setSaving(true);
-    setError(undefined);
-    try {
-      await onSubmit({
-        category: category.trim(),
-        contentText: optionalValue(contentText),
-        sourceUrl: optionalValue(sourceUrl),
-        sourceName: optionalValue(sourceName),
-        tags,
-        title: optionalValue(title),
-      });
-    } catch {
-      setError('Data belum dapat disimpan. Coba lagi.');
-      setSaving(false);
-    }
-  };
+  const [state] = useState(() => toState(initial));
 
   return (
-    <form className='mt-7 rounded-surface border border-border bg-surface p-6 sm:p-8' onSubmit={submit}>
-      <div className='grid gap-6'>
-        <TextField
-          disabled={saving}
-          label='Judul'
-          maxLength={300}
-          onChange={(event) => setTitle(event.target.value)}
-          value={title}
-        />
-        <TextField
-          disabled={saving}
-          label='Kategori'
-          maxLength={100}
-          onChange={(event) => setCategory(event.target.value)}
-          required
-          value={category}
-        />
-        <TextAreaField
-          disabled={saving}
-          label='Deskripsi'
-          maxLength={20_000}
-          onChange={(event) => setContentText(event.target.value)}
-          value={contentText}
-        />
-        <TextField
-          disabled={saving}
-          label='URL sumber'
-          maxLength={2_000}
-          onChange={(event) => setSourceUrl(event.target.value)}
-          type='url'
-          value={sourceUrl}
-        />
-        <TextField
-          disabled={saving}
-          label='Nama sumber (opsional)'
-          maxLength={200}
-          placeholder='Contoh: YouTube atau nama penerbit'
-          onChange={(event) => setSourceName(event.target.value)}
-          value={sourceName}
-        />
-        <p className='-mt-4 text-sm text-ink-muted'>Jika kosong, nama platform atau domain akan digunakan.</p>
-        <TagInput disabled={saving} label='Tags' lowercase onChange={setTags} value={tags} />
-      </div>
-      {!valid && dirty ? (
-        <p className='mt-4 text-sm text-danger'>
-          Kategori dan minimal salah satu judul, deskripsi, atau URL wajib diisi. URL harus HTTP(S), maksimal 50 tag.
-        </p>
-      ) : null}
-      {error === undefined ? null : (
-        <p className='mt-4 text-sm text-danger' role='alert'>
-          {error}
-        </p>
+    <ContentForm<JunkFormState>
+      cancelTo={cancelTo}
+      initial={state}
+      invalidMessage='Kategori dan minimal salah satu judul, deskripsi, atau URL wajib diisi. URL harus HTTP(S), maksimal 50 tag.'
+      isValid={(values) =>
+        values.category.trim().length > 0 &&
+        (hasRawText || [values.title, values.contentText, values.sourceUrl].some((value) => value.trim().length > 0)) &&
+        values.tags.length <= 50 &&
+        values.tags.every((tag) => tag.length <= 64) &&
+        isValidUrl(values.sourceUrl)
+      }
+      onSubmit={async (values) =>
+        onSubmit({
+          category: values.category.trim(),
+          contentText: optionalValue(values.contentText),
+          sourceName: optionalValue(values.sourceName),
+          sourceUrl: optionalValue(values.sourceUrl),
+          tags: values.tags,
+          title: optionalValue(values.title),
+        })
+      }
+      submitLabel={submitLabel}
+    >
+      {(values, setValue, saving) => (
+        <>
+          <TextField
+            disabled={saving}
+            label='Judul'
+            maxLength={300}
+            onChange={(event) => setValue('title', event.target.value)}
+            value={values.title}
+          />
+          <TextField
+            disabled={saving}
+            label='Kategori'
+            maxLength={100}
+            onChange={(event) => setValue('category', event.target.value)}
+            required
+            value={values.category}
+          />
+          <TextAreaField
+            disabled={saving}
+            label='Deskripsi'
+            maxLength={20_000}
+            onChange={(event) => setValue('contentText', event.target.value)}
+            value={values.contentText}
+          />
+          <TextField
+            disabled={saving}
+            label='URL sumber'
+            maxLength={2_000}
+            onChange={(event) => setValue('sourceUrl', event.target.value)}
+            type='url'
+            value={values.sourceUrl}
+          />
+          <TextField
+            disabled={saving}
+            label='Nama sumber (opsional)'
+            maxLength={200}
+            onChange={(event) => setValue('sourceName', event.target.value)}
+            placeholder='Contoh: YouTube atau nama penerbit'
+            value={values.sourceName}
+          />
+          <p className='-mt-4 text-sm text-ink-muted'>Jika kosong, nama platform atau domain akan digunakan.</p>
+          <TagInput
+            disabled={saving}
+            label='Tags'
+            lowercase
+            onChange={(tags) => setValue('tags', tags)}
+            value={values.tags}
+          />
+        </>
       )}
-      <div className='mt-8 flex flex-wrap gap-3'>
-        <Button disabled={!dirty || !valid} pending={saving} type='submit'>
-          {submitLabel}
-        </Button>
-        <Button disabled={saving} onClick={() => canLeave() && navigate(cancelTo)} variant='secondary'>
-          Batal
-        </Button>
-      </div>
-    </form>
+    </ContentForm>
   );
 };

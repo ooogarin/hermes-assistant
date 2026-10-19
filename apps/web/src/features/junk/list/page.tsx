@@ -1,9 +1,8 @@
 import { Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
-import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { JunkActions } from '../../../components/junk/junk-actions';
 import { JunkDetailPane } from '../../../components/junk/junk-detail-pane';
@@ -12,121 +11,32 @@ import { JunkToolbar } from '../../../components/junk/junk-toolbar';
 import { PageHeader } from '../../../components/layout/page-header';
 import { Button } from '../../../components/ui/button';
 import { ButtonLink } from '../../../components/ui/button-link';
+import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
+import { optionalValue, usePersonalContentList } from '../../../lib/hooks/use-personal-content-list';
 import { getJunkItem, getJunkItems } from '../junk-api';
-import type { JunkListFilters } from '../junk-api';
-
-const getOptionalValue = (value: string | null): string | undefined => value?.trim() || undefined;
-
-const toSearchParams = (filters: JunkListFilters, previewCode?: string): URLSearchParams => {
-  const params = new URLSearchParams();
-  if (filters.q !== undefined) params.set('q', filters.q);
-  if (filters.category !== undefined) params.set('category', filters.category);
-  if (filters.tag !== undefined) params.set('tag', filters.tag);
-  if (filters.sourceUrl !== undefined) params.set('source_url', filters.sourceUrl);
-  if (filters.source !== undefined) params.set('source', filters.source);
-  if (filters.from !== undefined) params.set('from', filters.from);
-  if (filters.to !== undefined) params.set('to', filters.to);
-  if (filters.sort === 'oldest') params.set('sort', 'oldest');
-  if (previewCode !== undefined) params.set('preview', previewCode);
-  return params;
-};
 
 const JunkListPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const selectedCode = getOptionalValue(searchParams.get('preview'));
-  const filters: JunkListFilters = {
-    category: getOptionalValue(searchParams.get('category')),
-    q: getOptionalValue(searchParams.get('q')),
-    sourceUrl: getOptionalValue(searchParams.get('source_url') ?? searchParams.get('sourceUrl')),
-    tag: getOptionalValue(searchParams.get('tag')),
-    source: getOptionalValue(searchParams.get('source')),
-    from: getOptionalValue(searchParams.get('from')),
-    to: getOptionalValue(searchParams.get('to')),
-    sort: searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest',
-  };
-  const listKey = toSearchParams(filters).toString();
-  const items = useApiQuery(listKey, (signal) => getJunkItems(filters, signal));
-  const detail = useApiQuery(selectedCode ?? 'no-selected-junk', (signal) =>
-    selectedCode === undefined ? Promise.resolve(null) : getJunkItem(selectedCode, signal),
-  );
-  const [query, setQuery] = useState(filters.q ?? '');
-  const [category, setCategory] = useState(filters.category ?? '');
-  const [tag, setTag] = useState(filters.tag ?? '');
-  const [sourceUrl, setSourceUrl] = useState(filters.sourceUrl ?? '');
-  const [source, setSource] = useState(filters.source ?? '');
-  const [from, setFrom] = useState(filters.from ?? '');
-  const [to, setTo] = useState(filters.to ?? '');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const list = usePersonalContentList<string | undefined>({
+    basePath: '/junk',
+    emptyExtra: undefined,
+    readExtra: (params) => optionalValue(params.get('source_url') ?? params.get('sourceUrl')),
+    writeExtra: (sourceUrl) => ({ source_url: optionalValue(sourceUrl) }),
+  });
+  const items = useApiQuery(list.listKey, (signal) => getJunkItems({ ...list.filters, sourceUrl: list.extra }, signal));
+  const detail = useApiQuery(list.previewCode ?? 'no-selected-junk', (signal) =>
+    list.previewCode === undefined ? Promise.resolve(null) : getJunkItem(list.previewCode, signal),
+  );
+  const selectedCode = list.previewCode;
+  const dateRangeInvalid = Boolean(list.drafts.from && list.drafts.to && list.drafts.from > list.drafts.to);
 
-  useEffect(() => {
-    setQuery(filters.q ?? '');
-    setCategory(filters.category ?? '');
-    setTag(filters.tag ?? '');
-    setSourceUrl(filters.sourceUrl ?? '');
-    setSource(filters.source ?? '');
-    setFrom(filters.from ?? '');
-    setTo(filters.to ?? '');
-  }, [filters.category, filters.q, filters.sourceUrl, filters.tag, filters.source, filters.from, filters.to]);
-
-  const updateFilters = (next: JunkListFilters) => setSearchParams(toSearchParams(next, selectedCode));
-  const applySearch = () => updateFilters({ ...filters, q: getOptionalValue(query) });
-  const applyFilters = () => {
-    updateFilters({
-      ...filters,
-      category: getOptionalValue(category),
-      sourceUrl: getOptionalValue(sourceUrl),
-      tag: getOptionalValue(tag),
-      source: getOptionalValue(source),
-      from: getOptionalValue(from),
-      to: getOptionalValue(to),
-    });
-    setFiltersOpen(false);
-  };
-  const clearFilters = () => {
-    setQuery('');
-    setCategory('');
-    setTag('');
-    setSourceUrl('');
-    setSource('');
-    setFrom('');
-    setTo('');
-    setSearchParams(toSearchParams({}, selectedCode));
-  };
-  const resetAdvancedFilters = () => {
-    setCategory('');
-    setTag('');
-    setSourceUrl('');
-    setSource('');
-    setFrom('');
-    setTo('');
-    updateFilters({
-      ...filters,
-      category: undefined,
-      sourceUrl: undefined,
-      tag: undefined,
-      source: undefined,
-      from: undefined,
-      to: undefined,
-    });
-  };
   const applyQuickCategory = (nextCategory?: string) => {
-    setCategory(nextCategory ?? '');
-    updateFilters({ ...filters, category: nextCategory });
+    list.setDraft('category', nextCategory ?? '');
+    list.updateFilters({ ...list.filters, category: nextCategory }, list.extra);
   };
-  const activeFilterCount = [
-    filters.category,
-    filters.tag,
-    filters.sourceUrl,
-    filters.source,
-    filters.from,
-    filters.to,
-  ].filter(Boolean).length;
-  const hasActiveQuery = filters.q !== undefined || activeFilterCount > 0;
-  const previewUrl = (code: string) => `/junk?${toSearchParams(filters, code).toString()}`;
-  const closePreview = () => setSearchParams(toSearchParams(filters));
 
   return (
     <div className='space-y-7'>
@@ -136,32 +46,32 @@ const JunkListPage = () => {
         title='Junk'
       />
       <JunkToolbar
-        activeCategory={filters.category}
-        activeFilterCount={activeFilterCount}
-        category={category}
-        dateRangeInvalid={Boolean(from && to && from > to)}
-        from={from}
-        to={to}
-        source={source}
-        sort={filters.sort ?? 'newest'}
+        activeCategory={list.filters.category}
+        activeFilterCount={list.activeFilterCount}
+        category={list.drafts.category}
+        dateRangeInvalid={dateRangeInvalid}
+        from={list.drafts.from}
+        to={list.drafts.to}
+        source={list.drafts.source}
+        sort={list.filters.sort ?? 'newest'}
         filtersOpen={filtersOpen}
-        onApply={applyFilters}
-        onCategoryChange={setCategory}
-        onFromChange={setFrom}
-        onToChange={setTo}
-        onSourceChange={setSource}
-        onSortChange={() => updateFilters({ ...filters, sort: filters.sort === 'oldest' ? 'newest' : 'oldest' })}
+        onApply={list.applyFilters}
+        onCategoryChange={(value) => list.setDraft('category', value)}
+        onFromChange={(value) => list.setDraft('from', value)}
+        onToChange={(value) => list.setDraft('to', value)}
+        onSourceChange={(value) => list.setDraft('source', value)}
+        onSortChange={list.toggleSort}
         onCloseFilters={() => setFiltersOpen(false)}
-        onQueryChange={setQuery}
+        onQueryChange={(value) => list.setDraft('q', value)}
         onQuickCategoryChange={applyQuickCategory}
-        onReset={resetAdvancedFilters}
-        onSearch={applySearch}
-        onSourceUrlChange={setSourceUrl}
-        onTagChange={setTag}
+        onReset={list.resetAdvancedFilters}
+        onSearch={list.applySearch}
+        onSourceUrlChange={(value) => list.setExtraDraft(value)}
+        onTagChange={(value) => list.setDraft('tag', value)}
         onToggleFilters={() => setFiltersOpen((current) => !current)}
-        query={query}
-        sourceUrl={sourceUrl}
-        tag={tag}
+        query={list.drafts.q}
+        sourceUrl={list.extraDraft ?? ''}
+        tag={list.drafts.tag}
       />
 
       <div
@@ -176,15 +86,15 @@ const JunkListPage = () => {
           {items.status === 'error' ? <ErrorState onRetry={items.retry} /> : null}
           {items.status === 'success' && items.data.length === 0 ? (
             <ContentState
-              title={hasActiveQuery ? 'Tidak ada Junk yang cocok' : 'Belum ada Junk'}
+              title={list.hasActiveQuery ? 'Tidak ada Junk yang cocok' : 'Belum ada Junk'}
               description={
-                hasActiveQuery
+                list.hasActiveQuery
                   ? 'Coba gunakan kata kunci atau filter lain.'
                   : 'Temuan yang disimpan melalui Hermes akan muncul di sini.'
               }
               action={
-                hasActiveQuery ? (
-                  <Button variant='secondary' onClick={clearFilters}>
+                list.hasActiveQuery ? (
+                  <Button variant='secondary' onClick={list.clearFilters}>
                     Hapus pencarian
                   </Button>
                 ) : undefined
@@ -192,7 +102,7 @@ const JunkListPage = () => {
             />
           ) : null}
           {items.status === 'success' && items.data.length > 0 ? (
-            <JunkList items={items.data} selectedCode={selectedCode} toDetail={previewUrl} />
+            <JunkList items={items.data} selectedCode={selectedCode} toDetail={list.previewUrl} />
           ) : null}
         </div>
 
@@ -200,19 +110,19 @@ const JunkListPage = () => {
           <div className='min-w-0 max-xl:col-span-full'>
             {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
             {detail.status === 'error' ? (
-              <QueryError
-                error={detail.error}
-                notFound={{
-                  title: 'Junk tidak ditemukan',
-                  description: 'Item ini mungkin sudah tidak tersedia.',
-                  action: (
-                    <Button variant='secondary' onClick={closePreview}>
+              detail.error instanceof ApiError && detail.error.status === 404 ? (
+                <ContentState
+                  title='Junk tidak ditemukan'
+                  description='Item ini mungkin sudah tidak tersedia.'
+                  action={
+                    <Button variant='secondary' onClick={list.closePreview}>
                       Kembali ke Junk
                     </Button>
-                  ),
-                }}
-                onRetry={detail.retry}
-              />
+                  }
+                />
+              ) : (
+                <ErrorState onRetry={detail.retry} />
+              )
             ) : null}
             {detail.status === 'success' && detail.data !== null ? (
               <JunkDetailPane
@@ -222,13 +132,13 @@ const JunkListPage = () => {
                     key={selectedCode}
                     item={detail.data}
                     onDeleted={() => {
-                      closePreview();
+                      list.closePreview();
                       items.retry();
                     }}
                   />
                 }
                 item={detail.data}
-                onClose={closePreview}
+                onClose={list.closePreview}
                 onOpenPage={() =>
                   navigate(`/junk/${selectedCode}`, { state: { returnTo: location.pathname + location.search } })
                 }

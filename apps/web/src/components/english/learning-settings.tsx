@@ -1,14 +1,14 @@
-import { ArrowDown, ArrowLeft, ArrowUp, CircleGauge, Info, List, Tag } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CircleGauge, List, Tag } from 'lucide-react';
 import { useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { classNames } from '../../lib/class-names';
 import { formatDate } from '../../lib/formatting/formatters';
 import { useApiQuery } from '../../lib/hooks/use-api-query';
-import { cefrLevels } from '../../lib/levels';
 import { ErrorState } from '../feedback/content-state';
 import { Skeleton } from '../feedback/skeleton';
 import { Button } from '../ui/button';
 import { Input } from '../ui/form-field';
+import { SettingsLevelPicker, SettingsNumberField, SettingsSummary } from './settings-parts';
 import type { FormEvent } from 'react';
 
 type LearningSettings = {
@@ -54,22 +54,16 @@ const NumberField = ({
   const inputId = useId();
 
   return (
-    <label className='grid gap-2 text-sm font-medium text-ink' htmlFor={inputId}>
-      {label}
-      <span className='flex min-h-12 items-center overflow-hidden rounded-control border border-border bg-surface focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15'>
-        <Input
-          className='min-h-0 min-w-0 flex-1 border-0 bg-transparent px-4 focus:ring-0'
-          disabled={disabled}
-          id={inputId}
-          min={1}
-          max={20_000}
-          type='number'
-          value={Number.isNaN(value) ? '' : value}
-          onChange={(event) => onChange(event.target.valueAsNumber)}
-        />
-        <span className='px-4 text-ink-muted'>kata</span>
-      </span>
-    </label>
+    <SettingsNumberField
+      disabled={disabled}
+      id={inputId}
+      label={label}
+      max={20_000}
+      min={1}
+      unit='kata'
+      value={value}
+      onChange={onChange}
+    />
   );
 };
 
@@ -104,22 +98,10 @@ const Summary = ({ settings }: { settings: LearningSettings }) => {
   ];
 
   return (
-    <aside className='border-t border-border pt-8 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0'>
-      <h2 className='text-xl font-semibold text-ink'>Ringkasan default</h2>
-      <dl className='mt-5'>
-        {rows.map(({ icon: Icon, label, value }) => (
-          <div key={label} className='grid grid-cols-[1.5rem_1fr_auto] gap-4 border-b border-border py-5'>
-            <Icon aria-hidden='true' className='text-primary' size={20} strokeWidth={1.8} />
-            <dt className='text-sm text-ink'>{label}</dt>
-            <dd className='max-w-36 text-right text-sm font-medium text-ink'>{value}</dd>
-          </div>
-        ))}
-      </dl>
-      <p className='mt-6 flex gap-3 text-sm leading-6 text-ink-muted'>
-        <Info aria-hidden='true' className='mt-0.5 shrink-0 text-primary' size={20} />
-        Permintaan sekali, seperti topik atau level berbeda, tidak mengubah pengaturan default ini.
-      </p>
-    </aside>
+    <SettingsSummary
+      note='Permintaan sekali, seperti topik atau level berbeda, tidak mengubah pengaturan default ini.'
+      rows={rows}
+    />
   );
 };
 
@@ -197,30 +179,12 @@ const SettingsForm = ({
       <div className='mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.8fr)]'>
         <form onSubmit={submit}>
           <fieldset disabled={saving}>
-            <legend className='text-xl font-semibold text-ink'>Level default</legend>
-            <p className='mt-2 text-sm leading-6 text-ink-muted'>
-              Pilih level CEFR default untuk materi {feature.toLowerCase()} baru.
-            </p>
-            <div className='mt-5 grid grid-cols-3 overflow-hidden rounded-control border border-border sm:grid-cols-6'>
-              {cefrLevels.map((level) => (
-                <button
-                  key={level}
-                  className={classNames(
-                    'min-h-14 border-r border-b border-border text-sm font-semibold transition-colors last:border-r-0 sm:border-b-0',
-                    values.defaultLevel === level
-                      ? 'bg-primary-subtle text-primary ring-1 ring-inset ring-primary'
-                      : 'bg-surface text-ink hover:bg-surface-subtle',
-                  )}
-                  onClick={() => setValues((current) => ({ ...current, defaultLevel: level }))}
-                  type='button'
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-            {cefrLevels.includes(saved.defaultLevel) ? null : (
-              <p className='mt-3 text-sm text-ink-muted'>Nilai tersimpan sebelumnya: {saved.defaultLevel}</p>
-            )}
+            <SettingsLevelPicker
+              description={`Pilih level CEFR default untuk materi ${feature.toLowerCase()} baru.`}
+              level={values.defaultLevel}
+              savedLevel={saved.defaultLevel}
+              onChange={(level) => setValues((current) => ({ ...current, defaultLevel: level }))}
+            />
 
             <section className='mt-9 border-t border-border pt-8'>
               <h2 className='text-xl font-semibold text-ink'>{lengthLabel}</h2>
