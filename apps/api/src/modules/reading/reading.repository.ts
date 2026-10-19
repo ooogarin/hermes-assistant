@@ -177,12 +177,8 @@ export const getAll = async (input: ListReadingMaterialsQuery): Promise<ReadingM
   `;
 };
 
-export const updateOneStatusByCode = async (
-  code: string,
-  status: ReadingStatus,
-  trx?: DatabaseReservedConnection,
-): Promise<IdRow | null> => {
-  const database = trx ?? getDatabaseClient();
+export const updateOneStatusByCode = async (code: string, status: ReadingStatus): Promise<IdRow | null> => {
+  const database = getDatabaseClient();
 
   const [row] = await database<IdRow[]>`
     UPDATE reading_materials

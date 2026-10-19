@@ -1,5 +1,4 @@
 import { getDatabaseClient } from '../../../core/database/client';
-import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type { GrammarSettingsRow, UpdateGrammarSettingsPayload } from './grammar-setting.types';
 
 export const getOne = async (): Promise<GrammarSettingsRow> => {
@@ -23,11 +22,8 @@ export const getOne = async (): Promise<GrammarSettingsRow> => {
   return row;
 };
 
-export const updateOne = async (
-  input: UpdateGrammarSettingsPayload,
-  trx?: DatabaseReservedConnection,
-): Promise<GrammarSettingsRow> => {
-  const database = trx ?? getDatabaseClient();
+export const updateOne = async (input: UpdateGrammarSettingsPayload): Promise<GrammarSettingsRow> => {
+  const database = getDatabaseClient();
 
   const allowedColumns = ['default_level', 'daily_question_count'] as const;
 

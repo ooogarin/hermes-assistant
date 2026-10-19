@@ -1,5 +1,4 @@
 import { getDatabaseClient } from '../../../core/database/client';
-import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type { ReadingSettingsRow, UpdateReadingSettingsPayload } from './reading-setting.types';
 
 export const getOne = async (): Promise<ReadingSettingsRow> => {
@@ -26,11 +25,8 @@ export const getOne = async (): Promise<ReadingSettingsRow> => {
   return row;
 };
 
-export const updateOne = async (
-  input: UpdateReadingSettingsPayload,
-  trx?: DatabaseReservedConnection,
-): Promise<ReadingSettingsRow> => {
-  const database = trx ?? getDatabaseClient();
+export const updateOne = async (input: UpdateReadingSettingsPayload): Promise<ReadingSettingsRow> => {
+  const database = getDatabaseClient();
 
   const allowedColumns = [
     'default_level',

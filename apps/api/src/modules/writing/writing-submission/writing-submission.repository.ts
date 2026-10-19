@@ -125,10 +125,8 @@ export const getOneByCodeForUpdate = async (
 export const updateOneByCode = async (
   code: string,
   input: UpdateWritingSubmissionPayload,
-  trx?: DatabaseReservedConnection,
+  trx: DatabaseReservedConnection,
 ): Promise<WritingSubmissionWriteRow> => {
-  const database = trx ?? getDatabaseClient();
-
   const allowedColumns = [
     'original_text',
     'word_count',
@@ -141,13 +139,13 @@ export const updateOneByCode = async (
   // An explicit [] clears tags; an omitted field keeps the current value.
   const updateInput = {
     ...input,
-    estimated_tags: input.estimated_tags === undefined ? undefined : database.array(input.estimated_tags, 'TEXT'),
+    estimated_tags: input.estimated_tags === undefined ? undefined : trx.array(input.estimated_tags, 'TEXT'),
   };
 
-  const [row] = await database<WritingSubmissionWriteRow[]>`
+  const [row] = await trx<WritingSubmissionWriteRow[]>`
     UPDATE writing_submissions
     SET
-      ${database(updateInput, ...allowedColumns)},
+      ${trx(updateInput, ...allowedColumns)},
       updated_at = NOW()
     WHERE code = ${code} AND deleted_at IS NULL
     RETURNING
@@ -174,17 +172,15 @@ export const updateOneByCode = async (
 export const updateOneAnalysisByCode = async (
   code: string,
   input: SaveWritingAnalysisPayload,
-  trx?: DatabaseReservedConnection,
+  trx: DatabaseReservedConnection,
 ): Promise<WritingSubmissionWriteRow> => {
-  const database = trx ?? getDatabaseClient();
-
   // AI fills only missing estimates; preserve manual values, including empty tags.
-  const [row] = await database<WritingSubmissionWriteRow[]>`
+  const [row] = await trx<WritingSubmissionWriteRow[]>`
     UPDATE writing_submissions
     SET
       estimated_topic = COALESCE(estimated_topic, ${input.estimated_topic}),
       estimated_genre = COALESCE(estimated_genre, ${input.estimated_genre}),
-      estimated_tags = COALESCE(estimated_tags, ${database.array(input.estimated_tags, 'TEXT')}),
+      estimated_tags = COALESCE(estimated_tags, ${trx.array(input.estimated_tags, 'TEXT')}),
       estimated_level = COALESCE(estimated_level, ${input.estimated_level}),
       analysis = ${input.analysis}::JSONB,
       analyzed_at = NOW(),

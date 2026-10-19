@@ -228,9 +228,8 @@ export const updateOneByDateAndDailyNumber = async (
   date: string,
   daily_number: number,
   input: UpdateFinanceTransactionPayload,
-  trx?: DatabaseReservedConnection,
 ): Promise<FinanceTransactionRow | null> => {
-  const database = trx ?? getDatabaseClient();
+  const database = getDatabaseClient();
 
   const allowedColumns = ['amount', 'category_id', 'name', 'location', 'note'] as const;
 

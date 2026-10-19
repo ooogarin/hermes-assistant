@@ -1,5 +1,4 @@
 import { getDatabaseClient } from '../../../core/database/client';
-import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type { UpdateWritingSettingsPayload, WritingSettingsRow } from './writing-setting.types';
 
 export const getOne = async (): Promise<WritingSettingsRow> => {
@@ -25,11 +24,8 @@ export const getOne = async (): Promise<WritingSettingsRow> => {
   return row;
 };
 
-export const updateOne = async (
-  input: UpdateWritingSettingsPayload,
-  trx?: DatabaseReservedConnection,
-): Promise<WritingSettingsRow> => {
-  const database = trx ?? getDatabaseClient();
+export const updateOne = async (input: UpdateWritingSettingsPayload): Promise<WritingSettingsRow> => {
+  const database = getDatabaseClient();
 
   const allowedColumns = ['default_level', 'default_word_count', 'min_word_count', 'max_word_count'] as const;
 

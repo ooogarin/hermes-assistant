@@ -6,22 +6,26 @@ const levelsSchema = z
   .transform((value) => value.split(',').map((level) => level.trim()))
   .pipe(z.array(textSchema(32)).min(1).max(20));
 const sourceSchema = z.enum(['cron', 'request']);
-const questionSchema = z.object({
-  question_text: textSchema(20_000),
-  expected_answer: textSchema(20_000),
-});
+const questionSchema = z
+  .object({
+    question_text: textSchema(20_000),
+    expected_answer: textSchema(20_000),
+  })
+  .strict();
 
-export const createMaterialSchema = z.object({
-  title: textSchema(300),
-  level: textSchema(32).optional(),
-  genre: textSchema(100),
-  tags: z.array(textSchema(64)).max(50).default([]),
-  target_word_count: z.number().int().positive().max(20_000).optional(),
-  target_question_count: z.number().int().min(0).max(20).optional(),
-  content_text: textSchema(100_000),
-  source: sourceSchema,
-  questions: z.array(questionSchema).max(20).default([]),
-});
+export const createMaterialSchema = z
+  .object({
+    title: textSchema(300),
+    level: textSchema(32).optional(),
+    genre: textSchema(100),
+    tags: z.array(textSchema(64)).max(50).default([]),
+    target_word_count: z.number().int().positive().max(20_000).optional(),
+    target_question_count: z.number().int().min(0).max(20).optional(),
+    content_text: textSchema(100_000),
+    source: sourceSchema,
+    questions: z.array(questionSchema).max(20).default([]),
+  })
+  .strict();
 
 export const materialCodeSchema = z.object({
   code: z.string().regex(/^RD-\d{8}-\d{3,}$/),
