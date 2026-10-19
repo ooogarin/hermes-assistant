@@ -2,24 +2,46 @@ import { MoveHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
-const minimumWidth = 'min-w-[calc(clamp(10rem,35cqw,26rem)+45rem)]';
-const columns = `grid ${minimumWidth} grid-cols-[clamp(10rem,35cqw,26rem)_9rem_10rem_minmax(12rem,1fr)_10rem] gap-4`;
+export const scrollTableRowClassName =
+  'group items-stretch bg-surface transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary';
 
-export const writingRowClassName = `${columns} group items-stretch bg-surface transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary`;
-export const writingTitleClassName =
+export const scrollTableTitleClassName =
   'border-l-4 border-l-transparent bg-surface px-4 py-5 group-hover:bg-surface-subtle group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-primary';
 
-export const WritingTable = ({
+type ScrollTableProps = {
+  /** Renders the rows of the table. */
+  children: (frozenColumn: string) => ReactNode;
+  /** Accessible name of the column area. */
+  columnsLabel: string;
+  /** Text shown on the left of the footer. */
+  countLabel: string;
+  /** Grid template shared by the header row and every row. */
+  gridClassName: string;
+  /** Exposes the name as a visually hidden heading. */
+  asHeading?: boolean;
+  /** Cells of the header row. */
+  headings: (frozenColumn: string) => ReactNode;
+  /** Accessible name of the table. */
+  label: string;
+  /** Width floor that keeps the columns readable while scrolling. */
+  minWidthClassName: string;
+};
+
+/**
+ * A table whose columns stay readable by scrolling sideways. The first column
+ * stays in place, and a hint appears once the table can be scrolled.
+ */
+export const ScrollTable = ({
+  asHeading = false,
   children,
+  columnsLabel,
   countLabel,
+  gridClassName,
   headings,
   label,
-}: {
-  children: (frozenColumn: string) => ReactNode;
-  countLabel: string;
-  headings: string[];
-  label: string;
-}) => {
+  minWidthClassName,
+}: ScrollTableProps) => {
+  const headingId = useId();
   const hintId = useId();
   const scrollRef = useRef<HTMLElement>(null);
   const [overflow, setOverflow] = useState({ left: false, right: false });
@@ -54,36 +76,36 @@ export const WritingTable = ({
     };
   }, [measureOverflow]);
 
-  const canScroll = overflow.left || overflow.right;
   const frozenColumn = `sticky left-0 z-10 min-w-0 ${overflow.left ? 'shadow-[6px_0_10px_-6px_rgba(0,0,0,0.25)]' : ''}`;
+  const canScroll = overflow.left || overflow.right;
 
   return (
     <section
+      aria-label={asHeading ? undefined : label}
+      aria-labelledby={asHeading ? headingId : undefined}
       className='@container min-w-0 overflow-hidden rounded-surface border border-border bg-surface'
-      aria-label={label}
     >
+      {asHeading ? (
+        <h2 className='sr-only' id={headingId}>
+          {label}
+        </h2>
+      ) : null}
       <div className='relative'>
         <section
           ref={scrollRef}
-          aria-label={`Kolom ${label.toLowerCase()}`}
           aria-describedby={canScroll ? hintId : undefined}
-          tabIndex={canScroll ? 0 : undefined}
-          onScroll={measureOverflow}
+          aria-label={columnsLabel}
           className='overflow-x-auto overscroll-x-contain [scrollbar-width:thin] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary'
+          onScroll={measureOverflow}
+          tabIndex={canScroll ? 0 : undefined}
         >
-          <div aria-hidden='true' className={`${columns} border-b border-border text-sm font-semibold text-ink-muted`}>
-            {headings.map((heading, index) => (
-              <span
-                key={heading}
-                className={
-                  index === 0 ? `${frozenColumn} bg-surface px-5 py-3 whitespace-nowrap` : 'py-3 pr-5 whitespace-nowrap'
-                }
-              >
-                {heading}
-              </span>
-            ))}
+          <div
+            aria-hidden='true'
+            className={`${gridClassName} border-b border-border text-sm font-semibold text-ink-muted`}
+          >
+            {headings(frozenColumn)}
           </div>
-          <ul className={minimumWidth}>{children(frozenColumn)}</ul>
+          <ul className={minWidthClassName}>{children(frozenColumn)}</ul>
         </section>
         {overflow.right ? (
           <div
@@ -95,10 +117,10 @@ export const WritingTable = ({
       <footer className='flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 text-xs text-ink-muted'>
         <span>{countLabel}</span>
         {canScroll ? (
-          <p id={hintId} className='flex items-center gap-2'>
+          <span className='inline-flex items-center gap-2' id={hintId}>
             <MoveHorizontal aria-hidden='true' size={16} />
             Geser horizontal untuk melihat semua kolom
-          </p>
+          </span>
         ) : null}
       </footer>
     </section>
