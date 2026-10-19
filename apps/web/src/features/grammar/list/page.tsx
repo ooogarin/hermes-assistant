@@ -1,4 +1,3 @@
-import { ArrowDownUp } from 'lucide-react';
 import { useState } from 'react';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
@@ -7,16 +6,23 @@ import { GrammarSessionTable } from '../../../components/grammar/grammar-session
 import { PageHeader } from '../../../components/layout/page-header';
 import { Button } from '../../../components/ui/button';
 import { ChoiceDropdown } from '../../../components/ui/choice-dropdown';
-import { FilterChip } from '../../../components/ui/filter-chip';
+import { FilterChipRow } from '../../../components/ui/filter-chip-row';
 import { FilterPopover } from '../../../components/ui/filter-popover';
 import { SearchForm } from '../../../components/ui/search-form';
+import { SortToggle } from '../../../components/ui/sort-toggle';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { useDraftValue } from '../../../lib/hooks/use-draft-value';
 import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
 import { getGrammarSessions } from '../grammar-api';
+import type { FilterChipOption } from '../../../components/ui/filter-chip-row';
 import type { GrammarSessionListFilters } from '../grammar-api';
 
 const sessionStatuses = ['active', 'completed'] as const;
+const sessionStatusOptions: Array<FilterChipOption<(typeof sessionStatuses)[number]>> = [
+  { label: 'Semua' },
+  { label: 'Aktif', value: 'active' },
+  { label: 'Selesai', value: 'completed' },
+];
 const sessionModes = ['practice', 'exam'] as const;
 const sessionLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const sessionListLimit = 100;
@@ -115,26 +121,18 @@ const GrammarListPage = () => {
               </div>
             </div>
           </FilterPopover>
-          <Button
+          <SortToggle
             className='h-12 lg:shrink-0'
-            variant='secondary'
-            onClick={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
-          >
-            Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
-          </Button>
+            onToggle={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
+            sort={sort}
+          />
         </div>
-        <fieldset className='flex flex-wrap gap-2'>
-          <legend className='sr-only'>Status sesi</legend>
-          <FilterChip active={!status} onClick={() => setStatus(undefined)}>
-            Semua
-          </FilterChip>
-          <FilterChip active={status === 'active'} onClick={() => setStatus('active')}>
-            Aktif
-          </FilterChip>
-          <FilterChip active={status === 'completed'} onClick={() => setStatus('completed')}>
-            Selesai
-          </FilterChip>
-        </fieldset>
+        <FilterChipRow
+          label='Status sesi'
+          onChange={(value) => setStatus(value)}
+          options={sessionStatusOptions}
+          value={status}
+        />
       </div>
       {sessions.status === 'loading' ? <CollectionSkeleton rows={6} /> : null}
       {sessions.status === 'error' ? <ErrorState onRetry={sessions.retry} /> : null}

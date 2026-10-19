@@ -1,4 +1,3 @@
-import { ArrowDownUp } from 'lucide-react';
 import { useState } from 'react';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
@@ -7,17 +6,24 @@ import { PageHeader } from '../../../components/layout/page-header';
 import { ReadingList } from '../../../components/reading/reading-list';
 import { Button } from '../../../components/ui/button';
 import { ChoiceDropdown } from '../../../components/ui/choice-dropdown';
-import { FilterChip } from '../../../components/ui/filter-chip';
+import { FilterChipRow } from '../../../components/ui/filter-chip-row';
 import { FilterPopover } from '../../../components/ui/filter-popover';
 import { TextField } from '../../../components/ui/form-field';
 import { SearchForm } from '../../../components/ui/search-form';
+import { SortToggle } from '../../../components/ui/sort-toggle';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { useDraftValue } from '../../../lib/hooks/use-draft-value';
 import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
 import { getReadingMaterials } from '../reading-api';
+import type { FilterChipOption } from '../../../components/ui/filter-chip-row';
 import type { ReadingListFilters } from '../reading-api';
 
 const readingStatuses = ['read', 'unread'] as const;
+const readingStatusOptions: Array<FilterChipOption<(typeof readingStatuses)[number]>> = [
+  { label: 'Semua' },
+  { label: 'Belum dibaca', value: 'unread' },
+  { label: 'Sudah dibaca', value: 'read' },
+];
 
 const ReadingListPage = () => {
   const {
@@ -108,26 +114,18 @@ const ReadingListPage = () => {
               </div>
             </div>
           </FilterPopover>
-          <Button
+          <SortToggle
             className='h-12 lg:shrink-0'
-            variant='secondary'
-            onClick={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
-          >
-            Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
-          </Button>
+            onToggle={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
+            sort={sort}
+          />
         </div>
-        <fieldset className='flex flex-wrap gap-2'>
-          <legend className='sr-only'>Status baca</legend>
-          <FilterChip active={!status} onClick={() => setStatus(undefined)}>
-            Semua
-          </FilterChip>
-          <FilterChip active={status === 'unread'} onClick={() => setStatus('unread')}>
-            Belum dibaca
-          </FilterChip>
-          <FilterChip active={status === 'read'} onClick={() => setStatus('read')}>
-            Sudah dibaca
-          </FilterChip>
-        </fieldset>
+        <FilterChipRow
+          label='Status baca'
+          onChange={(value) => setStatus(value)}
+          options={readingStatusOptions}
+          value={status}
+        />
       </div>
       {materials.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
       {materials.status === 'error' ? <ErrorState onRetry={materials.retry} /> : null}

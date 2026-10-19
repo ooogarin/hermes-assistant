@@ -1,9 +1,9 @@
-import { ArrowDownUp } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/button';
-import { FilterChip } from '../ui/filter-chip';
+import { FilterChipRow } from '../ui/filter-chip-row';
 import { FilterPopover } from '../ui/filter-popover';
 import { SearchForm } from '../ui/search-form';
+import { SortToggle } from '../ui/sort-toggle';
 import type { ReactNode } from 'react';
 
 type WritingToolbarProps<Status extends string> = {
@@ -80,23 +80,9 @@ export const WritingToolbar = <Status extends string>({
             </Button>
           </div>
         </FilterPopover>
-        <Button className='h-12' onClick={onSortChange} variant='secondary'>
-          Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
-        </Button>
+        <SortToggle onToggle={onSortChange} sort={sort} />
       </div>
-      <fieldset className='flex flex-wrap gap-2'>
-        <legend className='sr-only'>Filter status</legend>
-        {statuses.map((option) => (
-          <FilterChip
-            key={option.label}
-            active={status === option.value}
-            aria-pressed={status === option.value}
-            onClick={() => onStatusChange(option.value)}
-          >
-            {option.label}
-          </FilterChip>
-        ))}
-      </fieldset>
+      <FilterChipRow label='Filter status' onChange={onStatusChange} options={statuses} value={status} />
     </div>
   );
 };

@@ -1,11 +1,11 @@
-import { ArrowDownUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { ChoiceDropdown } from '../ui/choice-dropdown';
-import { DatePicker } from '../ui/date-picker';
-import { FilterChip } from '../ui/filter-chip';
+import { DateRangeFilter } from '../ui/date-range-filter';
+import { FilterChipRow } from '../ui/filter-chip-row';
 import { FilterPopover } from '../ui/filter-popover';
 import { Field, TextField } from '../ui/form-field';
 import { SearchForm } from '../ui/search-form';
+import { SortToggle } from '../ui/sort-toggle';
 import type { NoteType } from '../../features/notes/notes-api';
 
 type NotesToolbarProps = {
@@ -129,34 +129,14 @@ export const NotesToolbar = ({
               placeholder='Nama atau domain sumber'
               value={source}
             />
-            <div className='grid gap-2 text-sm font-medium text-ink'>
-              Rentang tanggal
-              <div className='grid grid-cols-2 gap-3'>
-                <DatePicker
-                  clearable
-                  className='min-w-0'
-                  label='Dari tanggal'
-                  max={to || undefined}
-                  onChange={onFromChange}
-                  position='top'
-                  value={from}
-                />
-                <DatePicker
-                  align='end'
-                  clearable
-                  className='min-w-0'
-                  label='Sampai tanggal'
-                  min={from || undefined}
-                  onChange={onToChange}
-                  position='top'
-                  value={to}
-                />
-              </div>
-            </div>
+            <DateRangeFilter
+              from={from}
+              invalid={dateRangeInvalid}
+              onFromChange={onFromChange}
+              onToChange={onToChange}
+              to={to}
+            />
           </div>
-          {dateRangeInvalid ? (
-            <p className='text-sm text-danger'>Tanggal akhir harus sama atau setelah tanggal awal.</p>
-          ) : null}
           <div className='mt-5 flex items-center justify-between gap-3'>
             <Button variant='ghost' onClick={onReset}>
               Reset
@@ -167,22 +147,15 @@ export const NotesToolbar = ({
           </div>
         </FilterPopover>
 
-        <Button className='h-12' variant='secondary' onClick={onSortChange}>
-          Urutkan: {sort === 'oldest' ? 'Terlama' : 'Terbaru'} <ArrowDownUp aria-hidden='true' size={17} />
-        </Button>
+        <SortToggle onToggle={onSortChange} sort={sort} />
       </div>
 
-      <section className='flex flex-wrap gap-2' aria-label='Filter tipe catatan'>
-        {quickTypeOptions.map((option) => (
-          <FilterChip
-            key={option.label}
-            active={activeType === option.value}
-            onClick={() => onQuickTypeChange(option.value)}
-          >
-            {option.label}
-          </FilterChip>
-        ))}
-      </section>
+      <FilterChipRow
+        label='Filter tipe catatan'
+        onChange={onQuickTypeChange}
+        options={quickTypeOptions}
+        value={activeType}
+      />
     </div>
   );
 };
