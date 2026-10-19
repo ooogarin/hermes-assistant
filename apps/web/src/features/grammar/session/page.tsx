@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle2, CircleMinus, CircleX } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import {
   GrammarExplanationDrawer,
@@ -11,7 +11,6 @@ import { GrammarSessionHeader } from '../../../components/grammar/grammar-sessio
 import { GrammarSessionTabs } from '../../../components/grammar/grammar-session-tabs';
 import { Button } from '../../../components/ui/button';
 import { CopyButton } from '../../../components/ui/copy-button';
-import { ApiError } from '../../../lib/api/api-error';
 import { classNames } from '../../../lib/class-names';
 import { formatDate, formatDisplayLabel } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
@@ -223,10 +222,15 @@ const GrammarSessionPage = () => {
   const content = useMemo(() => {
     if (session.status === 'loading') return <CollectionSkeleton rows={5} />;
     if (session.status === 'error') {
-      return session.error instanceof ApiError && session.error.status === 404 ? (
-        <ContentState title='Sesi Grammar tidak ditemukan' description='Periksa kembali kode sesi yang dibuka.' />
-      ) : (
-        <ErrorState onRetry={session.retry} />
+      return (
+        <QueryError
+          error={session.error}
+          notFound={{
+            title: 'Sesi Grammar tidak ditemukan',
+            description: 'Periksa kembali kode sesi yang dibuka.',
+          }}
+          onRetry={session.retry}
+        />
       );
     }
     return <SessionWorkspace initial={session.data} />;

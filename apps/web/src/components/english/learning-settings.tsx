@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { classNames } from '../../lib/class-names';
 import { formatDate } from '../../lib/formatting/formatters';
 import { useApiQuery } from '../../lib/hooks/use-api-query';
+import { cefrLevels } from '../../lib/levels';
 import { ErrorState } from '../feedback/content-state';
 import { Skeleton } from '../feedback/skeleton';
 import { Button } from '../ui/button';
@@ -30,8 +31,6 @@ type LearningSettingsPageProps = {
   lengthLabel: string;
   updateSettings: (input: LearningSettingsInput) => Promise<LearningSettings>;
 };
-
-const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 const toInput = (settings: LearningSettings): LearningSettingsInput => ({
   defaultLevel: settings.defaultLevel,
@@ -203,7 +202,7 @@ const SettingsForm = ({
               Pilih level CEFR default untuk materi {feature.toLowerCase()} baru.
             </p>
             <div className='mt-5 grid grid-cols-3 overflow-hidden rounded-control border border-border sm:grid-cols-6'>
-              {levels.map((level) => (
+              {cefrLevels.map((level) => (
                 <button
                   key={level}
                   className={classNames(
@@ -219,7 +218,7 @@ const SettingsForm = ({
                 </button>
               ))}
             </div>
-            {levels.includes(saved.defaultLevel) ? null : (
+            {cefrLevels.includes(saved.defaultLevel) ? null : (
               <p className='mt-3 text-sm text-ink-muted'>Nilai tersimpan sebelumnya: {saved.defaultLevel}</p>
             )}
 

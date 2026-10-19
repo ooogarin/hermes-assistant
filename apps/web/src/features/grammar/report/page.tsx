@@ -1,10 +1,10 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { ContentState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { GrammarSessionHeader } from '../../../components/grammar/grammar-session-header';
 import { GrammarSessionTabs } from '../../../components/grammar/grammar-session-tabs';
-import { ApiError } from '../../../lib/api/api-error';
 import { formatDisplayLabel } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getGrammarReport, getGrammarSession } from '../grammar-api';
@@ -117,11 +117,14 @@ const GrammarReportPage = () => {
       </Link>
       {result.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
       {result.status === 'error' ? (
-        result.error instanceof ApiError && result.error.status === 404 ? (
-          <ContentState title='Laporan Grammar tidak ditemukan' description='Periksa kembali sesi yang dibuka.' />
-        ) : (
-          <ErrorState onRetry={result.retry} />
-        )
+        <QueryError
+          error={result.error}
+          notFound={{
+            title: 'Laporan Grammar tidak ditemukan',
+            description: 'Periksa kembali sesi yang dibuka.',
+          }}
+          onRetry={result.retry}
+        />
       ) : null}
       {data !== null && totals !== null ? (
         <>

@@ -1,11 +1,10 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { NoteActions } from '../../../components/notes/note-actions';
 import { NoteDetailPane } from '../../../components/notes/note-detail-pane';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getNote } from '../notes-api';
 
@@ -37,19 +36,19 @@ const NotesDetailPage = () => {
 
       {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
       {detail.status === 'error' ? (
-        detail.error instanceof ApiError && detail.error.status === 404 ? (
-          <ContentState
-            title='Catatan tidak ditemukan'
-            description='Catatan ini mungkin sudah tidak tersedia.'
-            action={
+        <QueryError
+          error={detail.error}
+          notFound={{
+            title: 'Catatan tidak ditemukan',
+            description: 'Catatan ini mungkin sudah tidak tersedia.',
+            action: (
               <Link className='font-semibold text-primary hover:underline' to={returnTo}>
                 Kembali ke Notes
               </Link>
-            }
-          />
-        ) : (
-          <ErrorState onRetry={detail.retry} />
-        )
+            ),
+          }}
+          onRetry={detail.retry}
+        />
       ) : null}
       {detail.status === 'success' ? (
         <NoteDetailPane

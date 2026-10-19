@@ -1,9 +1,9 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { ContentState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { PageHeader } from '../../../components/layout/page-header';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getReadingExpectedAnswers } from '../reading-api';
 
@@ -23,11 +23,14 @@ const ReadingExpectedAnswersPage = () => {
       <PageHeader title='Jawaban acuan' />
       {answers.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
       {answers.status === 'error' ? (
-        answers.error instanceof ApiError && answers.error.status === 404 ? (
-          <ContentState title='Jawaban acuan tidak ditemukan' description='Materi ini mungkin sudah tidak tersedia.' />
-        ) : (
-          <ErrorState onRetry={answers.retry} />
-        )
+        <QueryError
+          error={answers.error}
+          notFound={{
+            title: 'Jawaban acuan tidak ditemukan',
+            description: 'Materi ini mungkin sudah tidak tersedia.',
+          }}
+          onRetry={answers.retry}
+        />
       ) : null}
       {answers.status === 'success' && answers.data.length === 0 ? (
         <ContentState title='Bacaan ini tanpa pertanyaan' description='Tidak ada jawaban acuan untuk bacaan ini.' />

@@ -1,9 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { FinanceTransactionForm } from '../../../components/finance/transaction-form';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getFinanceTransaction, updateFinanceTransaction } from '../finance-api';
 import type { FinanceTransactionFormValues } from '../../../components/finance/transaction-form';
@@ -57,11 +56,14 @@ const FinanceEditPage = () => {
       ) : null}
       {transaction.status === 'error' ? (
         <div className='mt-7'>
-          {transaction.error instanceof ApiError && transaction.error.status === 404 ? (
-            <ContentState title='Transaksi tidak ditemukan' description='Transaksi ini mungkin sudah tidak tersedia.' />
-          ) : (
-            <ErrorState onRetry={transaction.retry} />
-          )}
+          <QueryError
+            error={transaction.error}
+            notFound={{
+              title: 'Transaksi tidak ditemukan',
+              description: 'Transaksi ini mungkin sudah tidak tersedia.',
+            }}
+            onRetry={transaction.retry}
+          />
         </div>
       ) : null}
       {transaction.status === 'success' ? (

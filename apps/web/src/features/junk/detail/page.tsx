@@ -1,11 +1,10 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { JunkActions } from '../../../components/junk/junk-actions';
 import { JunkDetailPane } from '../../../components/junk/junk-detail-pane';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getJunkItem } from '../junk-api';
 
@@ -35,11 +34,14 @@ const JunkDetailPage = () => {
       </Link>
       {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
       {detail.status === 'error' ? (
-        detail.error instanceof ApiError && detail.error.status === 404 ? (
-          <ContentState title='Junk tidak ditemukan' description='Item ini mungkin sudah tidak tersedia.' />
-        ) : (
-          <ErrorState onRetry={detail.retry} />
-        )
+        <QueryError
+          error={detail.error}
+          notFound={{
+            title: 'Junk tidak ditemukan',
+            description: 'Item ini mungkin sudah tidak tersedia.',
+          }}
+          onRetry={detail.retry}
+        />
       ) : null}
       {detail.status === 'success' ? (
         <JunkDetailPane

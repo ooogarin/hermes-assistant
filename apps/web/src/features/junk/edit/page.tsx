@@ -1,9 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { JunkForm } from '../../../components/junk/junk-form';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getJunkItem, updateJunkItem } from '../junk-api';
 import type { JunkFormValues } from '../../../components/junk/junk-form';
@@ -53,11 +52,14 @@ const JunkEditPage = () => {
       ) : null}
       {item.status === 'error' ? (
         <div className='mt-7'>
-          {item.error instanceof ApiError && item.error.status === 404 ? (
-            <ContentState title='Junk tidak ditemukan' description='Item ini mungkin sudah tidak tersedia.' />
-          ) : (
-            <ErrorState onRetry={item.retry} />
-          )}
+          <QueryError
+            error={item.error}
+            notFound={{
+              title: 'Junk tidak ditemukan',
+              description: 'Item ini mungkin sudah tidak tersedia.',
+            }}
+            onRetry={item.retry}
+          />
         </div>
       ) : null}
       {item.status === 'success' ? (

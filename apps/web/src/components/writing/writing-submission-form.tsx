@@ -4,6 +4,7 @@ import { updateWritingSubmission } from '../../features/writing/writing-api';
 import { countWritingWords } from '../../features/writing/writing-display';
 import { ApiError } from '../../lib/api/api-error';
 import { useUnsavedChanges } from '../../lib/hooks/use-unsaved-changes';
+import { cefrLevels } from '../../lib/levels';
 import { Button } from '../ui/button';
 import { ChoiceDropdown } from '../ui/choice-dropdown';
 import { CopyButton } from '../ui/copy-button';
@@ -11,8 +12,6 @@ import { Field, TextAreaField, TextField } from '../ui/form-field';
 import { TagInput } from '../ui/tag-input';
 import type { FormEvent } from 'react';
 import type { UpdateWritingSubmissionInput, WritingSubmission } from '../../features/writing/writing-api';
-
-const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export const WritingSubmissionForm = ({ submission }: { submission: WritingSubmission }) => {
   const navigate = useNavigate();
@@ -36,7 +35,7 @@ export const WritingSubmissionForm = ({ submission }: { submission: WritingSubmi
   const validMetadata =
     (!topicChanged || topic.trim().length > 0) &&
     (!genreChanged || genre.trim().length > 0) &&
-    (!levelChanged || levels.includes(level));
+    (!levelChanged || cefrLevels.includes(level));
   const valid = validText && validMetadata;
   const canLeave = useUnsavedChanges(dirty);
 
@@ -156,7 +155,7 @@ export const WritingSubmissionForm = ({ submission }: { submission: WritingSubmi
               label='Estimasi level'
               mode='single'
               onChange={(value) => setLevel(value ?? '')}
-              options={levels.map((value) => ({ label: value, value }))}
+              options={cefrLevels.map((value) => ({ label: value, value }))}
               placeholder='Belum diestimasi'
               searchable={false}
               value={level || null}

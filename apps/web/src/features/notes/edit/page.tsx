@@ -1,9 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { NoteForm } from '../../../components/notes/note-form';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getNote, updateNote } from '../notes-api';
 import type { NoteFormValues } from '../../../components/notes/note-form';
@@ -55,11 +54,14 @@ const NotesEditPage = () => {
       ) : null}
       {note.status === 'error' ? (
         <div className='mt-7'>
-          {note.error instanceof ApiError && note.error.status === 404 ? (
-            <ContentState title='Catatan tidak ditemukan' description='Catatan ini mungkin sudah tidak tersedia.' />
-          ) : (
-            <ErrorState onRetry={note.retry} />
-          )}
+          <QueryError
+            error={note.error}
+            notFound={{
+              title: 'Catatan tidak ditemukan',
+              description: 'Catatan ini mungkin sudah tidak tersedia.',
+            }}
+            onRetry={note.retry}
+          />
         </div>
       ) : null}
       {note.status === 'success' ? (

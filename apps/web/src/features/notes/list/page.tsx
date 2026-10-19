@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { PageHeader } from '../../../components/layout/page-header';
 import { NoteActions } from '../../../components/notes/note-actions';
@@ -11,7 +12,6 @@ import { NoteList } from '../../../components/notes/note-list';
 import { NotesToolbar } from '../../../components/notes/notes-toolbar';
 import { Button } from '../../../components/ui/button';
 import { ButtonLink } from '../../../components/ui/button-link';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getNote, getNotes, parseNoteType } from '../notes-api';
 import type { NoteListFilters, NoteType } from '../notes-api';
@@ -200,19 +200,19 @@ const NotesListPage = () => {
           <div className='min-w-0 max-xl:col-span-full'>
             {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
             {detail.status === 'error' ? (
-              detail.error instanceof ApiError && detail.error.status === 404 ? (
-                <ContentState
-                  title='Catatan tidak ditemukan'
-                  description='Catatan ini mungkin sudah tidak tersedia.'
-                  action={
+              <QueryError
+                error={detail.error}
+                notFound={{
+                  title: 'Catatan tidak ditemukan',
+                  description: 'Catatan ini mungkin sudah tidak tersedia.',
+                  action: (
                     <Button variant='secondary' onClick={closePreview}>
                       Kembali ke Notes
                     </Button>
-                  }
-                />
-              ) : (
-                <ErrorState onRetry={detail.retry} />
-              )
+                  ),
+                }}
+                onRetry={detail.retry}
+              />
             ) : null}
             {detail.status === 'success' && detail.data !== null ? (
               <NoteDetailPane

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ContentState, ErrorState } from '../../../components/feedback/content-state';
 import { NavigationNotice } from '../../../components/feedback/navigation-notice';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { JunkActions } from '../../../components/junk/junk-actions';
 import { JunkDetailPane } from '../../../components/junk/junk-detail-pane';
@@ -11,7 +12,6 @@ import { JunkToolbar } from '../../../components/junk/junk-toolbar';
 import { PageHeader } from '../../../components/layout/page-header';
 import { Button } from '../../../components/ui/button';
 import { ButtonLink } from '../../../components/ui/button-link';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getJunkItem, getJunkItems } from '../junk-api';
 import type { JunkListFilters } from '../junk-api';
@@ -200,19 +200,19 @@ const JunkListPage = () => {
           <div className='min-w-0 max-xl:col-span-full'>
             {detail.status === 'loading' ? <CollectionSkeleton rows={4} /> : null}
             {detail.status === 'error' ? (
-              detail.error instanceof ApiError && detail.error.status === 404 ? (
-                <ContentState
-                  title='Junk tidak ditemukan'
-                  description='Item ini mungkin sudah tidak tersedia.'
-                  action={
+              <QueryError
+                error={detail.error}
+                notFound={{
+                  title: 'Junk tidak ditemukan',
+                  description: 'Item ini mungkin sudah tidak tersedia.',
+                  action: (
                     <Button variant='secondary' onClick={closePreview}>
                       Kembali ke Junk
                     </Button>
-                  }
-                />
-              ) : (
-                <ErrorState onRetry={detail.retry} />
-              )
+                  ),
+                }}
+                onRetry={detail.retry}
+              />
             ) : null}
             {detail.status === 'success' && detail.data !== null ? (
               <JunkDetailPane

@@ -2,10 +2,9 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { QueryError } from '../../../components/feedback/query-error';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { ReadingWorkspace } from '../../../components/reading/reading-workspace';
-import { ApiError } from '../../../lib/api/api-error';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getReadingMaterial, markReadingMaterial, saveReadingAnswers } from '../reading-api';
 import type { ReadingMaterial } from '../reading-api';
@@ -67,19 +66,19 @@ const ReadingDetailPage = () => {
 
       {material.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
       {material.status === 'error' ? (
-        material.error instanceof ApiError && material.error.status === 404 ? (
-          <ContentState
-            title='Materi Reading tidak ditemukan'
-            description='Periksa kembali kode materi dari Hermes.'
-            action={
+        <QueryError
+          error={material.error}
+          notFound={{
+            title: 'Materi Reading tidak ditemukan',
+            description: 'Periksa kembali kode materi dari Hermes.',
+            action: (
               <Link className='font-semibold text-primary hover:underline' to='/english/reading'>
                 Kembali ke Reading
               </Link>
-            }
-          />
-        ) : (
-          <ErrorState onRetry={material.retry} />
-        )
+            ),
+          }}
+          onRetry={material.retry}
+        />
       ) : null}
       {submitError === undefined ? null : (
         <p
