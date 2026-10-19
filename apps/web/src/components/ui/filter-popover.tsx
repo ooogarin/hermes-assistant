@@ -1,5 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useDismissOnOutside } from '../../lib/hooks/use-dismiss-on-outside';
 import { Button } from './button';
 import type { ReactNode } from 'react';
 
@@ -14,25 +14,10 @@ type FilterPopoverProps = {
 };
 
 export const FilterPopover = ({ activeCount, children, id, label, onClose, onToggle, open }: FilterPopoverProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const closeOnPointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) onClose();
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    document.addEventListener('pointerdown', closeOnPointerDown);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnPointerDown);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [onClose, open]);
+  const { containerRef } = useDismissOnOutside<HTMLDivElement>({
+    active: open,
+    onDismiss: onClose,
+  });
 
   return (
     <div className='relative flex' ref={containerRef}>

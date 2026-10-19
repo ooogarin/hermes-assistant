@@ -1,8 +1,9 @@
 import { EllipsisVertical, Pencil, Trash2 } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { deleteJunkItem } from '../../features/junk/junk-api';
 import { getJunkTitle } from '../../features/junk/junk-display';
+import { useDismissOnOutside } from '../../lib/hooks/use-dismiss-on-outside';
 import { Button } from '../ui/button';
 import { ButtonLink } from '../ui/button-link';
 import { ConfirmationDialog } from '../ui/confirmation-dialog';
@@ -22,32 +23,16 @@ export const JunkActions = ({
   const [confirm, setConfirm] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
   const id = useId();
-  useEffect(() => {
-    if (!open) return;
-    const dismiss = (event: Event) => {
-      if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
-    };
-    const dismissOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setOpen(false);
-        trigger.current?.focus();
-      }
-    };
-    document.addEventListener('pointerdown', dismiss);
-    document.addEventListener('focusin', dismiss);
-    document.addEventListener('keydown', dismissOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', dismiss);
-      document.removeEventListener('focusin', dismiss);
-      document.removeEventListener('keydown', dismissOnEscape);
-    };
-  }, [open]);
+  const { containerRef, triggerRef } = useDismissOnOutside<HTMLDivElement, HTMLButtonElement>({
+    active: open,
+    dismissOnFocusOut: true,
+    onDismiss: () => setOpen(false),
+    restoreFocus: true,
+  });
   const closeDialog = () => {
     setConfirm(false);
-    trigger.current?.focus();
+    triggerRef.current?.focus();
   };
   const remove = async () => {
     setPending(true);
@@ -94,9 +79,9 @@ export const JunkActions = ({
     );
   }
   return (
-    <div ref={root} className='relative'>
+    <div className='relative' ref={containerRef}>
       <IconButton
-        ref={trigger}
+        ref={triggerRef}
         label='Aksi Junk'
         title='Aksi Junk'
         aria-expanded={open}

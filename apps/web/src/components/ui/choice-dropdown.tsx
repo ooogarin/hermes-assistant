@@ -1,6 +1,7 @@
 import { Check, ChevronDown, ChevronUp, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { classNames } from '../../lib/class-names';
+import { useDismissOnOutside } from '../../lib/hooks/use-dismiss-on-outside';
 import { Chip } from './chip';
 import { SearchField } from './search-form';
 
@@ -40,10 +41,13 @@ export const ChoiceDropdown = <Value extends string>(props: ChoiceDropdownProps<
     searchPlaceholder = 'Cari...',
   } = props;
   const id = useId();
-  const containerRef = useRef<HTMLFieldSetElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const { containerRef, triggerRef } = useDismissOnOutside<HTMLFieldSetElement, HTMLButtonElement>({
+    active: open,
+    onDismiss: () => setOpen(false),
+    restoreFocus: true,
+  });
   const selectedValues = props.mode === 'multiple' ? props.value : props.value === null ? [] : [props.value];
   const selectedOptions = selectedValues.map(
     (value) => options.find((option) => option.value === value) ?? { label: value, value },
@@ -70,27 +74,11 @@ export const ChoiceDropdown = <Value extends string>(props: ChoiceDropdownProps<
     else props.onChange([]);
   };
 
-  useEffect(() => {
-    if (!open) return;
-
-    const closeOnPointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOnPointerDown);
-    return () => document.removeEventListener('pointerdown', closeOnPointerDown);
-  }, [open]);
-
   return (
     <fieldset
       aria-label={label}
       className={classNames('relative min-w-0 border-0 p-0', className)}
       disabled={disabled}
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape' || !open) return;
-        event.stopPropagation();
-        setOpen(false);
-        triggerRef.current?.focus();
-      }}
       ref={containerRef}
     >
       <div

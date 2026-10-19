@@ -1,7 +1,8 @@
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { classNames } from '../../lib/class-names';
 import { formatDate, formatMonth } from '../../lib/formatting/formatters';
+import { useDismissOnOutside } from '../../lib/hooks/use-dismiss-on-outside';
 
 const weekdays = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
@@ -63,39 +64,22 @@ export const DatePicker = ({
   position?: 'top' | 'bottom';
   value: string;
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => parseDate(value));
-  const dateLabel = isValidDateValue(value) ? formatDate(value) : undefined;
+  const { containerRef, triggerRef } = useDismissOnOutside<HTMLDivElement, HTMLButtonElement>({
+    active: open,
+    onDismiss: () => setOpen(false),
+    restoreFocus: true,
+  });
   const minDate = isValidDateValue(min) ? min : undefined;
   const maxDate = isValidDateValue(max) ? max : undefined;
+  const dateLabel = isValidDateValue(value) ? formatDate(value) : undefined;
   const calendarDays = getCalendarDays(visibleMonth);
   const previousMonth = shiftMonth(visibleMonth, -1);
   const nextMonth = shiftMonth(visibleMonth, 1);
   const previousDisabled =
     minDate !== undefined && toDateValue(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 0)) < minDate;
   const nextDisabled = maxDate !== undefined && toDateValue(nextMonth) > maxDate;
-
-  useEffect(() => {
-    if (!open) return;
-
-    const closeOnPointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
-
-    document.addEventListener('pointerdown', closeOnPointerDown);
-    document.addEventListener('keydown', closeOnEscape);
-    return () => {
-      document.removeEventListener('pointerdown', closeOnPointerDown);
-      document.removeEventListener('keydown', closeOnEscape);
-    };
-  }, [open]);
 
   const toggle = () => {
     setVisibleMonth(parseDate(value));
