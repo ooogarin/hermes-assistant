@@ -33,6 +33,29 @@ Create material body:
 }
 ```
 
+Every question object carries `question_text` and `expected_answer` and nothing else.
+`title`, `genre`, `content_text`, and `source` are required. `level`,
+`target_word_count`, `target_question_count`, `tags`, and `questions` are optional;
+omit them instead of sending `null`.
+
+## Reading settings
+
+Update reading settings body:
+
+```json
+{
+  "default_level": "B1",
+  "default_question_count": 3,
+  "default_word_count": 350,
+  "min_word_count": 250,
+  "max_word_count": 500
+}
+```
+
+Send only the settings the user asked to change, and send at least one field.
+`default_question_count` accepts 0–20; the word-count fields accept positive
+integers up to 20000. `default_level` is a CEFR level such as `A1`–`C2`.
+
 ## Create Material Flow
 
 1. Resolve `title`, `level`, `genre`, and target length from the request. For a request

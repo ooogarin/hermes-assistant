@@ -110,6 +110,21 @@ Answers are saved through one bulk endpoint. Every item links to its question by
   unevaluated). After every question is answered, evaluate all answers once through
   `/evaluate`; then fetch `/report` for authoritative `score`, `max_score`, and
   breakdown.
+
+Evaluate body:
+
+```json
+{
+  "answers": [
+    { "question_number": 1, "result": "correct", "feedback": null },
+    { "question_number": 2, "result": "partial", "feedback": "Partly right." }
+  ]
+}
+```
+
+Each evaluate item carries `question_number`, `result` (`correct|partial|incorrect`),
+and an optional concise `feedback`; it does not carry `user_answer`.
+
 - The session `score` is weighted: `correct` counts 1, `partial` counts 0.5, and
   `incorrect` counts 0, so a score can be a decimal such as `1.5`. `max_score`
   equals the session question count.
@@ -143,6 +158,18 @@ the API.
   then PATCH only after explicit confirmation.
 - `"jadikan latihan harian 10 soal"` → update only `daily_question_count` through
   `PATCH` after confirming that the user means the persistent default.
+- Update grammar settings body:
+
+  ```json
+  {
+    "default_level": "B1",
+    "daily_question_count": 5
+  }
+  ```
+
+  Send only the settings the user asked to change, and send at least one field.
+  `daily_question_count` accepts 1–100. `default_level` is a CEFR level such as
+  `A1`–`C2`.
 - `"tampilkan sesi grammar aktif"` → list sessions with `status=active`.
 - `"hapus sesi GR-..."` → fetch/resolve the explicit code, show the target, then
   soft-delete it with `DELETE` only after explicit confirmation; do not delete based

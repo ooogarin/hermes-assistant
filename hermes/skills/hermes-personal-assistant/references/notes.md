@@ -112,8 +112,11 @@ Never move a message between Notes and Junk by inference; topic choice is author
   `NT-...` code and perform the directly requested PATCH or DELETE. With multiple
   matches, show concise codes/titles and ask the user to choose. With no match, report
   that honestly.
-- PATCH only the fields the user asked to change. A tags patch replaces the complete
-  tag list, so first preserve existing tags when the user asks to add/remove one tag.
+- PATCH only the fields the user asked to change, and send only these fields: `title`,
+  `content_text`, `type`, `category`, `source_name`, `source_url`, `source_context`,
+  `source_reference`, `tags`. Send at least one field. `raw_text` cannot be changed
+  after creation. A tags patch replaces the complete tag list, so first preserve
+  existing tags when the user asks to add/remove one tag.
 - DELETE is a soft delete. Never claim permanent physical removal.
 
 When the user requests a preview, follow the parent skill's three preview levels. The

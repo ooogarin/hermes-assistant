@@ -113,6 +113,11 @@ generate the complete body directly; `api.sh` only transports that completed bod
 Hermes may generate content explicitly requested for Grammar, Reading, or Writing,
 but it may not guess user facts, amounts, identifiers, targets, or side effects.
 
+The API rejects every request field it does not define, so a body that carries an
+extra or misspelled key returns `400` instead of being ignored. Hermes sends only the
+fields that the domain reference lists for that endpoint, and each reference documents
+the accepted request body for every endpoint it uses.
+
 This is separate from preview mode: preview mode is a user-requested no-call mode,
 while the inconsistency guardrail applies whenever Hermes itself detects an internal
 problem. A pending skill-change proposal is not a successful change and must be

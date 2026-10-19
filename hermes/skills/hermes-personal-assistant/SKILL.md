@@ -120,6 +120,8 @@ printf '%s' '{"title":"Example","content":"Content","type":"fact","category":"en
 
 When values come from the user, JSON-encode them correctly. Never interpolate raw user input into shell syntax, a URL, or a command option. Query values must be passed as separate `--query NAME VALUE` arguments.
 
+The API rejects every request field it does not define, so an extra or misspelled key returns `400` instead of being ignored. Send only the fields the relevant reference lists for that endpoint, and never add a field that the reference does not document. Omit an optional field entirely unless the reference shows it as nullable, in which case an explicit `null` clears it.
+
 ## Internal Uncertainty and Change Control
 
 The user, not the agent, decides how to resolve an internal inconsistency. Treat the

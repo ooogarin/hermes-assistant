@@ -151,7 +151,9 @@ later. If the analysis request's outcome is uncertain, fetch the submission firs
 ## Edit and retrieve a submission
 
 - `PATCH /submissions/:code` accepts `original_text` and/or any of the four estimated
-  metadata fields. Send at least one field.
+  metadata fields: `estimated_topic`, `estimated_genre`, `estimated_tags`, and
+  `estimated_level`. Send only those fields and send at least one.
+  `estimated_level` is a CEFR level such as `A1`–`C2`.
 - Text may be edited only before analysis. After analysis, a patch containing
   `original_text` is rejected with `409 WRITING_SUBMISSION_TEXT_LOCKED`, even if it
   repeats the same text. Estimated metadata remains user-editable after analysis.
@@ -176,6 +178,20 @@ and `➡️ *Langkah Berikutnya*`; omit empty sections.
 - `"setting writing saya"` → `GET /settings`.
 - Update settings only for an explicit persistent-change request. Show current and
   proposed values and get confirmation before calling `PATCH /settings`.
+- Update writing settings body:
+
+  ```json
+  {
+    "default_level": "B1",
+    "default_word_count": 150,
+    "min_word_count": 50,
+    "max_word_count": 500
+  }
+  ```
+
+  Send only the settings the user asked to change, and send at least one field. The
+  word-count fields accept positive integers up to 20000. `default_level` is a CEFR
+  level such as `A1`–`C2`.
 - In preview mode, do not read or write settings/materials/submissions. Follow the
   parent skill's preview levels: default shows the proposed prompt in Telegram format,
   `preview payload only` shows only the exact request body, and `full preview` shows
