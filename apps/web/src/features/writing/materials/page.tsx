@@ -7,8 +7,8 @@ import { WritingList } from '../../../components/writing/writing-list';
 import { WritingNavigation } from '../../../components/writing/writing-navigation';
 import { WritingToolbar } from '../../../components/writing/writing-toolbar';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { useDraftValue } from '../../../lib/hooks/use-draft-value';
-import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
+import { useListParams } from '../../../lib/hooks/use-list-params';
+import { cefrLevels } from '../../../lib/levels';
 import { getAllWritingMaterials } from '../writing-api';
 import type { WritingListFilters } from '../writing-api';
 
@@ -21,64 +21,60 @@ const statusOptions = [
 ] as const;
 
 const WritingMaterialsPage = () => {
-  const {
-    clearParams,
-    key,
-    query: appliedQuery,
-    searchParams,
-    setParams,
-    setStatus,
-    sort,
-    status,
-  } = useLearningListParams({ statusParam: 'status', statuses });
-  const genre = searchParams.get('genre')?.trim() || undefined;
-  const levelsKey = searchParams.get('levels') ?? '';
-  const levels = levelsKey.split(',').filter(Boolean);
-  const filters: Omit<WritingListFilters, 'page' | 'limit'> = { q: appliedQuery, genre, levels, status, sort };
-  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
-  const [draftGenre, setDraftGenre] = useDraftValue(genre ?? '');
-  const [draftLevelsKey, setDraftLevelsKey] = useDraftValue(levelsKey);
-  const materials = useApiQuery(key, (signal) => getAllWritingMaterials(filters, signal));
-  const hasFilters = Boolean(filters.q || filters.status || levels.length || filters.genre);
-  const draftLevels = draftLevelsKey.split(',').filter(Boolean);
+  const list = useListParams({
+    deferred: ['genre', 'levels'],
+    fields: {
+      genre: { param: 'genre' },
+      levels: { param: 'levels' },
+      status: { param: 'status', values: statuses },
+    },
+    quick: 'status',
+  });
+  const filters: Omit<WritingListFilters, 'page' | 'limit'> = {
+    genre: list.filters.genre,
+    levels: list.filters.levels?.split(',').filter(Boolean),
+    q: list.filters.q,
+    sort: list.filters.sort,
+    status: list.filters.status,
+  };
+  const materials = useApiQuery(list.key, (signal) => getAllWritingMaterials(filters, signal));
+  const hasFilters = Boolean(filters.q || list.activeFilterCount > 0);
+  const draftLevels = list.drafts.levels.split(',').filter(Boolean);
 
   return (
     <div className='space-y-7'>
       <WritingNavigation />
       <WritingToolbar
-        activeFilterCount={Number(Boolean(filters.genre)) + Number(levels.length > 0)}
-        onApplyFilters={() => setParams({ genre: draftGenre.trim(), levels: draftLevelsKey, level: undefined })}
-        onOpenFilters={() => {
-          setDraftGenre(genre ?? '');
-          setDraftLevelsKey(levelsKey);
-        }}
+        activeFilterCount={Number(Boolean(filters.genre)) + Number((filters.levels?.length ?? 0) > 0)}
+        onApplyFilters={list.applyFilters}
+        onOpenFilters={list.resetFilters}
         onQueryChange={(value) => {
-          setQuery(value);
+          list.setQuery(value);
 
           if (value === '') {
-            setParams({ q: undefined });
+            list.setParam('q', undefined);
           }
         }}
         onResetFilters={() => {
-          setDraftGenre('');
-          setDraftLevelsKey('');
-          setParams({ genre: undefined, levels: undefined, level: undefined });
+          list.setDraft('genre', '');
+          list.setDraft('levels', '');
+          list.applyFilters();
         }}
-        onSearch={() => setParams({ q: query.trim() })}
-        onSortChange={() => setParams({ sort: sort === 'newest' ? 'oldest' : 'newest' })}
-        onStatusChange={(value) => setStatus(value)}
-        query={query}
+        onSearch={list.applyQuery}
+        onSortChange={list.toggleSort}
+        onStatusChange={(value) => list.setQuick(value)}
+        query={list.query}
         searchLabel='Cari prompt'
-        sort={sort}
-        status={status}
+        sort={list.sort}
+        status={list.filters.status}
         statuses={[...statusOptions]}
       >
         <Field label='Level'>
           <ChoiceDropdown
             label='Filter level'
             mode='multiple'
-            onChange={(value) => setDraftLevelsKey(value.join(','))}
-            options={['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((value) => ({ label: value, value }))}
+            onChange={(value) => list.setDraft('levels', value.join(','))}
+            options={cefrLevels.map((value) => ({ label: value, value }))}
             placeholder='Semua level'
             searchable={false}
             value={draftLevels}
@@ -87,9 +83,9 @@ const WritingMaterialsPage = () => {
         <TextField
           label='Genre'
           maxLength={100}
-          onChange={(event) => setDraftGenre(event.target.value)}
+          onChange={(event) => list.setDraft('genre', event.target.value)}
           placeholder='Semua genre'
-          value={draftGenre}
+          value={list.drafts.genre}
         />
       </WritingToolbar>
 
@@ -105,7 +101,7 @@ const WritingMaterialsPage = () => {
           }
           action={
             hasFilters ? (
-              <Button variant='secondary' onClick={clearParams}>
+              <Button variant='secondary' onClick={list.clearFilters}>
                 Hapus filter
               </Button>
             ) : undefined

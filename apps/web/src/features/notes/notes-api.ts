@@ -66,8 +66,6 @@ export type CreateNoteInput = Pick<
   'category' | 'contentText' | 'sourceName' | 'sourceUrl' | 'tags' | 'title' | 'type'
 > & { rawText?: string | null };
 
-export const parseNoteType = (value: string | null): NoteType | undefined => noteTypeSchema.safeParse(value).data;
-
 export const getNotes = (filters: NoteListFilters, signal?: AbortSignal): Promise<Note[]> =>
   apiRequest(`/api/v1/notes${buildQueryString({ ...filters, limit: 100 })}`, noteListSchema, { signal });
 

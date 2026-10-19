@@ -8,8 +8,7 @@ import { WritingNavigation } from '../../../components/writing/writing-navigatio
 import { WritingSubmissionList } from '../../../components/writing/writing-submission-list';
 import { WritingToolbar } from '../../../components/writing/writing-toolbar';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { useDraftValue } from '../../../lib/hooks/use-draft-value';
-import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
+import { useListParams } from '../../../lib/hooks/use-list-params';
 import { getAllWritingSubmissions } from '../writing-api';
 
 const statuses = ['not_analyzed', 'analyzed'] as const;
@@ -21,63 +20,66 @@ const statusOptions = [
 ] as const;
 
 const WritingListPage = () => {
-  const {
-    clearParams,
-    key,
-    query: appliedQuery,
-    searchParams,
-    setParams,
-    setStatus,
-    sort,
-    status,
-  } = useLearningListParams({ statusParam: 'analysis_status', statuses });
-  const writingType = writingTypes.find((type) => type === searchParams.get('writing_type'));
-  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
-  const [draftWritingType, setDraftWritingType] = useDraftValue(writingType);
-  const submissions = useApiQuery(key, (signal) =>
-    getAllWritingSubmissions({ q: appliedQuery, analysisStatus: status, writingType, sort }, signal),
+  const list = useListParams({
+    deferred: ['writing_type'],
+    fields: {
+      analysis_status: { param: 'analysis_status', values: statuses },
+      writing_type: { param: 'writing_type', values: writingTypes },
+    },
+    quick: 'analysis_status',
+  });
+  const submissions = useApiQuery(list.key, (signal) =>
+    getAllWritingSubmissions(
+      {
+        analysisStatus: list.filters.analysis_status,
+        q: list.filters.q,
+        sort: list.filters.sort,
+        writingType: list.filters.writing_type,
+      },
+      signal,
+    ),
   );
-  const hasFilters = Boolean(appliedQuery || status || writingType);
+  const hasFilters = Boolean(list.filters.q || list.activeFilterCount > 0);
 
   return (
     <div className='space-y-7'>
       <WritingNavigation />
       <WritingToolbar
-        activeFilterCount={writingType === undefined ? 0 : 1}
-        onApplyFilters={() => setParams({ writing_type: draftWritingType })}
-        onOpenFilters={() => setDraftWritingType(writingType)}
+        activeFilterCount={list.filters.writing_type === undefined ? 0 : 1}
+        onApplyFilters={list.applyFilters}
+        onOpenFilters={list.resetFilters}
         onQueryChange={(value) => {
-          setQuery(value);
+          list.setQuery(value);
 
           if (value === '') {
-            setParams({ q: undefined });
+            list.setParam('q', undefined);
           }
         }}
         onResetFilters={() => {
-          setDraftWritingType(undefined);
-          setParams({ writing_type: undefined });
+          list.setDraft('writing_type', '');
+          list.applyFilters();
         }}
-        onSearch={() => setParams({ q: query.trim() })}
-        onSortChange={() => setParams({ sort: sort === 'newest' ? 'oldest' : 'newest' })}
-        onStatusChange={(value) => setStatus(value)}
-        query={query}
+        onSearch={list.applyQuery}
+        onSortChange={list.toggleSort}
+        onStatusChange={(value) => list.setQuick(value)}
+        query={list.query}
         searchLabel='Cari tulisan'
-        sort={sort}
-        status={status}
+        sort={list.sort}
+        status={list.filters.analysis_status}
         statuses={[...statusOptions]}
       >
         <Field label='Jenis tulisan'>
           <ChoiceDropdown
             label='Jenis tulisan'
             mode='single'
-            onChange={(value) => setDraftWritingType(value ?? undefined)}
+            onChange={(value) => list.setDraft('writing_type', value ?? '')}
             options={[
               { label: 'Tulisan bebas', value: 'free' },
               { label: 'Dari prompt', value: 'prompted' },
             ]}
             placeholder='Semua jenis'
             searchable={false}
-            value={draftWritingType ?? null}
+            value={list.drafts.writing_type || null}
           />
         </Field>
       </WritingToolbar>
@@ -93,7 +95,7 @@ const WritingListPage = () => {
           }
           action={
             hasFilters ? (
-              <Button variant='secondary' onClick={clearParams}>
+              <Button variant='secondary' onClick={list.clearFilters}>
                 Hapus filter
               </Button>
             ) : (

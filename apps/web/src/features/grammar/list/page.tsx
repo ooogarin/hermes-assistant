@@ -11,8 +11,8 @@ import { FilterPopover } from '../../../components/ui/filter-popover';
 import { SearchForm } from '../../../components/ui/search-form';
 import { SortToggle } from '../../../components/ui/sort-toggle';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { useDraftValue } from '../../../lib/hooks/use-draft-value';
-import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
+import { useListParams } from '../../../lib/hooks/use-list-params';
+import { cefrLevels } from '../../../lib/levels';
 import { getGrammarSessions } from '../grammar-api';
 import type { FilterChipOption } from '../../../components/ui/filter-chip-row';
 import type { GrammarSessionListFilters } from '../grammar-api';
@@ -24,34 +24,29 @@ const sessionStatusOptions: Array<FilterChipOption<(typeof sessionStatuses)[numb
   { label: 'Selesai', value: 'completed' },
 ];
 const sessionModes = ['practice', 'exam'] as const;
-const sessionLevels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 const sessionListLimit = 100;
 
 const GrammarListPage = () => {
-  const {
-    clearParams,
-    key,
-    query: appliedQuery,
-    searchParams,
-    setParams,
-    setStatus,
-    sort,
-    status,
-  } = useLearningListParams({ statusParam: 'status', statuses: sessionStatuses });
+  const list = useListParams({
+    deferred: ['mode', 'level'],
+    fields: {
+      level: { param: 'level', values: cefrLevels },
+      mode: { param: 'mode', values: sessionModes },
+      status: { param: 'status', values: sessionStatuses },
+    },
+    quick: 'status',
+  });
   const filters: GrammarSessionListFilters = {
-    q: appliedQuery,
-    status,
-    mode: sessionModes.find((mode) => mode === searchParams.get('mode')),
-    level: searchParams.get('level')?.trim() || undefined,
+    level: list.filters.level,
     limit: sessionListLimit,
-    sort,
+    mode: list.filters.mode,
+    q: list.filters.q,
+    sort: list.filters.sort,
+    status: list.filters.status,
   };
-  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
-  const [draftMode, setDraftMode] = useDraftValue(filters.mode);
-  const [draftLevel, setDraftLevel] = useDraftValue(filters.level ?? '');
-  const [open, setOpen] = useState(false);
-  const sessions = useApiQuery(key, (signal) => getGrammarSessions(filters, signal));
-  const hasFilters = Boolean(filters.q || filters.status || filters.mode || filters.level);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const sessions = useApiQuery(list.key, (signal) => getGrammarSessions(filters, signal));
+  const hasFilters = Boolean(list.filters.q || list.activeFilterCount > 0);
 
   return (
     <div className='space-y-7'>
@@ -61,59 +56,60 @@ const GrammarListPage = () => {
           <SearchForm
             label='Cari sesi'
             placeholder='Cari kode sesi...'
-            value={query}
+            value={list.query}
             onChange={(value) => {
-              setQuery(value);
-              if (!value) setParams({ q: undefined });
+              list.setQuery(value);
+
+              if (!value) list.setParam('q', undefined);
             }}
-            onSearch={() => setParams({ q: query.trim() || undefined })}
+            onSearch={list.applyQuery}
           />
           <FilterPopover
-            activeCount={Number(Boolean(filters.mode)) + Number(Boolean(filters.level))}
+            activeCount={Number(Boolean(list.filters.mode)) + Number(Boolean(list.filters.level))}
             id='grammar-filters'
             label='Filter Grammar'
-            open={open}
-            onToggle={() => setOpen(!open)}
-            onClose={() => setOpen(false)}
+            open={filtersOpen}
+            onToggle={() => setFiltersOpen(!filtersOpen)}
+            onClose={() => setFiltersOpen(false)}
           >
             <div className='space-y-4'>
               <ChoiceDropdown
                 label='Filter mode'
                 mode='single'
-                onChange={(value) => setDraftMode(value ?? undefined)}
+                onChange={(value) => list.setDraft('mode', value ?? '')}
                 options={[
                   { label: 'Practice', value: 'practice' },
                   { label: 'Exam', value: 'exam' },
                 ]}
                 placeholder='Semua mode'
                 searchable={false}
-                value={draftMode ?? null}
+                value={list.drafts.mode || null}
               />
               <ChoiceDropdown
                 label='Filter level'
                 mode='single'
-                onChange={(value) => setDraftLevel(value ?? '')}
-                options={sessionLevels.map((level) => ({ label: level, value: level }))}
+                onChange={(value) => list.setDraft('level', value ?? '')}
+                options={cefrLevels.map((level) => ({ label: level, value: level }))}
                 placeholder='Semua level'
                 searchable={false}
-                value={draftLevel || null}
+                value={list.drafts.level || null}
               />
               <div className='flex justify-between gap-3'>
                 <Button
                   variant='secondary'
                   onClick={() => {
-                    setDraftMode(undefined);
-                    setDraftLevel('');
-                    setParams({ level: undefined, mode: undefined });
-                    setOpen(false);
+                    list.setDraft('mode', '');
+                    list.setDraft('level', '');
+                    list.applyFilters();
+                    setFiltersOpen(false);
                   }}
                 >
                   Reset
                 </Button>
                 <Button
                   onClick={() => {
-                    setParams({ level: draftLevel.trim() || undefined, mode: draftMode });
-                    setOpen(false);
+                    list.applyFilters();
+                    setFiltersOpen(false);
                   }}
                 >
                   Terapkan
@@ -121,17 +117,13 @@ const GrammarListPage = () => {
               </div>
             </div>
           </FilterPopover>
-          <SortToggle
-            className='h-12 lg:shrink-0'
-            onToggle={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
-            sort={sort}
-          />
+          <SortToggle className='h-12 lg:shrink-0' onToggle={list.toggleSort} sort={list.sort} />
         </div>
         <FilterChipRow
           label='Status sesi'
-          onChange={(value) => setStatus(value)}
+          onChange={(value) => list.setQuick(value)}
           options={sessionStatusOptions}
-          value={status}
+          value={list.filters.status}
         />
       </div>
       {sessions.status === 'loading' ? <CollectionSkeleton rows={6} /> : null}
@@ -149,7 +141,7 @@ const GrammarListPage = () => {
             }
             action={
               hasFilters ? (
-                <Button variant='secondary' onClick={clearParams}>
+                <Button variant='secondary' onClick={list.clearFilters}>
                   Hapus filter
                 </Button>
               ) : undefined

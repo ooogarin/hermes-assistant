@@ -12,8 +12,8 @@ import { TextField } from '../../../components/ui/form-field';
 import { SearchForm } from '../../../components/ui/search-form';
 import { SortToggle } from '../../../components/ui/sort-toggle';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
-import { useDraftValue } from '../../../lib/hooks/use-draft-value';
-import { useLearningListParams } from '../../../lib/hooks/use-learning-list-params';
+import { useListParams } from '../../../lib/hooks/use-list-params';
+import { cefrLevels } from '../../../lib/levels';
 import { getReadingMaterials } from '../reading-api';
 import type { FilterChipOption } from '../../../components/ui/filter-chip-row';
 import type { ReadingListFilters } from '../reading-api';
@@ -26,32 +26,27 @@ const readingStatusOptions: Array<FilterChipOption<(typeof readingStatuses)[numb
 ];
 
 const ReadingListPage = () => {
-  const {
-    clearParams,
-    key,
-    query: appliedQuery,
-    searchParams,
-    setParams,
-    setStatus,
-    sort,
-    status,
-  } = useLearningListParams({ statusParam: 'reading_status', statuses: readingStatuses });
-  const levelsKey = searchParams.get('levels') ?? '';
+  const list = useListParams({
+    deferred: ['levels', 'genre'],
+    fields: {
+      genre: { param: 'genre' },
+      levels: { param: 'levels' },
+      reading_status: { param: 'reading_status', values: readingStatuses },
+    },
+    quick: 'reading_status',
+  });
   const filters: ReadingListFilters = {
-    q: appliedQuery,
-    reading_status: status,
-    levels: levelsKey.split(',').filter(Boolean),
-    genre: searchParams.get('genre')?.trim() || undefined,
+    genre: list.filters.genre,
+    levels: list.filters.levels?.split(',').filter(Boolean),
     limit: 100,
-    sort,
+    q: list.filters.q,
+    reading_status: list.filters.reading_status,
+    sort: list.filters.sort,
   };
-  const [query, setQuery] = useDraftValue(appliedQuery ?? '');
-  const [draftLevelsKey, setDraftLevelsKey] = useDraftValue(levelsKey);
-  const [draftGenre, setDraftGenre] = useDraftValue(filters.genre ?? '');
   const [open, setOpen] = useState(false);
-  const materials = useApiQuery(key, (signal) => getReadingMaterials(filters, signal));
-  const hasFilters = Boolean(filters.q || filters.reading_status || filters.levels?.length || filters.genre);
-  const draftLevels = draftLevelsKey.split(',').filter(Boolean);
+  const materials = useApiQuery(list.key, (signal) => getReadingMaterials(filters, signal));
+  const hasFilters = Boolean(filters.q || list.activeFilterCount > 0);
+  const draftLevels = list.drafts.levels.split(',').filter(Boolean);
 
   return (
     <div className='space-y-7'>
@@ -61,12 +56,13 @@ const ReadingListPage = () => {
           <SearchForm
             label='Cari bacaan'
             placeholder='Cari bacaan...'
-            value={query}
+            value={list.query}
             onChange={(value) => {
-              setQuery(value);
-              if (!value) setParams({ q: undefined });
+              list.setQuery(value);
+
+              if (!value) list.setParam('q', undefined);
             }}
-            onSearch={() => setParams({ q: query.trim() || undefined })}
+            onSearch={list.applyQuery}
           />
           <FilterPopover
             activeCount={Number(Boolean(filters.genre)) + (filters.levels?.length ?? 0)}
@@ -82,22 +78,22 @@ const ReadingListPage = () => {
                 label='Filter level'
                 placeholder='Semua level'
                 value={draftLevels}
-                onChange={(value) => setDraftLevelsKey(value.join(','))}
-                options={['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].map((value) => ({ value, label: value }))}
+                onChange={(value) => list.setDraft('levels', value.join(','))}
+                options={cefrLevels.map((value) => ({ value, label: value }))}
               />
               <TextField
                 label='Genre'
                 placeholder='Semua genre'
-                value={draftGenre}
-                onChange={(event) => setDraftGenre(event.target.value)}
+                value={list.drafts.genre}
+                onChange={(event) => list.setDraft('genre', event.target.value)}
               />
               <div className='flex justify-between gap-3'>
                 <Button
                   variant='secondary'
                   onClick={() => {
-                    setDraftGenre('');
-                    setDraftLevelsKey('');
-                    setParams({ genre: undefined, levels: undefined });
+                    list.setDraft('genre', '');
+                    list.setDraft('levels', '');
+                    list.applyFilters();
                     setOpen(false);
                   }}
                 >
@@ -105,7 +101,7 @@ const ReadingListPage = () => {
                 </Button>
                 <Button
                   onClick={() => {
-                    setParams({ genre: draftGenre.trim() || undefined, levels: draftLevelsKey });
+                    list.applyFilters();
                     setOpen(false);
                   }}
                 >
@@ -114,17 +110,13 @@ const ReadingListPage = () => {
               </div>
             </div>
           </FilterPopover>
-          <SortToggle
-            className='h-12 lg:shrink-0'
-            onToggle={() => setParams({ sort: sort === 'oldest' ? 'newest' : 'oldest' })}
-            sort={sort}
-          />
+          <SortToggle className='h-12 lg:shrink-0' onToggle={list.toggleSort} sort={list.sort} />
         </div>
         <FilterChipRow
           label='Status baca'
-          onChange={(value) => setStatus(value)}
+          onChange={(value) => list.setQuick(value)}
           options={readingStatusOptions}
-          value={status}
+          value={list.filters.reading_status}
         />
       </div>
       {materials.status === 'loading' ? <CollectionSkeleton rows={5} /> : null}
@@ -140,7 +132,7 @@ const ReadingListPage = () => {
             }
             action={
               hasFilters ? (
-                <Button variant='secondary' onClick={clearParams}>
+                <Button variant='secondary' onClick={list.clearFilters}>
                   Hapus filter
                 </Button>
               ) : undefined
