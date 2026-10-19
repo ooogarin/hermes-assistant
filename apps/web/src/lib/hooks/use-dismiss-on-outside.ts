@@ -58,6 +58,12 @@ const removeEscapeListener = () => {
 };
 
 /**
+ * Tells whether a layer is currently open, so a page level listener can leave
+ * the Escape key to the layer that is on top.
+ */
+export const hasOpenDismissLayer = (): boolean => openLayers.length > 0;
+
+/**
  * Dismisses an open layer when the user clicks outside it or presses Escape.
  *
  * Escape always reaches the innermost open layer, so a dropdown inside a filter

@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/auth/auth-context';
 import { navigationItems } from '../../app/navigation';
 import { classNames } from '../../lib/class-names';
+import { hasOpenDismissLayer } from '../../lib/hooks/use-dismiss-on-outside';
 import { confirmDiscardChanges } from '../../lib/hooks/use-unsaved-changes';
 import { IconButton } from '../ui/icon-button';
 import { useTooltip } from '../ui/tooltip';
@@ -306,7 +307,8 @@ export const AppShell = () => {
     closeButtonRef.current?.focus();
 
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setDrawerOpen(false);
+      // An open layer on the page takes the Escape key, so the drawer stays.
+      if (event.key === 'Escape' && !hasOpenDismissLayer()) setDrawerOpen(false);
 
       if (event.key === 'Tab') {
         const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>(
