@@ -213,21 +213,31 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       ],
     });
     expect(practice.questions.map(({ question_number }) => question_number)).toEqual([1, 2]);
-    const firstPracticeAnswer = await grammarService.saveAnswers(practice.code, {
-      answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
-    });
+    const firstPracticeAnswer = await grammarService.saveAnswers(
+      { code: practice.code },
+      {
+        answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
+      },
+    );
     expect(firstPracticeAnswer.status).toBe('active');
     expect(firstPracticeAnswer.questions[0]?.answer?.result).toBe('correct');
-    expect((await grammarService.getExplanation(practice.code, 1)).explanation).toContain('simple past');
+    expect((await grammarService.getExplanation({ code: practice.code, question_number: 1 })).explanation).toContain(
+      'simple past',
+    );
 
-    const completedPractice = await grammarService.saveAnswers(practice.code, {
-      answers: [{ question_number: 2, user_answer: 'He walk every day.', result: 'incorrect', feedback: 'Use walks.' }],
-    });
+    const completedPractice = await grammarService.saveAnswers(
+      { code: practice.code },
+      {
+        answers: [
+          { question_number: 2, user_answer: 'He walk every day.', result: 'incorrect', feedback: 'Use walks.' },
+        ],
+      },
+    );
     expect(completedPractice.status).toBe('completed');
     expect(completedPractice.score).toBe(1);
     expect(completedPractice.max_score).toBe(2);
     expect(completedPractice.completed_at).not.toBeNull();
-    expect((await grammarService.getSession(practice.code)).questions[0]?.explanation).toBeNull();
+    expect((await grammarService.getSession({ code: practice.code })).questions[0]?.explanation).toBeNull();
 
     const exam = await grammarService.createSession({
       mode: 'exam',
@@ -254,25 +264,31 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
         },
       ],
     });
-    await grammarService.saveAnswers(exam.code, { answers: [{ question_number: 1, user_answer: 'went' }] });
-    await grammarService.saveAnswers(exam.code, {
-      answers: [{ question_number: 2, user_answer: 'He walk every day.' }],
-    });
-    await expect(grammarService.getExplanation(exam.code, 1)).rejects.toMatchObject({
+    await grammarService.saveAnswers({ code: exam.code }, { answers: [{ question_number: 1, user_answer: 'went' }] });
+    await grammarService.saveAnswers(
+      { code: exam.code },
+      {
+        answers: [{ question_number: 2, user_answer: 'He walk every day.' }],
+      },
+    );
+    await expect(grammarService.getExplanation({ code: exam.code, question_number: 1 })).rejects.toMatchObject({
       code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE',
       statusCode: 409,
     });
-    const report = await grammarService.evaluateSession(exam.code, {
-      answers: [
-        { question_number: 1, result: 'correct', feedback: null },
-        { question_number: 2, result: 'incorrect', feedback: 'Use walks.' },
-      ],
-    });
+    const report = await grammarService.evaluateSession(
+      { code: exam.code },
+      {
+        answers: [
+          { question_number: 1, result: 'correct', feedback: null },
+          { question_number: 2, result: 'incorrect', feedback: 'Use walks.' },
+        ],
+      },
+    );
 
     expect(report).toMatchObject({ status: 'completed', score: 1, max_score: 2 });
     expect(report.breakdown).toHaveLength(2);
 
-    const completedExam = await grammarService.getSession(exam.code);
+    const completedExam = await grammarService.getSession({ code: exam.code });
     expect(completedExam.questions.map(({ explanation }) => explanation)).toEqual([
       'Use the simple past.',
       'Third-person singular verbs take -s.',
@@ -301,8 +317,10 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       ],
     });
 
-    await grammarService.removeSession(practice.code);
-    await expect(grammarService.getSession(practice.code)).rejects.toMatchObject({ code: 'GRAMMAR_SESSION_NOT_FOUND' });
+    await grammarService.removeSession({ code: practice.code });
+    await expect(grammarService.getSession({ code: practice.code })).rejects.toMatchObject({
+      code: 'GRAMMAR_SESSION_NOT_FOUND',
+    });
   });
 
   test('normalizes grammar metadata to lowercase and persists a weighted decimal score', async () => {
@@ -339,18 +357,24 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     ]);
     expect(session.questions.map((question) => question.question_type)).toEqual(['fill_blank', 'error_correction']);
 
-    await grammarService.saveAnswers(session.code, {
-      answers: [{ question_number: 1, user_answer: 'has', result: 'correct' }],
-    });
-    const completed = await grammarService.saveAnswers(session.code, {
-      answers: [{ question_number: 2, user_answer: 'He walk every day.', result: 'partial', feedback: 'Verb form.' }],
-    });
+    await grammarService.saveAnswers(
+      { code: session.code },
+      {
+        answers: [{ question_number: 1, user_answer: 'has', result: 'correct' }],
+      },
+    );
+    const completed = await grammarService.saveAnswers(
+      { code: session.code },
+      {
+        answers: [{ question_number: 2, user_answer: 'He walk every day.', result: 'partial', feedback: 'Verb form.' }],
+      },
+    );
 
     expect(completed.status).toBe('completed');
     expect(completed.score).toBe(1.5);
     expect(completed.max_score).toBe(2);
 
-    await grammarService.removeSession(session.code);
+    await grammarService.removeSession({ code: session.code });
   });
 
   test('locks a grammar session before deciding whether it is still active', async () => {
@@ -420,20 +444,23 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     expect(material.questions.map(({ question_number }) => question_number)).toEqual([1, 2, 3]);
     expect(material.questions.every(({ user_answer }) => user_answer === null)).toBe(true);
 
-    const expectedAnswers = await readingService.getExpectedAnswers(material.code);
+    const expectedAnswers = await readingService.getExpectedAnswers({ code: material.code });
     expect(expectedAnswers.map(({ expected_answer }) => expected_answer)).toEqual([
       'Mira.',
       'Every Sunday morning.',
       'The market.',
     ]);
 
-    const submitted = await readingService.saveAnswers(material.code, {
-      answers: [
-        { question_number: 1, user_answer: 'Mira.' },
-        { question_number: 2, user_answer: 'Sunday morning.' },
-        { question_number: 3, user_answer: 'The market.' },
-      ],
-    });
+    const submitted = await readingService.saveAnswers(
+      { code: material.code },
+      {
+        answers: [
+          { question_number: 1, user_answer: 'Mira.' },
+          { question_number: 2, user_answer: 'Sunday morning.' },
+          { question_number: 3, user_answer: 'The market.' },
+        ],
+      },
+    );
     expect(submitted.questions.map(({ user_answer }) => user_answer)).toEqual([
       'Mira.',
       'Sunday morning.',
@@ -452,13 +479,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     });
 
     await expect(
-      readingService.saveAnswers(material.code, {
-        answers: [
-          { question_number: 1, user_answer: 'Mira.' },
-          { question_number: 2, user_answer: 'Sunday morning.' },
-          { question_number: 3, user_answer: 'The market.' },
-        ],
-      }),
+      readingService.saveAnswers(
+        { code: material.code },
+        {
+          answers: [
+            { question_number: 1, user_answer: 'Mira.' },
+            { question_number: 2, user_answer: 'Sunday morning.' },
+            { question_number: 3, user_answer: 'The market.' },
+          ],
+        },
+      ),
     ).resolves.toMatchObject({ code: material.code, reading_status: 'unread' });
 
     await getDatabase()`
@@ -467,13 +497,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       WHERE material_id = (SELECT id FROM reading_materials WHERE code = ${material.code})
     `;
 
-    const resubmitted = await readingService.saveAnswers(material.code, {
-      answers: [
-        { question_number: 1, user_answer: 'Mira.' },
-        { question_number: 2, user_answer: 'Sunday morning.' },
-        { question_number: 3, user_answer: 'The market.' },
-      ],
-    });
+    const resubmitted = await readingService.saveAnswers(
+      { code: material.code },
+      {
+        answers: [
+          { question_number: 1, user_answer: 'Mira.' },
+          { question_number: 2, user_answer: 'Sunday morning.' },
+          { question_number: 3, user_answer: 'The market.' },
+        ],
+      },
+    );
     expect(resubmitted.questions.map(({ user_answer }) => user_answer)).toEqual([
       'Mira.',
       'Sunday morning.',
@@ -510,15 +543,18 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       throw new Error('Expected a saved writing submission.');
     }
 
-    const firstDraft = await writingSubmissionService.saveAnalysis(draft.code, {
-      estimated_topic: 'Work',
-      estimated_genre: 'journal',
-      estimated_tags: ['work'],
-      estimated_level: 'A1',
-      analysis: writingAnalysis,
-    });
+    const firstDraft = await writingSubmissionService.saveAnalysis(
+      { code: draft.code },
+      {
+        estimated_topic: 'Work',
+        estimated_genre: 'journal',
+        estimated_tags: ['work'],
+        estimated_level: 'A1',
+        analysis: writingAnalysis,
+      },
+    );
     expect(firstDraft.analysis).toEqual(writingAnalysis);
-    expect(await writingSubmissionService.getCorrectedText(firstDraft.code)).toEqual({
+    expect(await writingSubmissionService.getCorrectedText({ code: firstDraft.code })).toEqual({
       code: firstDraft.code,
       corrected_text: writingAnalysis.corrected_text,
     });
@@ -558,13 +594,16 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       estimated_tags: null,
       estimated_level: null,
     });
-    expect(await writingSubmissionService.getSubmission(free.code)).toEqual(free);
+    expect(await writingSubmissionService.getSubmission({ code: free.code })).toEqual(free);
 
-    const draft = await writingSubmissionService.updateSubmission(free.code, {
-      original_text: '  My sports journal improved 10%_\\ today.\n',
-      estimated_topic: 'Sports',
-      estimated_tags: [],
-    });
+    const draft = await writingSubmissionService.updateSubmission(
+      { code: free.code },
+      {
+        original_text: '  My sports journal improved 10%_\\ today.\n',
+        estimated_topic: 'Sports',
+        estimated_tags: [],
+      },
+    );
 
     expect(draft.original_text).toBe('  My sports journal improved 10%_\\ today.\n');
     expect(draft.word_count).toBe(6);
@@ -577,7 +616,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
       estimated_level: 'B1' as const,
       analysis: { ...writingAnalysis, prompt_adherence: null },
     };
-    const analyzed = await writingSubmissionService.saveAnalysis(free.code, analysisInput);
+    const analyzed = await writingSubmissionService.saveAnalysis({ code: free.code }, analysisInput);
 
     expect(analyzed).toMatchObject({
       estimated_topic: 'Sports',
@@ -590,19 +629,25 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     expect(analyzed.analyzed_at).not.toBeNull();
 
     await expect(
-      writingSubmissionService.updateSubmission(free.code, {
-        original_text: draft.original_text,
-        estimated_topic: 'Blocked',
-      }),
+      writingSubmissionService.updateSubmission(
+        { code: free.code },
+        {
+          original_text: draft.original_text,
+          estimated_topic: 'Blocked',
+        },
+      ),
     ).rejects.toMatchObject({ code: 'WRITING_SUBMISSION_TEXT_LOCKED' });
-    await expect(writingSubmissionService.saveAnalysis(free.code, analysisInput)).rejects.toMatchObject({
+    await expect(writingSubmissionService.saveAnalysis({ code: free.code }, analysisInput)).rejects.toMatchObject({
       code: 'WRITING_SUBMISSION_ALREADY_ANALYZED',
     });
 
-    const corrected = await writingSubmissionService.updateSubmission(free.code, {
-      estimated_topic: 'User correction',
-      estimated_level: 'B2',
-    });
+    const corrected = await writingSubmissionService.updateSubmission(
+      { code: free.code },
+      {
+        estimated_topic: 'User correction',
+        estimated_level: 'B2',
+      },
+    );
 
     expect(corrected.analysis).toEqual(analyzed.analysis);
     expect(corrected.analyzed_at).toBe(analyzed.analyzed_at);
@@ -659,7 +704,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     await databaseClient`UPDATE writing_materials SET deleted_at = NOW() WHERE code = ${material.code}`;
 
-    await expect(writingSubmissionService.getSubmission(prompted.code)).rejects.toMatchObject({
+    await expect(writingSubmissionService.getSubmission({ code: prompted.code })).rejects.toMatchObject({
       code: 'WRITING_SUBMISSION_NOT_FOUND',
     });
     expect((await writingSubmissionService.listSubmissions(query)).items.map(({ code }) => code)).toEqual([free.code]);
@@ -668,7 +713,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
     await databaseClient`UPDATE writing_submissions SET deleted_at = NOW() WHERE code = ${free.code}`;
 
     expect((await writingSubmissionService.listSubmissions(query)).meta.total).toBe(0);
-    await expect(writingSubmissionService.getSubmission(free.code)).rejects.toMatchObject({
+    await expect(writingSubmissionService.getSubmission({ code: free.code })).rejects.toMatchObject({
       code: 'WRITING_SUBMISSION_NOT_FOUND',
     });
 

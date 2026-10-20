@@ -3,6 +3,7 @@ import { AppError } from '../../../core/errors/app-error';
 import { notFoundError } from '../../../core/errors/not-found-error';
 import { formatPublicCode } from '../../../shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../../../shared/date/date';
+import { toPaginationMeta } from '../../../shared/response/pagination';
 import { formatTaxonomyLabel } from '../../../shared/text/taxonomy';
 import { countWords } from '../../../shared/text/word-count';
 import { getMaterialReference } from '../writing-material/writing-material.service';
@@ -17,9 +18,9 @@ import type {
   UpdateWritingSubmissionPayload,
   UpdateWritingSubmissionRequest,
   WritingCorrectedText,
-  WritingPaginationMeta,
   WritingSubmission,
   WritingSubmissionList,
+  WritingSubmissionReferenceRequest,
   WritingSubmissionRow,
 } from './writing-submission.types';
 
@@ -87,7 +88,8 @@ export const listSubmissions = async (input: ListWritingSubmissionsRequest): Pro
   };
 };
 
-export const getSubmission = async (code: string): Promise<WritingSubmission> => {
+export const getSubmission = async (reference: WritingSubmissionReferenceRequest): Promise<WritingSubmission> => {
+  const { code } = reference;
   const row = await writingSubmissionRepository.getOneByCode(code);
 
   if (row === null) {
@@ -98,9 +100,10 @@ export const getSubmission = async (code: string): Promise<WritingSubmission> =>
 };
 
 export const updateSubmission = async (
-  code: string,
+  reference: WritingSubmissionReferenceRequest,
   input: UpdateWritingSubmissionRequest,
 ): Promise<WritingSubmission> => {
+  const { code } = reference;
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -145,7 +148,11 @@ export const updateSubmission = async (
   }
 };
 
-export const saveAnalysis = async (code: string, input: SaveWritingAnalysisRequest): Promise<WritingSubmission> => {
+export const saveAnalysis = async (
+  reference: WritingSubmissionReferenceRequest,
+  input: SaveWritingAnalysisRequest,
+): Promise<WritingSubmission> => {
+  const { code } = reference;
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -201,8 +208,9 @@ export const saveAnalysis = async (code: string, input: SaveWritingAnalysisReque
   }
 };
 
-export const getCorrectedText = async (code: string): Promise<WritingCorrectedText> => {
-  const submission = await getSubmission(code);
+export const getCorrectedText = async (reference: WritingSubmissionReferenceRequest): Promise<WritingCorrectedText> => {
+  const { code } = reference;
+  const submission = await getSubmission(reference);
 
   if (submission.analysis === null) {
     throw writingConflict('WRITING_SUBMISSION_NOT_ANALYZED', 'Writing submission has not been analyzed');
@@ -235,12 +243,6 @@ const toEstimatedGenreLabel = (estimated_genre: string | null): string | null =>
 
 const toEstimatedTagLabels = (estimated_tags: string[] | null): string[] | null =>
   estimated_tags === null ? null : estimated_tags.map(formatTaxonomyLabel);
-
-const toPaginationMeta = (totalValue: number | string, page: number, limit: number): WritingPaginationMeta => {
-  const total = Number(totalValue);
-
-  return { page, limit, total, total_pages: Math.ceil(total / limit) };
-};
 
 const writingConflict = (code: string, message: string): AppError => {
   return new AppError({ code, statusCode: 409, message });

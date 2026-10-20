@@ -6,6 +6,7 @@ import type {
   CreateWritingMaterialRequest,
   WritingMaterial,
   WritingMaterialList,
+  WritingMaterialReferenceRequest,
   WritingMaterialService,
 } from '../src/modules/writing/writing-material/writing-material.types';
 import type {
@@ -20,6 +21,7 @@ import type {
   UpdateWritingSubmissionRequest,
   WritingCorrectedText,
   WritingSubmission,
+  WritingSubmissionReferenceRequest,
   WritingSubmissionService,
 } from '../src/modules/writing/writing-submission/writing-submission.types';
 
@@ -93,6 +95,7 @@ const createWritingServiceStub = (overrides: Partial<WritingApiService> = {}): W
   createMaterial: async () => material,
   listMaterials: async () => materialList,
   getMaterial: async () => material,
+  getMaterialReference: async () => ({ id: 1, code: material.code }),
   createSubmission: async () => submission,
   getSubmission: async () => submission,
   listSubmissions: async () => ({ items: [], meta: { page: 1, limit: 20, total: 0, total_pages: 0 } }),
@@ -113,17 +116,18 @@ mock.module('../src/modules/writing/writing-material/writing-material.service', 
   createMaterial: (input: CreateWritingMaterialRequest) => activeWritingService.createMaterial(input),
   listMaterials: (input: Parameters<WritingApiService['listMaterials']>[0]) =>
     activeWritingService.listMaterials(input),
-  getMaterial: (code: string) => activeWritingService.getMaterial(code),
+  getMaterial: (reference: WritingMaterialReferenceRequest) => activeWritingService.getMaterial(reference),
 }));
 
 mock.module('../src/modules/writing/writing-submission/writing-submission.service', () => ({
   createSubmission: (input: CreateWritingSubmissionRequest) => activeWritingService.createSubmission(input),
-  getSubmission: (code: string) => activeWritingService.getSubmission(code),
+  getSubmission: (reference: WritingSubmissionReferenceRequest) => activeWritingService.getSubmission(reference),
   listSubmissions: (input: ListWritingSubmissionsRequest) => activeWritingService.listSubmissions(input),
-  updateSubmission: (code: string, input: UpdateWritingSubmissionRequest) =>
-    activeWritingService.updateSubmission(code, input),
-  saveAnalysis: (code: string, input: SaveWritingAnalysisRequest) => activeWritingService.saveAnalysis(code, input),
-  getCorrectedText: (code: string) => activeWritingService.getCorrectedText(code),
+  updateSubmission: (reference: WritingSubmissionReferenceRequest, input: UpdateWritingSubmissionRequest) =>
+    activeWritingService.updateSubmission(reference, input),
+  saveAnalysis: (reference: WritingSubmissionReferenceRequest, input: SaveWritingAnalysisRequest) =>
+    activeWritingService.saveAnalysis(reference, input),
+  getCorrectedText: (reference: WritingSubmissionReferenceRequest) => activeWritingService.getCorrectedText(reference),
 }));
 
 const { createApp } = await import('../src/app');
@@ -280,8 +284,8 @@ test('creates a writing submission without analysis and preserves original text'
 test('reads a submission using its public code', async () => {
   let reference: string | undefined;
   const response = await createWritingApp({
-    getSubmission: async (code) => {
-      reference = code;
+    getSubmission: async (submissionReference) => {
+      reference = submissionReference.code;
       return submission;
     },
   }).request(`http://localhost/api/v1/writing/submissions/${submission.code}`, { headers });

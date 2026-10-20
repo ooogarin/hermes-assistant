@@ -4,4 +4,3 @@ export type DatabaseClient = InstanceType<typeof SQL>;
 export type DatabaseReservedConnection = Bun.ReservedSQL;
 export type DatabaseConnection = DatabaseClient | DatabaseReservedConnection;
 export type DatabaseTransaction = Bun.TransactionSQL;
-export type DatabaseExecutor = DatabaseConnection | DatabaseTransaction;

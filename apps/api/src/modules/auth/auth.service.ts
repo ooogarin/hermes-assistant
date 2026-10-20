@@ -1,4 +1,4 @@
-import { issueWebJwt, verifyWebJwt } from '../../core/auth/web-jwt';
+import { issueWebJwt, requireVerifiedWebJwt } from '../../core/auth/web-jwt';
 import { AppError } from '../../core/errors/app-error';
 import type { AuthResources, IssuedWebJwt } from '../../core/auth/auth.types';
 import type { AuthStatusResponse, JwtRequest, LoginRequest, LoginResponse } from './auth.types';
@@ -33,11 +33,7 @@ export const login = async (resources: AuthResources, input: LoginRequest): Prom
 };
 
 export const requireWebJwt = async (resources: AuthResources, input: JwtRequest): Promise<AuthStatusResponse> => {
-  const verified = await verifyWebJwt(input.token, resources.configuration.jwt_secret, resources.now);
-
-  if (verified === undefined) {
-    throw new AppError({ code: 'UNAUTHENTICATED', message: 'Authentication required', statusCode: 401 });
-  }
+  const verified = await requireVerifiedWebJwt(resources, input.token);
 
   return toAuthStatusResponse(verified.expires_at);
 };

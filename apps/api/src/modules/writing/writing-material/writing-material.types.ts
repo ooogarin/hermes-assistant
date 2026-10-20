@@ -1,5 +1,7 @@
 import type { z } from 'zod';
-import type { createMaterialSchema, listMaterialsSchema, materialCodeSchema } from './writing-material.validator';
+import type { DatabaseReservedConnection } from '../../../core/database/database.types';
+import type { PaginationMeta } from '../../../shared/response/pagination';
+import type { createMaterialSchema, listMaterialsSchema } from './writing-material.validator';
 
 // ==========[ Request contracts ]==========================================================================================
 
@@ -7,9 +9,11 @@ export type CreateWritingMaterialRequest = z.infer<typeof createMaterialSchema>;
 
 export type ListWritingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
 
-export type WritingMaterialParams = z.infer<typeof materialCodeSchema>;
+export type WritingMaterialReferenceRequest = {
+  code: string;
+};
 
-export type WritingSource = 'cron' | 'request';
+type WritingSource = 'cron' | 'request';
 
 export type WritingMaterialStatus = 'unsubmitted' | 'submitted' | 'reviewed';
 
@@ -36,16 +40,15 @@ export type WritingMaterialListItem = Omit<WritingMaterial, 'prompt_text'> & {
   created_at: string;
 };
 
-export type WritingMaterialList = { items: WritingMaterialListItem[]; meta: WritingPaginationMeta };
-
-export type WritingPaginationMeta = { page: number; limit: number; total: number; total_pages: number };
+export type WritingMaterialList = { items: WritingMaterialListItem[]; meta: PaginationMeta };
 
 export type WritingMaterialReference = { id: number | string; code: string };
 
 export type WritingMaterialService = {
   createMaterial: (input: CreateWritingMaterialRequest) => Promise<WritingMaterial>;
   listMaterials: (input: ListWritingMaterialsRequest) => Promise<WritingMaterialList>;
-  getMaterial: (code: string) => Promise<WritingMaterial>;
+  getMaterial: (reference: WritingMaterialReferenceRequest) => Promise<WritingMaterial>;
+  getMaterialReference: (code: string, trx: DatabaseReservedConnection) => Promise<WritingMaterialReference>;
 };
 
 // ==========[ Repository payloads ]==========================================================================================

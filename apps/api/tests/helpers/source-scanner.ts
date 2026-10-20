@@ -20,6 +20,12 @@ export type CallSite = {
   passesTransaction: boolean;
 };
 
+export type ExportedFunctionBody = {
+  filePath: string;
+  name: string;
+  body: string;
+};
+
 const skipString = (text: string, index: number, quote: string): number => {
   let cursor = index + 1;
 
@@ -102,6 +108,57 @@ export const readBalancedGroup = (text: string, openIndex: number): { body: stri
     if (character === '(') {
       depth += 1;
     } else if (character === ')') {
+      depth -= 1;
+
+      if (depth === 0) {
+        return { body: text.slice(openIndex + 1, index), endIndex: index + 1 };
+      }
+    }
+
+    index += 1;
+  }
+
+  return { body: text.slice(openIndex + 1), endIndex: text.length };
+};
+
+/**
+ * Reads a block that starts at `openIndex`, the opening brace, and returns its
+ * inner text together with the index just after the closing brace. String,
+ * template, and comment contents are ignored while matching.
+ */
+export const readBlock = (text: string, openIndex: number): { body: string; endIndex: number } => {
+  let depth = 0;
+  let index = openIndex;
+
+  while (index < text.length) {
+    const character = text[index];
+    const next = text[index + 1];
+
+    if (character === '/' && next === '/') {
+      const lineEnd = text.indexOf('\n', index);
+      index = lineEnd === -1 ? text.length : lineEnd;
+      continue;
+    }
+
+    if (character === '/' && next === '*') {
+      const commentEnd = text.indexOf('*/', index + 2);
+      index = commentEnd === -1 ? text.length : commentEnd + 2;
+      continue;
+    }
+
+    if (character === "'" || character === '"') {
+      index = skipString(text, index, character);
+      continue;
+    }
+
+    if (character === '`') {
+      index = skipTemplate(text, index);
+      continue;
+    }
+
+    if (character === '{') {
+      depth += 1;
+    } else if (character === '}') {
       depth -= 1;
 
       if (depth === 0) {
@@ -202,7 +259,6 @@ export const findExportedFunctions = (file: SourceFile): RepositoryFunction[] =>
 };
 
 const namespaceImportPattern = /import \* as (\w+) from ['"]([^'"]+)['"]/g;
-
 export type NamespaceImport = {
   alias: string;
   resolvedPath: string;
@@ -274,6 +330,37 @@ export const findNamedImports = (file: SourceFile): NamedImport[] => {
 
 export const relativePath = (fromPath: string, toPath: string): string => relative(fromPath, toPath);
 
+/**
+ * Collects the exported arrow functions of a source file together with the body
+ * of each function, so a caller can inspect what one function calls.
+ */
+export const findExportedFunctionBodies = (file: SourceFile): ExportedFunctionBody[] => {
+  const functions: ExportedFunctionBody[] = [];
+  const pattern = new RegExp(declarationPattern.source, 'g');
+  let match = pattern.exec(file.text);
+
+  while (match !== null) {
+    const name = matchGroup(match, 1);
+    const openIndex = match.index + match[0].length - 1;
+    const parameters = readBalancedGroup(file.text, openIndex);
+    const arrowIndex = file.text.indexOf('=>', parameters.endIndex);
+    let bodyStart = arrowIndex + 2;
+
+    while (bodyStart < file.text.length && /\s/.test(file.text[bodyStart] ?? '')) {
+      bodyStart += 1;
+    }
+
+    if (arrowIndex !== -1 && file.text[bodyStart] === '{') {
+      const body = readBlock(file.text, bodyStart);
+
+      functions.push({ body: body.body, filePath: file.path, name });
+    }
+
+    match = pattern.exec(file.text);
+  }
+
+  return functions;
+};
 /**
  * Finds the call sites of a repository function. A call counts only when the
  * receiver is the namespace alias that the caller uses for the defining file.

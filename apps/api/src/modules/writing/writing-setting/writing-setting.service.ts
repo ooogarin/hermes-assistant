@@ -14,6 +14,8 @@ export const getSettings = async (): Promise<WritingSettings> => {
   return toWritingSettings(settingsRow);
 };
 
+// ==========[ Helper functions ]==========================================================================================
+
 export const updateSettings = async (input: UpdateWritingSettingsRequest): Promise<WritingSettings> => {
   const currentSettings = await getSettings();
 

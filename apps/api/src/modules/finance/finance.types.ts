@@ -4,7 +4,6 @@ import type {
   dailySummaryQuerySchema,
   listTransactionsSchema,
   summaryQuerySchema,
-  transactionReferenceSchema,
   updateTransactionSchema,
 } from './finance.validator';
 import type { Category } from './finance-category/finance-category.types';
@@ -16,7 +15,6 @@ export type SummaryMode = TransactionType | 'net';
 
 export type CreateTransactionsRequest = z.infer<typeof createTransactionsSchema>;
 export type UpdateTransactionRequest = z.infer<typeof updateTransactionSchema>;
-export type TransactionReferenceParams = z.infer<typeof transactionReferenceSchema>;
 export type ListTransactionsRequest = z.infer<typeof listTransactionsSchema>;
 export type SummaryRequest = z.infer<typeof summaryQuerySchema>;
 export type DailySummaryRequest = z.infer<typeof dailySummaryQuerySchema>;

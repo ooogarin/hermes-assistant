@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { commitTransaction, rollbackTransaction, startTransaction } from '../../core/database/client';
+import { AppError } from '../../core/errors/app-error';
 import { notFoundError } from '../../core/errors/not-found-error';
-import { toIsoTimestamp } from '../../shared/date/date';
+import { toIsoDate, toIsoTimestamp } from '../../shared/date/date';
 import * as financeRepository from './finance.repository';
 import * as financeCategoryService from './finance-category/finance-category.service';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
-import type { AppError } from '../../core/errors/app-error';
 import type {
   CreateTransactionsRequest,
   DailySummaryRequest,
@@ -32,7 +32,7 @@ export const createTransactions = async (input: CreateTransactionsRequest): Prom
   const payloads = input.transactions.map<InsertFinanceTransactionPayload>((transaction) => ({
     amount: transaction.amount,
     // getRequiredCategoryMapByCodes throws on missing codes, so every lookup below resolves.
-    category_id: categoryByCode.get(transaction.category_code)?.id ?? 0,
+    category_id: requireCategoryId(categoryByCode, transaction.category_code),
     daily_number: 0,
     name: transaction.name,
     location: transaction.location,
@@ -185,8 +185,18 @@ export const getDailySummary = async (input: DailySummaryRequest): Promise<Finan
 
 // ==========[ Helper functions ]==========================================================================================
 
-const toIsoDate = (value: Date | string): string => {
-  return value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10);
+const requireCategoryId = (categoryByCode: Map<string, { id: number }>, categoryCode: string): number => {
+  const category = categoryByCode.get(categoryCode);
+
+  if (category === undefined) {
+    throw new AppError({
+      code: 'FINANCE_CATEGORY_NOT_FOUND',
+      statusCode: 400,
+      message: 'Finance category not found',
+    });
+  }
+
+  return category.id;
 };
 
 const toFinanceTransaction = (row: FinanceTransactionRow): FinanceTransaction => ({

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   findCallSites,
+  findExportedFunctionBodies,
   findExportedFunctions,
   findNamedImports,
   findNamespaceImports,
@@ -137,6 +138,54 @@ test('repository transaction parameters match how callers actually use them', as
         violations.push(
           `${location} ${repositoryFunction.name} declares an optional trx but every caller passes a transaction. Make the parameter required.`,
         );
+      }
+    }
+  }
+
+  expect(violations).toEqual([]);
+});
+
+test('repository calls inside a transaction run in that transaction', async () => {
+  const files = await readSourceFiles(sourceDirectory);
+  const aliasesByPath = buildAliasMap(files);
+  const violations: string[] = [];
+
+  for (const file of files.filter((entry) => entry.path.endsWith('.service.ts'))) {
+    for (const transactionFunction of findExportedFunctionBodies(file)) {
+      if (!transactionFunction.body.includes('startTransaction(')) {
+        continue;
+      }
+
+      for (const [repositoryPath, aliases] of aliasesByPath) {
+        if (!repositoryPath.endsWith('.repository.ts')) {
+          continue;
+        }
+
+        const repositoryFile = files.find((entry) => entry.path === repositoryPath);
+
+        if (repositoryFile === undefined) {
+          continue;
+        }
+
+        const repositoryFunctions = findExportedFunctions(repositoryFile);
+
+        for (const alias of aliases) {
+          const pattern = new RegExp(`\\b${alias}\\.(\\w+)\\s*\\(`, 'g');
+          let match = pattern.exec(transactionFunction.body);
+
+          while (match !== null) {
+            const methodName = match[1] ?? '';
+            const target = repositoryFunctions.find((entry) => entry.name === methodName);
+
+            if (target !== undefined && !target.hasOptionalTransaction && !target.hasRequiredTransaction) {
+              violations.push(
+                `${relativePath(repositoryRoot, repositoryPath)} ${methodName} cannot join the transaction, but ${relativePath(repositoryRoot, file.path)} ${transactionFunction.name} calls it inside one. Give the method a trx parameter.`,
+              );
+            }
+
+            match = pattern.exec(transactionFunction.body);
+          }
+        }
       }
     }
   }

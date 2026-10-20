@@ -1,7 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import { sign, verify } from 'hono/jwt';
 import { z } from 'zod';
-import type { IssuedWebJwt } from './auth.types';
+import { AppError } from '../errors/app-error';
+import type { AuthResources, IssuedWebJwt } from './auth.types';
 
 export const jwtLifetimeSeconds = 24 * 60 * 60;
 export const webJwtSchema = z
@@ -77,4 +78,22 @@ export const verifyWebJwt = async (
   } catch {
     return undefined;
   }
+};
+
+/**
+ * Verifies the browser token and refuses the request when it is missing or no
+ * longer valid. The middleware and the auth module both use it, so the rule
+ * lives here rather than in a module.
+ */
+export const requireVerifiedWebJwt = async (
+  resources: AuthResources,
+  token: string | undefined,
+): Promise<{ expires_at: number }> => {
+  const verified = await verifyWebJwt(token, resources.configuration.jwt_secret, resources.now);
+
+  if (verified === undefined) {
+    throw new AppError({ code: 'UNAUTHENTICATED', message: 'Authentication required', statusCode: 401 });
+  }
+
+  return verified;
 };

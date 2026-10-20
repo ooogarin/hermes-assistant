@@ -145,8 +145,6 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   return rows;
 };
 
-// A repository method that later needs an explicit transaction takes a required
-// `trx: DatabaseReservedConnection` as its final parameter and runs through it directly.
 export const updateOneByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {
   const database = getDatabaseClient();
 

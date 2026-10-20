@@ -27,7 +27,7 @@ export const createMaterialSchema = z
   })
   .strict();
 
-export const materialCodeSchema = z.object({
+export const materialCodeSchema = z.strictObject({
   code: z.string().regex(/^RD-\d{8}-\d{3,}$/),
 });
 

@@ -10,6 +10,7 @@ import {
 } from './reading.validator';
 import type { Context } from 'hono';
 import type { AppEnv } from '../../core/http/app-env';
+import type { ReadingMaterialReferenceRequest } from './reading.types';
 
 export const createMaterial = async (context: Context<AppEnv>) => {
   const input = getBody(context, createMaterialSchema);
@@ -29,8 +30,9 @@ export const listMaterials = async (context: Context<AppEnv>) => {
 
 export const getMaterial = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
+  const request: ReadingMaterialReferenceRequest = { code: params.code };
 
-  const result = await readingService.getMaterial(params.code);
+  const result = await readingService.getMaterial(request);
 
   return successResponse({ context, data: result });
 };
@@ -38,16 +40,18 @@ export const getMaterial = async (context: Context<AppEnv>) => {
 export const saveAnswers = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
   const input = getBody(context, saveAnswersSchema);
+  const request: ReadingMaterialReferenceRequest = { code: params.code };
 
-  const result = await readingService.saveAnswers(params.code, input);
+  const result = await readingService.saveAnswers(request, input);
 
   return successResponse({ context, data: result });
 };
 
 export const getExpectedAnswers = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
+  const request: ReadingMaterialReferenceRequest = { code: params.code };
 
-  const result = await readingService.getExpectedAnswers(params.code);
+  const result = await readingService.getExpectedAnswers(request);
 
   return successResponse({ context, data: { items: result } });
 };
@@ -55,8 +59,9 @@ export const getExpectedAnswers = async (context: Context<AppEnv>) => {
 export const updateMaterial = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
   const input = getBody(context, updateMaterialSchema);
+  const request: ReadingMaterialReferenceRequest = { code: params.code };
 
-  const result = await readingService.updateMaterial(params.code, input);
+  const result = await readingService.updateMaterial(request, input);
 
   return successResponse({ context, data: result });
 };

@@ -1,13 +1,12 @@
 import type { z } from 'zod';
-import type { createNoteSchema, noteCodeSchema, searchNotesSchema, updateNoteSchema } from './notes.validator';
+import type { createNoteSchema, searchNotesSchema, updateNoteSchema } from './notes.validator';
 
 export const noteTypes = ['fact', 'personal', 'news', 'quote', 'idea', 'reminder'] as const;
 
 // ==========[ Request contracts ]==========================================================================================
 
-export type NoteType = (typeof noteTypes)[number];
+type NoteType = (typeof noteTypes)[number];
 
-export type NoteCodeParams = z.infer<typeof noteCodeSchema>;
 export type CreateNoteRequest = z.infer<typeof createNoteSchema>;
 export type UpdateNoteRequest = z.infer<typeof updateNoteSchema>;
 export type ListNotesRequest = z.infer<typeof searchNotesSchema>;

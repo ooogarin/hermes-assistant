@@ -16,6 +16,9 @@ import type {
   ReadingExpectedAnswerRow,
   ReadingMaterial,
   ReadingMaterialList,
+  ReadingMaterialListItem,
+  ReadingMaterialListRow,
+  ReadingMaterialReferenceRequest,
   ReadingMaterialRow,
   ReadingQuestion,
   ReadingQuestionWithAnswerRow,
@@ -85,7 +88,11 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
     const materialRow = await readingRepository.getOneByCode(code, trx);
 
     if (materialRow === null) {
-      throw new Error('Reading material creation did not return a material.');
+      throw new AppError({
+        code: 'READING_MATERIAL_NOT_FOUND',
+        statusCode: 500,
+        message: 'Reading material creation did not return a material',
+      });
     }
 
     const storedQuestions = await readingRepository.getAllQuestionsByMaterialId(materialRow.id, trx);
@@ -112,20 +119,25 @@ export const createMaterial = async (input: CreateReadingMaterialRequest): Promi
 export const listMaterials = async (input: ListReadingMaterialsRequest): Promise<ReadingMaterialList> => {
   const rows = await readingRepository.getAll(input);
 
-  return { items: rows.map((row) => ({ ...row, created_at: toIsoTimestamp(row.created_at) })) };
+  return { items: rows.map(toReadingMaterialListItem) };
 };
 
-export const updateMaterial = async (code: string, input: UpdateReadingMaterialRequest): Promise<ReadingMaterial> => {
+export const updateMaterial = async (
+  reference: ReadingMaterialReferenceRequest,
+  input: UpdateReadingMaterialRequest,
+): Promise<ReadingMaterial> => {
+  const { code } = reference;
   const updated = await readingRepository.updateOneStatusByCode(code, input.reading_status);
 
   if (updated === null) {
     throw materialNotFound();
   }
 
-  return getMaterial(code);
+  return getMaterial(reference);
 };
 
-export const getMaterial = async (code: string): Promise<ReadingMaterial> => {
+export const getMaterial = async (reference: ReadingMaterialReferenceRequest): Promise<ReadingMaterial> => {
+  const { code } = reference;
   const materialRow = await readingRepository.getOneByCode(code);
 
   if (materialRow === null) {
@@ -137,7 +149,11 @@ export const getMaterial = async (code: string): Promise<ReadingMaterial> => {
   return toReadingMaterial(materialRow, questions);
 };
 
-export const saveAnswers = async (code: string, input: SaveReadingAnswersRequest): Promise<ReadingMaterial> => {
+export const saveAnswers = async (
+  reference: ReadingMaterialReferenceRequest,
+  input: SaveReadingAnswersRequest,
+): Promise<ReadingMaterial> => {
+  const { code } = reference;
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -217,8 +233,12 @@ export const saveAnswers = async (code: string, input: SaveReadingAnswersRequest
   }
 };
 
-export const getExpectedAnswers = async (code: string): Promise<ReadingExpectedAnswer[]> => {
-  await getMaterial(code);
+export const getExpectedAnswers = async (
+  reference: ReadingMaterialReferenceRequest,
+): Promise<ReadingExpectedAnswer[]> => {
+  const { code } = reference;
+
+  await getMaterial(reference);
 
   const rows = await readingRepository.getAllExpectedAnswersByCode(code);
 
@@ -247,6 +267,17 @@ const toReadingMaterial = (row: ReadingMaterialRow, questions: ReadingQuestionWi
   is_override: row.is_override,
   source: row.source,
   questions: questions.map(toReadingQuestion),
+});
+
+const toReadingMaterialListItem = (row: ReadingMaterialListRow): ReadingMaterialListItem => ({
+  code: row.code,
+  title: row.title,
+  content_excerpt: row.content_excerpt,
+  genre: row.genre,
+  level: row.level,
+  tags: row.tags,
+  reading_status: row.reading_status,
+  created_at: toIsoTimestamp(row.created_at),
 });
 
 const toReadingExpectedAnswer = (row: ReadingExpectedAnswerRow): ReadingExpectedAnswer => ({

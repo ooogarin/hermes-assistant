@@ -13,12 +13,14 @@ import type {
   GrammarAnswerResult,
   GrammarExplanation,
   GrammarExplanationRow,
+  GrammarQuestionReferenceRequest,
   GrammarReport,
   GrammarReportRow,
   GrammarSession,
   GrammarSessionList,
   GrammarSessionListItem,
   GrammarSessionListRow,
+  GrammarSessionReferenceRequest,
   GrammarSessionRow,
   InsertGrammarSessionPayload,
   ListGrammarSessionsQuery,
@@ -87,7 +89,8 @@ export const listSessions = async (input: ListGrammarSessionsRequest): Promise<G
   return toGrammarSessionList(rows);
 };
 
-export const getSession = async (code: string): Promise<GrammarSession> => {
+export const getSession = async (reference: GrammarSessionReferenceRequest): Promise<GrammarSession> => {
+  const { code } = reference;
   const sessionRow = await grammarRepository.getOneByCode(code);
 
   if (sessionRow === null) {
@@ -107,7 +110,8 @@ export const getSession = async (code: string): Promise<GrammarSession> => {
   return toGrammarSession(sessionRow, questions);
 };
 
-export const removeSession = async (code: string): Promise<void> => {
+export const removeSession = async (reference: GrammarSessionReferenceRequest): Promise<void> => {
+  const { code } = reference;
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -135,7 +139,11 @@ export const removeSession = async (code: string): Promise<void> => {
   }
 };
 
-export const saveAnswers = async (code: string, input: SaveAnswersRequest): Promise<GrammarSession> => {
+export const saveAnswers = async (
+  reference: GrammarSessionReferenceRequest,
+  input: SaveAnswersRequest,
+): Promise<GrammarSession> => {
+  const { code } = reference;
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -230,7 +238,8 @@ export const saveAnswers = async (code: string, input: SaveAnswersRequest): Prom
   }
 };
 
-export const getExplanation = async (code: string, question_number: number): Promise<GrammarExplanation> => {
+export const getExplanation = async (reference: GrammarQuestionReferenceRequest): Promise<GrammarExplanation> => {
+  const { code, question_number } = reference;
   const explanationRow = await grammarRepository.getOneExplanationByCodeAndQuestionNumber(code, question_number);
 
   if (explanationRow === null) {
@@ -244,7 +253,11 @@ export const getExplanation = async (code: string, question_number: number): Pro
   return toGrammarExplanation(explanationRow);
 };
 
-export const evaluateSession = async (code: string, input: EvaluateGrammarSessionRequest): Promise<GrammarReport> => {
+export const evaluateSession = async (
+  reference: GrammarSessionReferenceRequest,
+  input: EvaluateGrammarSessionRequest,
+): Promise<GrammarReport> => {
+  const { code } = reference;
   let trx: DatabaseReservedConnection | undefined;
 
   try {
@@ -301,7 +314,8 @@ export const evaluateSession = async (code: string, input: EvaluateGrammarSessio
   }
 };
 
-export const getReport = async (code: string): Promise<GrammarReport> => {
+export const getReport = async (reference: GrammarSessionReferenceRequest): Promise<GrammarReport> => {
+  const { code } = reference;
   const sessionRow = await grammarRepository.getOneByCode(code);
 
   if (sessionRow === null) {

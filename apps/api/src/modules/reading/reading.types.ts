@@ -2,7 +2,6 @@ import type { z } from 'zod';
 import type {
   createMaterialSchema,
   listMaterialsSchema,
-  materialCodeSchema,
   saveAnswersSchema,
   updateMaterialSchema,
 } from './reading.validator';
@@ -12,11 +11,14 @@ import type {
 export type ReadingStatus = 'unread' | 'read';
 export type UpdateReadingMaterialRequest = z.infer<typeof updateMaterialSchema>;
 
-export type ReadingSource = 'cron' | 'request';
+type ReadingSource = 'cron' | 'request';
 export type CreateReadingMaterialRequest = z.infer<typeof createMaterialSchema>;
 export type ListReadingMaterialsRequest = z.infer<typeof listMaterialsSchema>;
 export type SaveReadingAnswersRequest = z.infer<typeof saveAnswersSchema>;
-export type ReadingMaterialParams = z.infer<typeof materialCodeSchema>;
+
+export type ReadingMaterialReferenceRequest = {
+  code: string;
+};
 
 // ==========[ Service operations ]==========================================================================================
 
@@ -63,10 +65,16 @@ export type ReadingMaterialList = { items: ReadingMaterialListItem[] };
 export type ReadingService = {
   createMaterial: (input: CreateReadingMaterialRequest) => Promise<ReadingMaterial>;
   listMaterials: (input: ListReadingMaterialsRequest) => Promise<ReadingMaterialList>;
-  getMaterial: (code: string) => Promise<ReadingMaterial>;
-  saveAnswers: (code: string, input: SaveReadingAnswersRequest) => Promise<ReadingMaterial>;
-  updateMaterial: (code: string, input: UpdateReadingMaterialRequest) => Promise<ReadingMaterial>;
-  getExpectedAnswers: (code: string) => Promise<ReadingExpectedAnswer[]>;
+  getMaterial: (reference: ReadingMaterialReferenceRequest) => Promise<ReadingMaterial>;
+  saveAnswers: (
+    reference: ReadingMaterialReferenceRequest,
+    input: SaveReadingAnswersRequest,
+  ) => Promise<ReadingMaterial>;
+  updateMaterial: (
+    reference: ReadingMaterialReferenceRequest,
+    input: UpdateReadingMaterialRequest,
+  ) => Promise<ReadingMaterial>;
+  getExpectedAnswers: (reference: ReadingMaterialReferenceRequest) => Promise<ReadingExpectedAnswer[]>;
 };
 
 // ==========[ Repository payloads ]==========================================================================================

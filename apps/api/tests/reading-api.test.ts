@@ -6,6 +6,7 @@ import type {
   ReadingExpectedAnswer,
   ReadingMaterial,
   ReadingMaterialList,
+  ReadingMaterialReferenceRequest,
   ReadingService,
   SaveReadingAnswersRequest,
   UpdateReadingMaterialRequest,
@@ -91,11 +92,13 @@ mock.module('../src/modules/reading/reading.service', () => ({
   createMaterial: (input: CreateReadingMaterialRequest) => activeReadingService.createMaterial(input),
   listMaterials: (input: Parameters<ReadingApiService['listMaterials']>[0]) =>
     activeReadingService.listMaterials(input),
-  getMaterial: (code: string) => activeReadingService.getMaterial(code),
-  updateMaterial: (code: string, input: UpdateReadingMaterialRequest) =>
-    activeReadingService.updateMaterial(code, input),
-  saveAnswers: (code: string, input: SaveReadingAnswersRequest) => activeReadingService.saveAnswers(code, input),
-  getExpectedAnswers: (code: string) => activeReadingService.getExpectedAnswers(code),
+  getMaterial: (reference: ReadingMaterialReferenceRequest) => activeReadingService.getMaterial(reference),
+  updateMaterial: (reference: ReadingMaterialReferenceRequest, input: UpdateReadingMaterialRequest) =>
+    activeReadingService.updateMaterial(reference, input),
+  saveAnswers: (reference: ReadingMaterialReferenceRequest, input: SaveReadingAnswersRequest) =>
+    activeReadingService.saveAnswers(reference, input),
+  getExpectedAnswers: (reference: ReadingMaterialReferenceRequest) =>
+    activeReadingService.getExpectedAnswers(reference),
 }));
 
 const { createApp } = await import('../src/app');

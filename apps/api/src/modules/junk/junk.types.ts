@@ -1,9 +1,8 @@
 import type { z } from 'zod';
-import type { createJunkSchema, junkCodeSchema, searchJunkSchema, updateJunkSchema } from './junk.validator';
+import type { createJunkSchema, searchJunkSchema, updateJunkSchema } from './junk.validator';
 
 // ==========[ Request contracts ]==========================================================================================
 
-export type JunkCodeParams = z.infer<typeof junkCodeSchema>;
 export type CreateJunkRequest = z.infer<typeof createJunkSchema>;
 export type UpdateJunkRequest = z.infer<typeof updateJunkSchema>;
 export type ListJunkRequest = z.infer<typeof searchJunkSchema>;

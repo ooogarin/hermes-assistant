@@ -532,13 +532,16 @@ test('create flows return the transaction-local result without a post-commit rea
     target_word_count: writingMaterial.target_word_count,
     source: writingMaterial.source,
   });
-  const submittedReadingMaterial = await readingService.saveAnswers(readingMaterial.code, {
-    answers: [
-      { question_number: 1, user_answer: 'Mira.' },
-      { question_number: 2, user_answer: 'The market.' },
-      { question_number: 3, user_answer: 'Morning.' },
-    ],
-  });
+  const submittedReadingMaterial = await readingService.saveAnswers(
+    { code: readingMaterial.code },
+    {
+      answers: [
+        { question_number: 1, user_answer: 'Mira.' },
+        { question_number: 2, user_answer: 'The market.' },
+        { question_number: 3, user_answer: 'Morning.' },
+      ],
+    },
+  );
 
   expect(createdGrammarSession).toEqual(grammarSession);
   expect(grammarReadConnections).toEqual([]);
@@ -559,14 +562,17 @@ test('create flows return the transaction-local result without a post-commit rea
 });
 
 test('grammar reads use the pool outside a transaction and the same reserved connection while saving', async () => {
-  await expect(grammarService.getSession(grammarSession.code)).resolves.toEqual(grammarSession);
+  await expect(grammarService.getSession({ code: grammarSession.code })).resolves.toEqual(grammarSession);
   expect(grammarReadConnections).toEqual([undefined]);
 
   grammarReadConnections = [];
 
-  await grammarService.saveAnswers(grammarSession.code, {
-    answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],
-  });
+  await grammarService.saveAnswers(
+    { code: grammarSession.code },
+    {
+      answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],
+    },
+  );
 
   expect(grammarReadConnections).toEqual([fakeTrx, fakeTrx, fakeTrx]);
   expect(grammarAnswerWriteCount).toBe(1);
@@ -685,7 +691,7 @@ test('grammar rejects an explanation request until the question is evaluated', a
     answer_result: null,
   };
 
-  await expect(grammarService.getExplanation(grammarSession.code, 1)).rejects.toMatchObject({
+  await expect(grammarService.getExplanation({ code: grammarSession.code, question_number: 1 })).rejects.toMatchObject({
     code: 'GRAMMAR_EXPLANATION_NOT_AVAILABLE',
     statusCode: 409,
   });
@@ -701,7 +707,7 @@ test('grammar returns an explanation once the question is evaluated', async () =
     answer_result: 'correct',
   };
 
-  await expect(grammarService.getExplanation(grammarSession.code, 1)).resolves.toEqual({
+  await expect(grammarService.getExplanation({ code: grammarSession.code, question_number: 1 })).resolves.toEqual({
     question_number: 1,
     question_text: grammarQuestion.question_text,
     grammar_area: grammarQuestion.grammar_area,
@@ -713,7 +719,7 @@ test('grammar returns an explanation once the question is evaluated', async () =
 test('grammar embeds explanations only for a completed exam session', async () => {
   grammarLockedSessionResult = { ...grammarSession, mode: 'exam', status: 'active' };
 
-  const activeExam = await grammarService.getSession(grammarSession.code);
+  const activeExam = await grammarService.getSession({ code: grammarSession.code });
 
   expect(activeExam.questions[0]?.explanation).toBeNull();
 
@@ -726,7 +732,7 @@ test('grammar embeds explanations only for a completed exam session', async () =
     completed_at: '2026-09-05T11:00:00.000Z',
   };
 
-  const completedExam = await grammarService.getSession(grammarSession.code);
+  const completedExam = await grammarService.getSession({ code: grammarSession.code });
 
   expect(completedExam.questions[0]?.explanation).toBe('Explanation for 1');
 });
@@ -740,7 +746,7 @@ test('grammar keeps practice explanations out of the session response', async ()
     completed_at: '2026-09-05T11:00:00.000Z',
   };
 
-  const completedPractice = await grammarService.getSession(grammarSession.code);
+  const completedPractice = await grammarService.getSession({ code: grammarSession.code });
 
   expect(completedPractice.questions[0]?.explanation).toBeNull();
 });
@@ -783,9 +789,12 @@ test('junk formats category and tags without changing separators needed for filt
 
 test('grammar requires immediate evaluation for practice answers', async () => {
   await expect(
-    grammarService.saveAnswers(grammarSession.code, {
-      answers: [{ question_number: 1, user_answer: 'went' }],
-    }),
+    grammarService.saveAnswers(
+      { code: grammarSession.code },
+      {
+        answers: [{ question_number: 1, user_answer: 'went' }],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'PRACTICE_EVALUATION_REQUIRED', statusCode: 400 });
   expect(grammarAnswerWriteCount).toBe(0);
   expect(committedTransactionCount).toBe(0);
@@ -796,9 +805,12 @@ test('grammar defers individual evaluation for exam answers', async () => {
   grammarLockedSessionResult = { ...grammarSession, mode: 'exam' };
 
   await expect(
-    grammarService.saveAnswers(grammarSession.code, {
-      answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
-    }),
+    grammarService.saveAnswers(
+      { code: grammarSession.code },
+      {
+        answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'EXAM_EVALUATION_DEFERRED', statusCode: 400 });
   expect(grammarAnswerWriteCount).toBe(0);
   expect(committedTransactionCount).toBe(0);
@@ -814,12 +826,15 @@ test('grammar saves exam answers without results in one bulk write', async () =>
   };
 
   await expect(
-    grammarService.saveAnswers(grammarSession.code, {
-      answers: [
-        { question_number: 1, user_answer: 'went' },
-        { question_number: 2, user_answer: 'He walk every day.' },
-      ],
-    }),
+    grammarService.saveAnswers(
+      { code: grammarSession.code },
+      {
+        answers: [
+          { question_number: 1, user_answer: 'went' },
+          { question_number: 2, user_answer: 'He walk every day.' },
+        ],
+      },
+    ),
   ).resolves.toMatchObject({ mode: 'exam', status: 'active' });
 
   expect(grammarAnswerWriteCount).toBe(1);
@@ -864,9 +879,14 @@ test('grammar completes an active practice session once every question has an an
     ],
   };
 
-  const result = await grammarService.saveAnswers(grammarSession.code, {
-    answers: [{ question_number: 2, user_answer: 'He walks every day.', result: 'incorrect', feedback: 'Use walks.' }],
-  });
+  const result = await grammarService.saveAnswers(
+    { code: grammarSession.code },
+    {
+      answers: [
+        { question_number: 2, user_answer: 'He walks every day.', result: 'incorrect', feedback: 'Use walks.' },
+      ],
+    },
+  );
 
   expect(grammarAnswerWriteCount).toBe(1);
   expect(grammarCompletionWriteCount).toBe(1);
@@ -895,9 +915,12 @@ test('grammar weights a partial practice answer as half a point', async () => {
     ],
   };
 
-  const result = await grammarService.saveAnswers(grammarSession.code, {
-    answers: [{ question_number: 1, user_answer: 'Went', result: 'partial' }],
-  });
+  const result = await grammarService.saveAnswers(
+    { code: grammarSession.code },
+    {
+      answers: [{ question_number: 1, user_answer: 'Went', result: 'partial' }],
+    },
+  );
 
   expect(grammarCompletionResult).toEqual({ code: grammarSession.code, score: 0.5, max_score: 1 });
   expect(result.status).toBe('completed');
@@ -906,9 +929,12 @@ test('grammar weights a partial practice answer as half a point', async () => {
 });
 
 test('grammar keeps an incomplete practice session active', async () => {
-  const result = await grammarService.saveAnswers(grammarSession.code, {
-    answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],
-  });
+  const result = await grammarService.saveAnswers(
+    { code: grammarSession.code },
+    {
+      answers: [{ question_number: 1, user_answer: 'went', result: 'correct' }],
+    },
+  );
 
   expect(grammarAnswerWriteCount).toBe(1);
   expect(grammarCompletionWriteCount).toBe(0);
@@ -918,9 +944,12 @@ test('grammar keeps an incomplete practice session active', async () => {
 
 test('grammar rejects answers that reference unknown questions without writing', async () => {
   await expect(
-    grammarService.saveAnswers(grammarSession.code, {
-      answers: [{ question_number: 5, user_answer: 'went', result: 'correct' }],
-    }),
+    grammarService.saveAnswers(
+      { code: grammarSession.code },
+      {
+        answers: [{ question_number: 5, user_answer: 'went', result: 'correct' }],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'INVALID_GRAMMAR_ANSWERS', statusCode: 400 });
   expect(grammarAnswerWriteCount).toBe(0);
   expect(committedTransactionCount).toBe(0);
@@ -929,12 +958,15 @@ test('grammar rejects answers that reference unknown questions without writing',
 
 test('grammar rejects duplicate question numbers without writing', async () => {
   await expect(
-    grammarService.saveAnswers(grammarSession.code, {
-      answers: [
-        { question_number: 1, user_answer: 'went', result: 'correct' },
-        { question_number: 1, user_answer: 'go', result: 'correct' },
-      ],
-    }),
+    grammarService.saveAnswers(
+      { code: grammarSession.code },
+      {
+        answers: [
+          { question_number: 1, user_answer: 'went', result: 'correct' },
+          { question_number: 1, user_answer: 'go', result: 'correct' },
+        ],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'INVALID_GRAMMAR_ANSWERS', statusCode: 400 });
   expect(grammarAnswerWriteCount).toBe(0);
   expect(committedTransactionCount).toBe(0);
@@ -945,9 +977,12 @@ test('grammar rejects an answer when the locked session is no longer active', as
   grammarLockedSessionResult = { ...grammarSession, status: 'completed' };
 
   await expect(
-    grammarService.saveAnswers(grammarSession.code, {
-      answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
-    }),
+    grammarService.saveAnswers(
+      { code: grammarSession.code },
+      {
+        answers: [{ question_number: 1, user_answer: 'went', result: 'correct', feedback: null }],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'GRAMMAR_SESSION_INACTIVE', statusCode: 409 });
 
   expect(grammarAnswerWriteCount).toBe(0);
@@ -969,9 +1004,12 @@ test('grammar rejects an evaluation when the locked session is no longer active'
   };
 
   await expect(
-    grammarService.evaluateSession(grammarSession.code, {
-      answers: [{ question_number: 1, result: 'correct', feedback: null }],
-    }),
+    grammarService.evaluateSession(
+      { code: grammarSession.code },
+      {
+        answers: [{ question_number: 1, result: 'correct', feedback: null }],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'GRAMMAR_SESSION_INACTIVE', statusCode: 409 });
 
   expect(committedTransactionCount).toBe(0);
@@ -997,9 +1035,12 @@ test('grammar rejects an incomplete exam evaluation', async () => {
   };
 
   await expect(
-    grammarService.evaluateSession(grammarSession.code, {
-      answers: [{ question_number: 1, result: 'correct', feedback: null }],
-    }),
+    grammarService.evaluateSession(
+      { code: grammarSession.code },
+      {
+        answers: [{ question_number: 1, result: 'correct', feedback: null }],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'INCOMPLETE_EXAM_EVALUATION', statusCode: 400 });
 });
 
@@ -1012,13 +1053,16 @@ test('reading settings keep the default word count inside the configured range',
 
 test('reading rejects duplicate question numbers in optional answers', async () => {
   await expect(
-    readingService.saveAnswers(readingMaterial.code, {
-      answers: [
-        { question_number: 1, user_answer: 'Mira' },
-        { question_number: 1, user_answer: 'Mira again' },
-        { question_number: 3, user_answer: 'Morning' },
-      ],
-    }),
+    readingService.saveAnswers(
+      { code: readingMaterial.code },
+      {
+        answers: [
+          { question_number: 1, user_answer: 'Mira' },
+          { question_number: 1, user_answer: 'Mira again' },
+          { question_number: 3, user_answer: 'Morning' },
+        ],
+      },
+    ),
   ).rejects.toMatchObject({ code: 'INVALID_READING_ANSWERS', statusCode: 400 });
 });
 
@@ -1030,7 +1074,7 @@ test('writing settings keep the default word count inside the configured range',
 });
 
 test('writing exposes corrected text without rebuilding the analysis', async () => {
-  await expect(writingSubmissionService.getCorrectedText(writingSubmission.code)).resolves.toEqual({
+  await expect(writingSubmissionService.getCorrectedText({ code: writingSubmission.code })).resolves.toEqual({
     code: writingSubmission.code,
     corrected_text: writingAnalysis.corrected_text,
   });
@@ -1084,10 +1128,13 @@ test('writing rejects an inactive material before inserting a submission', async
 
 test('writing rejects the entire text and metadata edit after analysis', async () => {
   await expect(
-    writingSubmissionService.updateSubmission(writingSubmission.code, {
-      original_text: writingSubmission.original_text,
-      estimated_topic: 'Sports',
-    }),
+    writingSubmissionService.updateSubmission(
+      { code: writingSubmission.code },
+      {
+        original_text: writingSubmission.original_text,
+        estimated_topic: 'Sports',
+      },
+    ),
   ).rejects.toMatchObject({ statusCode: 409, code: 'WRITING_SUBMISSION_TEXT_LOCKED' });
 
   expect(writingUpdatePayload).toBeNull();
@@ -1096,7 +1143,10 @@ test('writing rejects the entire text and metadata edit after analysis', async (
 });
 
 test('writing permits metadata corrections after analysis without changing feedback', async () => {
-  const result = await writingSubmissionService.updateSubmission(writingSubmission.code, { estimated_tags: [] });
+  const result = await writingSubmissionService.updateSubmission(
+    { code: writingSubmission.code },
+    { estimated_tags: [] },
+  );
 
   expect(writingUpdatePayload).toEqual({ estimated_tags: [], word_count: undefined });
   expect(result.analysis).toEqual(writingAnalysis);
@@ -1108,7 +1158,7 @@ test('writing permits metadata corrections after analysis without changing feedb
 test('writing recalculates word count while preserving edited draft text', async () => {
   writingSubmissionResult = { ...writingSubmissionRow, analysis: null, analyzed_at: null };
   const original_text = '  My revised draft has five words.\n';
-  const result = await writingSubmissionService.updateSubmission(writingSubmission.code, { original_text });
+  const result = await writingSubmissionService.updateSubmission({ code: writingSubmission.code }, { original_text });
 
   expect(writingUpdatePayload).toEqual({ original_text, word_count: 6 });
   expect(result.original_text).toBe(original_text);
@@ -1125,7 +1175,7 @@ const writingAnalysisInput = {
 
 test('writing rejects repeated analysis without replacing existing feedback', async () => {
   await expect(
-    writingSubmissionService.saveAnalysis(writingSubmission.code, writingAnalysisInput),
+    writingSubmissionService.saveAnalysis({ code: writingSubmission.code }, writingAnalysisInput),
   ).rejects.toMatchObject({ statusCode: 409, code: 'WRITING_SUBMISSION_ALREADY_ANALYZED' });
 
   expect(writingAnalysisPayload).toBeNull();
@@ -1136,14 +1186,17 @@ test('writing validates prompt adherence against the saved material association'
   writingSubmissionResult = { ...writingSubmissionRow, material_code: null, analysis: null, analyzed_at: null };
 
   await expect(
-    writingSubmissionService.saveAnalysis(writingSubmission.code, writingAnalysisInput),
+    writingSubmissionService.saveAnalysis({ code: writingSubmission.code }, writingAnalysisInput),
   ).rejects.toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR' });
   expect(writingAnalysisPayload).toBeNull();
 
-  await writingSubmissionService.saveAnalysis(writingSubmission.code, {
-    ...writingAnalysisInput,
-    analysis: { ...writingAnalysis, prompt_adherence: null },
-  });
+  await writingSubmissionService.saveAnalysis(
+    { code: writingSubmission.code },
+    {
+      ...writingAnalysisInput,
+      analysis: { ...writingAnalysis, prompt_adherence: null },
+    },
+  );
 
   expect(writingAnalysisPayload?.analysis.prompt_adherence).toBeNull();
   expect(committedTransactionCount).toBe(1);
@@ -1151,30 +1204,33 @@ test('writing validates prompt adherence against the saved material association'
   writingSubmissionResult = { ...writingSubmissionRow, analysis: null, analyzed_at: null };
 
   await expect(
-    writingSubmissionService.saveAnalysis(writingSubmission.code, {
-      ...writingAnalysisInput,
-      analysis: { ...writingAnalysis, prompt_adherence: null },
-    }),
+    writingSubmissionService.saveAnalysis(
+      { code: writingSubmission.code },
+      {
+        ...writingAnalysisInput,
+        analysis: { ...writingAnalysis, prompt_adherence: null },
+      },
+    ),
   ).rejects.toMatchObject({ statusCode: 400, code: 'VALIDATION_ERROR' });
 });
 
 test('writing returns stable errors for missing submissions and unavailable corrected text', async () => {
   writingSubmissionResult = null;
 
-  await expect(writingSubmissionService.getSubmission(writingSubmission.code)).rejects.toMatchObject({
+  await expect(writingSubmissionService.getSubmission({ code: writingSubmission.code })).rejects.toMatchObject({
     statusCode: 404,
     code: 'WRITING_SUBMISSION_NOT_FOUND',
   });
   await expect(
-    writingSubmissionService.updateSubmission(writingSubmission.code, { estimated_topic: 'Sports' }),
+    writingSubmissionService.updateSubmission({ code: writingSubmission.code }, { estimated_topic: 'Sports' }),
   ).rejects.toMatchObject({ statusCode: 404, code: 'WRITING_SUBMISSION_NOT_FOUND' });
   await expect(
-    writingSubmissionService.saveAnalysis(writingSubmission.code, writingAnalysisInput),
+    writingSubmissionService.saveAnalysis({ code: writingSubmission.code }, writingAnalysisInput),
   ).rejects.toMatchObject({ statusCode: 404, code: 'WRITING_SUBMISSION_NOT_FOUND' });
 
   writingSubmissionResult = { ...writingSubmissionRow, analysis: null, analyzed_at: null };
 
-  await expect(writingSubmissionService.getCorrectedText(writingSubmission.code)).rejects.toMatchObject({
+  await expect(writingSubmissionService.getCorrectedText({ code: writingSubmission.code })).rejects.toMatchObject({
     statusCode: 409,
     code: 'WRITING_SUBMISSION_NOT_ANALYZED',
   });

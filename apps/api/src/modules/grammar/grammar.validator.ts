@@ -26,7 +26,7 @@ export const createSessionSchema = z
   })
   .strict();
 
-export const sessionCodeSchema = z.object({
+export const sessionCodeSchema = z.strictObject({
   code: z.string().regex(/^GR-\d{8}-\d{3,}$/),
 });
 

@@ -3,25 +3,30 @@ import type {
   createSessionSchema,
   evaluateSessionSchema,
   listSessionsSchema,
-  questionReferenceSchema,
   saveAnswersSchema,
-  sessionCodeSchema,
 } from './grammar.validator';
 import type { GrammarQuestion } from './grammar-question/grammar-question.types';
 
 // ==========[ Request contracts ]==========================================================================================
 
-export type GrammarMode = 'practice' | 'exam';
-export type GrammarSource = 'cron' | 'request';
-export type GrammarSessionStatus = 'active' | 'completed' | 'abandoned';
+type GrammarMode = 'practice' | 'exam';
+type GrammarSource = 'cron' | 'request';
+type GrammarSessionStatus = 'active' | 'completed' | 'abandoned';
 export type GrammarAnswerResult = 'correct' | 'partial' | 'incorrect';
 
 export type CreateGrammarSessionRequest = z.infer<typeof createSessionSchema>;
 export type SaveAnswersRequest = z.infer<typeof saveAnswersSchema>;
 export type EvaluateGrammarSessionRequest = z.infer<typeof evaluateSessionSchema>;
 export type ListGrammarSessionsRequest = z.infer<typeof listSessionsSchema>;
-export type GrammarSessionParams = z.infer<typeof sessionCodeSchema>;
-export type GrammarQuestionParams = z.infer<typeof questionReferenceSchema>;
+
+export type GrammarSessionReferenceRequest = {
+  code: string;
+};
+
+export type GrammarQuestionReferenceRequest = {
+  code: string;
+  question_number: number;
+};
 
 // ==========[ Service operations ]==========================================================================================
 
@@ -64,7 +69,7 @@ export type GrammarExplanation = {
   explanation: string;
 };
 
-export type GrammarReportBreakdown = {
+type GrammarReportBreakdown = {
   grammar_area: string;
   correct: number;
   partial: number;
@@ -82,12 +87,15 @@ export type GrammarReport = {
 export type GrammarService = {
   createSession: (input: CreateGrammarSessionRequest) => Promise<GrammarSession>;
   listSessions: (input: ListGrammarSessionsRequest) => Promise<GrammarSessionList>;
-  getSession: (code: string) => Promise<GrammarSession>;
-  removeSession: (code: string) => Promise<void>;
-  saveAnswers: (code: string, input: SaveAnswersRequest) => Promise<GrammarSession>;
-  getExplanation: (code: string, question_number: number) => Promise<GrammarExplanation>;
-  evaluateSession: (code: string, input: EvaluateGrammarSessionRequest) => Promise<GrammarReport>;
-  getReport: (code: string) => Promise<GrammarReport>;
+  getSession: (reference: GrammarSessionReferenceRequest) => Promise<GrammarSession>;
+  removeSession: (reference: GrammarSessionReferenceRequest) => Promise<void>;
+  saveAnswers: (reference: GrammarSessionReferenceRequest, input: SaveAnswersRequest) => Promise<GrammarSession>;
+  getExplanation: (reference: GrammarQuestionReferenceRequest) => Promise<GrammarExplanation>;
+  evaluateSession: (
+    reference: GrammarSessionReferenceRequest,
+    input: EvaluateGrammarSessionRequest,
+  ) => Promise<GrammarReport>;
+  getReport: (reference: GrammarSessionReferenceRequest) => Promise<GrammarReport>;
 };
 
 // ==========[ Repository payloads ]==========================================================================================

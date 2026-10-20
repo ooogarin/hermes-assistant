@@ -2,6 +2,7 @@ import { commitTransaction, rollbackTransaction, startTransaction } from '../../
 import { notFoundError } from '../../../core/errors/not-found-error';
 import { formatPublicCode } from '../../../shared/code/public-code';
 import { getJakartaDateCodeParts, toIsoTimestamp } from '../../../shared/date/date';
+import { toPaginationMeta } from '../../../shared/response/pagination';
 import * as writingMaterialRepository from './writing-material.repository';
 import type { DatabaseReservedConnection } from '../../../core/database/database.types';
 import type { AppError } from '../../../core/errors/app-error';
@@ -15,9 +16,9 @@ import type {
   WritingMaterialListItem,
   WritingMaterialListRow,
   WritingMaterialReference,
+  WritingMaterialReferenceRequest,
   WritingMaterialRow,
   WritingMaterialStatus,
-  WritingPaginationMeta,
 } from './writing-material.types';
 
 export const createMaterial = async (input: CreateWritingMaterialRequest): Promise<WritingMaterial> => {
@@ -72,7 +73,8 @@ export const listMaterials = async (input: ListWritingMaterialsRequest): Promise
   return toWritingMaterialList(rows, count.total, input.page, input.limit);
 };
 
-export const getMaterial = async (code: string): Promise<WritingMaterial> => {
+export const getMaterial = async (reference: WritingMaterialReferenceRequest): Promise<WritingMaterial> => {
+  const { code } = reference;
   const materialRow = await writingMaterialRepository.getOneByCode(code);
 
   if (materialRow === null) {
@@ -161,12 +163,6 @@ const toWritingMaterialList = (
     items: rows.map(toWritingMaterialListItem),
     meta: toPaginationMeta(totalValue, page, limit),
   };
-};
-
-const toPaginationMeta = (totalValue: number | string, page: number, limit: number): WritingPaginationMeta => {
-  const total = Number(totalValue);
-
-  return { page, limit, total, total_pages: Math.ceil(total / limit) };
 };
 
 const materialNotFound = (): AppError => {

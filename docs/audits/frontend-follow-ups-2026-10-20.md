@@ -32,10 +32,11 @@ claims a confirmed delete flow for Finance. The screen specifications in
 
 ## 5. Look at the API modules
 
-The API was never audited the way the frontend was. The modules follow the
-documented contract, so the review should start with the rules in
-`docs/architecture.md` and the enforced contract in
-`apps/api/tests/module-contract.test.ts`.
+**Done.** The audit is in
+[api-modules-audit-2026-10-20.md](api-modules-audit-2026-10-20.md). The rules
+that the repository enforces hold. The open work is the drift from the Notes
+reference, the duplication between Notes and Junk, and the two places where a
+contract or a service interface is missing.
 
 ## 6. Leave the two tag renderers alone
 

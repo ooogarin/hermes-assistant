@@ -1,9 +1,9 @@
 import { z } from 'zod';
+import { writingMaterialCodeSchema, writingSubmissionCodeSchema } from '../../../shared/code/public-code';
 import { normalizeTaxonomyValue } from '../../../shared/text/taxonomy';
-import { materialCodeSchema } from '../writing-material/writing-material.validator';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
-const materialCode = materialCodeSchema.shape.code;
+const materialCode = writingMaterialCodeSchema;
 
 // Validate blank text without trimming: formatting is part of the user's original draft.
 const originalText = z
@@ -76,7 +76,7 @@ export const analysisSchema = z
   });
 
 export const submissionParamsSchema = z.strictObject({
-  code: z.string().regex(/^WS-\d{8}-\d{3,}$/),
+  code: writingSubmissionCodeSchema,
 });
 
 export const createSubmissionSchema = z.strictObject({

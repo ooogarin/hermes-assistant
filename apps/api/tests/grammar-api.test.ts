@@ -6,10 +6,12 @@ import type {
   CreateGrammarSessionRequest,
   EvaluateGrammarSessionRequest,
   GrammarExplanation,
+  GrammarQuestionReferenceRequest,
   GrammarReport,
   GrammarService,
   GrammarSession,
   GrammarSessionList,
+  GrammarSessionReferenceRequest,
   SaveAnswersRequest,
 } from '../src/modules/grammar/grammar.types';
 import type {
@@ -108,13 +110,14 @@ mock.module('../src/modules/grammar/grammar-setting/grammar-setting.service', ()
 mock.module('../src/modules/grammar/grammar.service', () => ({
   createSession: (input: CreateGrammarSessionRequest) => activeGrammarService.createSession(input),
   listSessions: (input: Parameters<GrammarApiService['listSessions']>[0]) => activeGrammarService.listSessions(input),
-  getSession: (code: string) => activeGrammarService.getSession(code),
-  removeSession: (code: string) => activeGrammarService.removeSession(code),
-  saveAnswers: (code: string, input: SaveAnswersRequest) => activeGrammarService.saveAnswers(code, input),
-  getExplanation: (code: string, question_number: number) => activeGrammarService.getExplanation(code, question_number),
-  evaluateSession: (code: string, input: EvaluateGrammarSessionRequest) =>
-    activeGrammarService.evaluateSession(code, input),
-  getReport: (code: string) => activeGrammarService.getReport(code),
+  getSession: (reference: GrammarSessionReferenceRequest) => activeGrammarService.getSession(reference),
+  removeSession: (reference: GrammarSessionReferenceRequest) => activeGrammarService.removeSession(reference),
+  saveAnswers: (reference: GrammarSessionReferenceRequest, input: SaveAnswersRequest) =>
+    activeGrammarService.saveAnswers(reference, input),
+  getExplanation: (reference: GrammarQuestionReferenceRequest) => activeGrammarService.getExplanation(reference),
+  evaluateSession: (reference: GrammarSessionReferenceRequest, input: EvaluateGrammarSessionRequest) =>
+    activeGrammarService.evaluateSession(reference, input),
+  getReport: (reference: GrammarSessionReferenceRequest) => activeGrammarService.getReport(reference),
 }));
 
 const { createApp } = await import('../src/app');
@@ -251,8 +254,8 @@ test('rejects invalid grammar session list filters without calling the service',
 test('reads and soft deletes a grammar session by code', async () => {
   let removedCode: string | undefined;
   const app = createGrammarApp({
-    removeSession: async (code) => {
-      removedCode = code;
+    removeSession: async (reference) => {
+      removedCode = reference.code;
     },
   });
   const url = `http://localhost/api/v1/grammar/sessions/${session.code}`;
@@ -447,8 +450,8 @@ test('rejects an explanation request until the question is evaluated', async () 
 test('returns the stored grammar report', async () => {
   let reportCode: string | undefined;
   const response = await createGrammarApp({
-    getReport: async (code) => {
-      reportCode = code;
+    getReport: async (reference) => {
+      reportCode = reference.code;
       return report;
     },
   }).request('http://localhost/api/v1/grammar/sessions/GR-20260905-002/report', {

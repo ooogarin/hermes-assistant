@@ -1,10 +1,10 @@
 import type { z } from 'zod';
+import type { PaginationMeta } from '../../../shared/response/pagination';
 import type {
   analysisSchema,
   createSubmissionSchema,
   listSubmissionsSchema,
   saveAnalysisSchema,
-  submissionParamsSchema,
   updateSubmissionSchema,
 } from './writing-submission.validator';
 
@@ -18,15 +18,17 @@ export type SaveWritingAnalysisRequest = z.infer<typeof saveAnalysisSchema>;
 
 export type ListWritingSubmissionsRequest = z.infer<typeof listSubmissionsSchema>;
 
-export type WritingSubmissionParams = z.infer<typeof submissionParamsSchema>;
+export type WritingSubmissionReferenceRequest = {
+  code: string;
+};
 
 export type WritingAnalysis = z.infer<typeof analysisSchema>;
 
-export type WritingAnalysisStatus = 'not_analyzed' | 'analyzed';
+type WritingAnalysisStatus = 'not_analyzed' | 'analyzed';
 
 // ==========[ Service operations ]==========================================================================================
 
-export type WritingEstimatedMetadata = {
+type WritingEstimatedMetadata = {
   estimated_topic: string | null;
   estimated_genre: string | null;
   estimated_tags: string[] | null;
@@ -45,7 +47,7 @@ export type WritingSubmission = WritingEstimatedMetadata & {
   updated_at: string;
 };
 
-export type WritingSubmissionListItem = WritingEstimatedMetadata & {
+type WritingSubmissionListItem = WritingEstimatedMetadata & {
   code: string;
   material_code: string | null;
   text_excerpt: string;
@@ -55,19 +57,23 @@ export type WritingSubmissionListItem = WritingEstimatedMetadata & {
   updated_at: string;
 };
 
-export type WritingSubmissionList = { items: WritingSubmissionListItem[]; meta: WritingPaginationMeta };
-
-export type WritingPaginationMeta = { page: number; limit: number; total: number; total_pages: number };
+export type WritingSubmissionList = { items: WritingSubmissionListItem[]; meta: PaginationMeta };
 
 export type WritingCorrectedText = { code: string; corrected_text: string };
 
 export type WritingSubmissionService = {
   createSubmission: (input: CreateWritingSubmissionRequest) => Promise<WritingSubmission>;
   listSubmissions: (input: ListWritingSubmissionsRequest) => Promise<WritingSubmissionList>;
-  getSubmission: (code: string) => Promise<WritingSubmission>;
-  updateSubmission: (code: string, input: UpdateWritingSubmissionRequest) => Promise<WritingSubmission>;
-  saveAnalysis: (code: string, input: SaveWritingAnalysisRequest) => Promise<WritingSubmission>;
-  getCorrectedText: (code: string) => Promise<WritingCorrectedText>;
+  getSubmission: (reference: WritingSubmissionReferenceRequest) => Promise<WritingSubmission>;
+  updateSubmission: (
+    reference: WritingSubmissionReferenceRequest,
+    input: UpdateWritingSubmissionRequest,
+  ) => Promise<WritingSubmission>;
+  saveAnalysis: (
+    reference: WritingSubmissionReferenceRequest,
+    input: SaveWritingAnalysisRequest,
+  ) => Promise<WritingSubmission>;
+  getCorrectedText: (reference: WritingSubmissionReferenceRequest) => Promise<WritingCorrectedText>;
 };
 
 // ==========[ Repository payloads ]==========================================================================================

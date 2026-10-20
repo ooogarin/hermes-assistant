@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
-import { requireWebJwt } from '../../modules/auth/auth.service';
 import { readAuthCookie } from '../auth/auth-cookie';
+import { requireVerifiedWebJwt } from '../auth/web-jwt';
 import { failureResponse } from '../http/response';
 import { createWebOriginMiddleware } from './web-origin';
 import type { MiddlewareHandler } from 'hono';
@@ -65,7 +65,7 @@ export const createAuthMiddleware = (apiKey: string, resources: AuthResources): 
         return;
       }
 
-      await requireWebJwt(resources, { token: readAuthCookie(context, resources.configuration) });
+      await requireVerifiedWebJwt(resources, readAuthCookie(context, resources.configuration));
 
       context.set('auth_mode', 'browser');
 

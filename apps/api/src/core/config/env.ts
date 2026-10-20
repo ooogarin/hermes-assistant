@@ -110,7 +110,7 @@ export type DatabaseEnvironment = {
   logLevel: z.infer<typeof logLevelSchema>;
 };
 
-export type Environment = DatabaseEnvironment & {
+type Environment = DatabaseEnvironment & {
   host: string;
   port: number;
   internalApiKey: string;

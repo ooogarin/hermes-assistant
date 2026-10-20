@@ -4,6 +4,7 @@ import * as writingMaterialService from './writing-material.service';
 import { createMaterialSchema, listMaterialsSchema, materialCodeSchema } from './writing-material.validator';
 import type { Context } from 'hono';
 import type { AppEnv } from '../../../core/http/app-env';
+import type { WritingMaterialReferenceRequest } from './writing-material.types';
 
 export const createMaterial = async (context: Context<AppEnv>) => {
   const input = getBody(context, createMaterialSchema);
@@ -23,8 +24,9 @@ export const listMaterials = async (context: Context<AppEnv>) => {
 
 export const getMaterial = async (context: Context<AppEnv>) => {
   const params = getParam(context, materialCodeSchema);
+  const request: WritingMaterialReferenceRequest = { code: params.code };
 
-  const result = await writingMaterialService.getMaterial(params.code);
+  const result = await writingMaterialService.getMaterial(request);
 
   return successResponse({ context, data: result });
 };

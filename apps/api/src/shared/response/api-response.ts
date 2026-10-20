@@ -6,7 +6,7 @@ type SnakeCase<Value extends string> = Value extends `${infer Character}${infer 
     : `_${Lowercase<Character>}${SnakeCase<Rest>}`
   : Value;
 
-export type SnakeCaseKeysDeep<Value> = Value extends Date
+type SnakeCaseKeysDeep<Value> = Value extends Date
   ? Value
   : Value extends readonly (infer Item)[]
     ? SnakeCaseKeysDeep<Item>[]
@@ -14,7 +14,7 @@ export type SnakeCaseKeysDeep<Value> = Value extends Date
       ? { [Key in keyof Value as Key extends string ? SnakeCase<Key> : Key]: SnakeCaseKeysDeep<Value[Key]> }
       : Value;
 
-export type ApiSuccess<T> = {
+type ApiSuccess<T> = {
   success: true;
   data: T;
   meta?: ApiMeta;
@@ -26,7 +26,7 @@ export type ApiErrorBody = {
   details: unknown | null;
 };
 
-export type ApiFailure = {
+type ApiFailure = {
   success: false;
   error: ApiErrorBody;
   request_id?: string;

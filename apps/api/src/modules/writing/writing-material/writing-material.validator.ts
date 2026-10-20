@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { writingMaterialCodeSchema } from '../../../shared/code/public-code';
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 const levels = z
@@ -6,7 +7,7 @@ const levels = z
   .transform((value) => value.split(',').map((level) => level.trim()))
   .pipe(z.array(text(32)).min(1).max(20));
 const source = z.enum(['cron', 'request']);
-const materialCode = z.string().regex(/^WR-\d{8}-\d{3,}$/);
+const materialCode = writingMaterialCodeSchema;
 
 export const createMaterialSchema = z.strictObject({
   topic: text(300),
