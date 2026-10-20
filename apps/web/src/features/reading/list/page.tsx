@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { ErrorState } from '../../../components/feedback/content-state';
+import { ListEmptyState } from '../../../components/feedback/list-empty-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { PageHeader } from '../../../components/layout/page-header';
 import { ReadingList } from '../../../components/reading/reading-list';
@@ -125,18 +126,13 @@ const ReadingListPage = () => {
         materials.data.items.length ? (
           <ReadingList items={materials.data.items} />
         ) : (
-          <ContentState
-            title={hasFilters ? 'Tidak ada bacaan yang cocok' : 'Belum ada bacaan'}
-            description={
-              hasFilters ? 'Coba pencarian atau filter lain.' : 'Bacaan yang dibuat melalui Hermes akan muncul di sini.'
-            }
-            action={
-              hasFilters ? (
-                <Button variant='secondary' onClick={list.clearFilters}>
-                  Hapus filter
-                </Button>
-              ) : undefined
-            }
+          <ListEmptyState
+            description='Bacaan yang dibuat melalui Hermes akan muncul di sini.'
+            filteredDescription='Coba pencarian atau filter lain.'
+            filteredTitle='Tidak ada bacaan yang cocok'
+            hasFilters={hasFilters}
+            onClearFilters={list.clearFilters}
+            title='Belum ada bacaan'
           />
         )
       ) : null}

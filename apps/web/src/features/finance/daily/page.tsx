@@ -10,9 +10,9 @@ import { FinanceSummaryCards } from '../../../components/finance/summary-cards';
 import { FinanceTransactionList } from '../../../components/finance/transaction-list';
 import { PageHeader } from '../../../components/layout/page-header';
 import { ButtonLink } from '../../../components/ui/button-link';
+import { getDateValue, getSafeDate } from '../../../lib/formatting/dates';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getFinanceSummary, getFinanceTransactions } from '../finance-api';
-import { getDateValue, getSafeDate } from '../finance-date';
 
 const FinanceDailyPage = ({ today = new Date() }: { today?: Date }) => {
   const [searchParams, setSearchParams] = useSearchParams();

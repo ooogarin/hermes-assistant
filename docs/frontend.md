@@ -12,11 +12,12 @@ The initial implementation deliberately uses React's built-in `useState` and `us
 apps/web/src/
 ├── app/                     # route tree, navigation model, and application composition
 ├── components/
-│   ├── feedback/            # loading, empty, no-results, and error states
-│   ├── finance/             # visual components scoped to Finance
 │   ├── english/             # primitives shared by English learning features
+│   ├── feedback/            # loading, empty, and error states
+│   ├── finance/             # visual components scoped to Finance
 │   ├── junk/                # visual components scoped to Junk
 │   ├── notes/               # visual components scoped to Notes
+│   ├── personal-content/    # primitives shared by the personal content features
 │   ├── reading/             # visual components scoped to Reading
 │   ├── writing/             # visual components scoped to Writing
 │   ├── layout/              # application shell and page-level layouts
@@ -35,7 +36,7 @@ apps/web/src/
 
 The frontend uses a routing library for nested and direct routes, Lucide for functional icons, and Zod to validate API response data at the browser boundary. Vitest and React Testing Library cover unit and component integration behavior. It still deliberately avoids a UI kit, chart library, global state store, form framework, and server-state library until a demonstrated need exists.
 
-Feature pages, hooks, schemas, and mapping remain inside `features/<feature>`. A multi-page feature groups each page by use case. Visual components scoped to one feature live in `components/<feature>`; cross-feature primitives belong to `components/ui`, `components/layout`, or `components/feedback`. The current foundation is intentionally small and is expanded through implemented vertical slices rather than speculative components.
+Feature pages, hooks, schemas, and mapping remain inside `features/<feature>`. A multi-page feature groups each page by use case. Visual components scoped to one feature live in `components/<feature>`; cross-feature primitives belong to `components/ui`, `components/layout`, `components/feedback`, `components/english`, or `components/personal-content`. The current foundation is intentionally small and is expanded through implemented vertical slices rather than speculative components.
 
 Form controls use the shared primitives documented in [Frontend Component Foundation](frontend-components.md). `ChoiceDropdown` owns searchable single- and multi-choice behavior, `TagInput` stores tags as discrete removable values, and the common field controls own labels, helper/error messaging, focus treatment, and disabled states. Feature components compose these primitives while retaining domain validation and payload mapping. Free-form API filters remain text inputs rather than being constrained to an incomplete option list.
 

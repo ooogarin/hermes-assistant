@@ -21,14 +21,14 @@ export const shiftDate = (value: string, days: number): string => {
   return getDateValue(date);
 };
 
-export type FinanceRange = { from: string; to: string };
+export type DateRange = { from: string; to: string };
 
-export const getDefaultRange = (today: Date): FinanceRange => ({
+export const getDefaultRange = (today: Date): DateRange => ({
   from: `${today.getFullYear()}-${pad(today.getMonth() + 1)}-01`,
   to: getDateValue(today),
 });
 
-export const getSafeRange = (from: string | null, to: string | null, today: Date): FinanceRange => {
+export const getSafeRange = (from: string | null, to: string | null, today: Date): DateRange => {
   const fallback = getDefaultRange(today);
 
   if (from === null || to === null || !isDateValue(from) || !isDateValue(to) || from > to) return fallback;

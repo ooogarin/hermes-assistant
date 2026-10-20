@@ -1,8 +1,8 @@
 import { ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FinanceTransactionBatchForm } from '../../../components/finance/transaction-batch-form';
+import { getDateValue, getSafeDate } from '../../../lib/formatting/dates';
 import { createFinanceTransactions } from '../finance-api';
-import { getDateValue, getSafeDate } from '../finance-date';
 import type { CreateFinanceTransactionsInput } from '../finance-api';
 
 const FinanceCreatePage = ({ today = new Date() }: { today?: Date }) => {

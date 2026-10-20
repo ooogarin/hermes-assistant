@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { apiRequest } from '../../lib/api/api-client';
 import { buildQueryString } from '../../lib/api/query-string';
-import type { FinanceRange } from './finance-date';
+import type { DateRange } from '../../lib/formatting/dates';
 
 const categorySchema = z.object({
   code: z.string(),
@@ -90,7 +90,7 @@ export type UpdateFinanceTransactionInput = Partial<
   Pick<FinanceTransactionInput, 'amount' | 'categoryCode' | 'location' | 'name' | 'note'>
 >;
 
-export const getFinanceSummary = (range: FinanceRange, signal?: AbortSignal): Promise<FinanceSummary> =>
+export const getFinanceSummary = (range: DateRange, signal?: AbortSignal): Promise<FinanceSummary> =>
   apiRequest(`/api/v1/finance/summary${buildQueryString({ ...range, mode: 'net' })}`, financeSummarySchema, {
     signal,
   });
@@ -124,10 +124,7 @@ export const updateFinanceTransaction = (
     method: 'PATCH',
   });
 
-export const getFinanceDailySummary = async (
-  range: FinanceRange,
-  signal?: AbortSignal,
-): Promise<FinanceDailySummary> => {
+export const getFinanceDailySummary = async (range: DateRange, signal?: AbortSignal): Promise<FinanceDailySummary> => {
   const result = await apiRequest(`/api/v1/finance/summary/daily${buildQueryString(range)}`, dailySummarySchema, {
     signal,
   });

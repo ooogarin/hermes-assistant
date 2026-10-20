@@ -2,21 +2,16 @@ import { Link } from 'react-router-dom';
 import { formatDate, formatDisplayLabel } from '../../lib/formatting/formatters';
 import { TagList } from '../ui/chip';
 import { ScrollTable, scrollTableRowClassName, scrollTableTitleClassName } from '../ui/scroll-table';
+import { StatusPill } from '../ui/status-pill';
 import type { ReadingMaterialListItem } from '../../features/reading/reading-api';
 
 const minimumWidth = 'min-w-[calc(clamp(10rem,35cqw,26rem)+42rem)]';
 const columns = `grid ${minimumWidth} grid-cols-[clamp(10rem,35cqw,26rem)_8rem_6rem_minmax(12rem,1fr)_10rem] gap-4`;
 
 const ReadingStatusLabel = ({ status }: { status: 'read' | 'unread' }) => (
-  <span
-    className={
-      status === 'read'
-        ? 'inline-flex shrink-0 rounded-full border border-primary/25 bg-primary-subtle px-2 py-1 text-xs font-medium text-primary'
-        : 'inline-flex shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700'
-    }
-  >
+  <StatusPill tone={status === 'read' ? 'accent' : 'warning'}>
     {status === 'read' ? 'Sudah dibaca' : 'Belum dibaca'}
-  </span>
+  </StatusPill>
 );
 
 export const ReadingList = ({ items }: { items: ReadingMaterialListItem[] }) => (

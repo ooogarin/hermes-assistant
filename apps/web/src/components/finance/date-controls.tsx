@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { shiftDate } from '../../features/finance/finance-date';
+import { shiftDate } from '../../lib/formatting/dates';
 import { DatePicker } from '../ui/date-picker';
 import { IconButton } from '../ui/icon-button';
 

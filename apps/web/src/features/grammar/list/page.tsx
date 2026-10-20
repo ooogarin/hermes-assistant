@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EnglishSettingsLink } from '../../../components/english/english-settings-link';
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { ErrorState } from '../../../components/feedback/content-state';
+import { ListEmptyState } from '../../../components/feedback/list-empty-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
 import { GrammarSessionTable } from '../../../components/grammar/grammar-session-table';
 import { PageHeader } from '../../../components/layout/page-header';
@@ -132,20 +133,13 @@ const GrammarListPage = () => {
         sessions.data.items.length ? (
           <GrammarSessionTable items={sessions.data.items} />
         ) : (
-          <ContentState
-            title={hasFilters ? 'Tidak ada sesi yang cocok' : 'Belum ada sesi Grammar'}
-            description={
-              hasFilters
-                ? 'Coba pencarian atau filter lain.'
-                : 'Sesi dari latihan harian atau permintaan lewat Hermes akan muncul di sini.'
-            }
-            action={
-              hasFilters ? (
-                <Button variant='secondary' onClick={list.clearFilters}>
-                  Hapus filter
-                </Button>
-              ) : undefined
-            }
+          <ListEmptyState
+            description='Sesi dari latihan harian atau permintaan lewat Hermes akan muncul di sini.'
+            filteredDescription='Coba pencarian atau filter lain.'
+            filteredTitle='Tidak ada sesi yang cocok'
+            hasFilters={hasFilters}
+            onClearFilters={list.clearFilters}
+            title='Belum ada sesi Grammar'
           />
         )
       ) : null}

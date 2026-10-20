@@ -9,10 +9,10 @@ import { FinanceSummaryCards } from '../../../components/finance/summary-cards';
 import { PageHeader } from '../../../components/layout/page-header';
 import { ButtonLink } from '../../../components/ui/button-link';
 import { ApiError } from '../../../lib/api/api-error';
+import { getDateValue, getSafeRange } from '../../../lib/formatting/dates';
 import { formatCurrency, formatDate } from '../../../lib/formatting/formatters';
 import { useApiQuery } from '../../../lib/hooks/use-api-query';
 import { getFinanceDailySummary, getFinanceSummary } from '../finance-api';
-import { getDateValue, getSafeRange } from '../finance-date';
 
 const DailySummaryList = ({ rows }: { rows: Awaited<ReturnType<typeof getFinanceDailySummary>> }) => (
   <section className='overflow-hidden rounded-surface border border-border bg-surface' aria-labelledby='daily-summary'>
