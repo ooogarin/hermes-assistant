@@ -1,6 +1,7 @@
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { useState } from 'react';
+import { ErrorState } from '../../../components/feedback/content-state';
+import { ListEmptyState } from '../../../components/feedback/list-empty-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
-import { Button } from '../../../components/ui/button';
 import { ChoiceDropdown } from '../../../components/ui/choice-dropdown';
 import { Field, TextField } from '../../../components/ui/form-field';
 import { WritingList } from '../../../components/writing/writing-list';
@@ -21,6 +22,7 @@ const statusOptions = [
 ] as const;
 
 const WritingMaterialsPage = () => {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const list = useListParams({
     deferred: ['genre', 'levels'],
     fields: {
@@ -46,8 +48,9 @@ const WritingMaterialsPage = () => {
       <WritingNavigation />
       <WritingToolbar
         activeFilterCount={Number(Boolean(filters.genre)) + Number((filters.levels?.length ?? 0) > 0)}
+        filtersOpen={filtersOpen}
         onApplyFilters={list.applyFilters}
-        onOpenFilters={list.resetFilters}
+        onCloseFilters={() => setFiltersOpen(false)}
         onQueryChange={(value) => {
           list.setQuery(value);
 
@@ -62,7 +65,14 @@ const WritingMaterialsPage = () => {
         }}
         onSearch={list.applyQuery}
         onSortChange={list.toggleSort}
-        onStatusChange={(value) => list.setQuick(value)}
+        onQuickFilterChange={(value) => list.setQuick(value)}
+        onToggleFilters={() => {
+          if (!filtersOpen) {
+            list.resetFilters();
+          }
+
+          setFiltersOpen((current) => !current);
+        }}
         query={list.query}
         searchLabel='Cari prompt'
         sort={list.sort}
@@ -92,20 +102,13 @@ const WritingMaterialsPage = () => {
       {materials.status === 'loading' ? <CollectionSkeleton rows={6} /> : null}
       {materials.status === 'error' ? <ErrorState onRetry={materials.retry} /> : null}
       {materials.status === 'success' && materials.data.length === 0 ? (
-        <ContentState
-          title={hasFilters ? 'Tidak ada prompt yang cocok' : 'Belum ada prompt Writing'}
-          description={
-            hasFilters
-              ? 'Coba gunakan pencarian atau filter lain.'
-              : 'Prompt yang dibuat melalui Hermes akan muncul di sini.'
-          }
-          action={
-            hasFilters ? (
-              <Button variant='secondary' onClick={list.clearFilters}>
-                Hapus filter
-              </Button>
-            ) : undefined
-          }
+        <ListEmptyState
+          description='Prompt yang dibuat melalui Hermes akan muncul di sini.'
+          filteredDescription='Coba gunakan pencarian atau filter lain.'
+          filteredTitle='Tidak ada prompt yang cocok'
+          hasFilters={hasFilters}
+          onClearFilters={list.clearFilters}
+          title='Belum ada prompt Writing'
         />
       ) : null}
       {materials.status === 'success' && materials.data.length > 0 ? <WritingList items={materials.data} /> : null}

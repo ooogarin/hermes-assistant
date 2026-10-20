@@ -78,7 +78,7 @@ const JunkListPage = () => {
         source={list.drafts.source}
         sort={list.filters.sort}
         filtersOpen={filtersOpen}
-        onApply={list.applyFilters}
+        onApplyFilters={list.applyFilters}
         onCategoryChange={(value) => list.setDraft('category', value)}
         onFromChange={(value) => list.setDraft('from', value)}
         onToChange={(value) => list.setDraft('to', value)}
@@ -86,8 +86,8 @@ const JunkListPage = () => {
         onSortChange={list.toggleSort}
         onCloseFilters={() => setFiltersOpen(false)}
         onQueryChange={(value) => list.setQuery(value)}
-        onQuickCategoryChange={(value) => list.setQuick(value)}
-        onReset={list.resetFilters}
+        onQuickFilterChange={(value) => list.setQuick(value)}
+        onResetFilters={list.resetFilters}
         onSearch={list.applyQuery}
         onSourceUrlChange={(value) => list.setDraft('source_url', value)}
         onTagChange={(value) => list.setDraft('tag', value)}

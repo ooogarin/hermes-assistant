@@ -10,29 +10,29 @@ type JunkToolbarProps = {
   activeCategory?: string;
   activeFilterCount: number;
   category: string;
-  from: string;
-  to: string;
-  source: string;
-  sort: 'newest' | 'oldest';
   dateRangeInvalid: boolean;
   filtersOpen: boolean;
-  onApply: () => void;
+  from: string;
+  onApplyFilters: () => void;
   onCategoryChange: (value: string) => void;
-  onFromChange: (value: string) => void;
-  onToChange: (value: string) => void;
-  onSourceChange: (value: string) => void;
-  onSortChange: () => void;
   onCloseFilters: () => void;
+  onFromChange: (value: string) => void;
+  onQuickFilterChange: (value?: string) => void;
   onQueryChange: (value: string) => void;
-  onQuickCategoryChange: (value?: string) => void;
-  onReset: () => void;
+  onResetFilters: () => void;
   onSearch: () => void;
+  onSortChange: () => void;
+  onSourceChange: (value: string) => void;
   onSourceUrlChange: (value: string) => void;
   onTagChange: (value: string) => void;
+  onToChange: (value: string) => void;
   onToggleFilters: () => void;
   query: string;
+  source: string;
   sourceUrl: string;
+  sort: 'newest' | 'oldest';
   tag: string;
+  to: string;
 };
 
 const categoryOptions: Array<{ label: string; value?: string }> = [
@@ -54,7 +54,7 @@ export const JunkToolbar = ({
   sort,
   dateRangeInvalid,
   filtersOpen,
-  onApply,
+  onApplyFilters,
   onCategoryChange,
   onFromChange,
   onToChange,
@@ -62,8 +62,8 @@ export const JunkToolbar = ({
   onSortChange,
   onCloseFilters,
   onQueryChange,
-  onQuickCategoryChange,
-  onReset,
+  onQuickFilterChange,
+  onResetFilters,
   onSearch,
   onSourceUrlChange,
   onTagChange,
@@ -125,10 +125,10 @@ export const JunkToolbar = ({
           />
         </div>
         <div className='mt-5 flex items-center justify-between gap-3'>
-          <Button variant='ghost' onClick={onReset}>
+          <Button variant='ghost' onClick={onResetFilters}>
             Reset
           </Button>
-          <Button disabled={dateRangeInvalid} onClick={onApply}>
+          <Button disabled={dateRangeInvalid} onClick={onApplyFilters}>
             Terapkan filter
           </Button>
         </div>
@@ -139,7 +139,7 @@ export const JunkToolbar = ({
 
     <FilterChipRow
       label='Filter kategori Junk'
-      onChange={onQuickCategoryChange}
+      onChange={onQuickFilterChange}
       options={categoryOptions}
       value={activeCategory}
     />

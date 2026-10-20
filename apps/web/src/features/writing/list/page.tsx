@@ -1,6 +1,7 @@
-import { ContentState, ErrorState } from '../../../components/feedback/content-state';
+import { useState } from 'react';
+import { ErrorState } from '../../../components/feedback/content-state';
+import { ListEmptyState } from '../../../components/feedback/list-empty-state';
 import { CollectionSkeleton } from '../../../components/feedback/skeleton';
-import { Button } from '../../../components/ui/button';
 import { ButtonLink } from '../../../components/ui/button-link';
 import { ChoiceDropdown } from '../../../components/ui/choice-dropdown';
 import { Field } from '../../../components/ui/form-field';
@@ -20,6 +21,7 @@ const statusOptions = [
 ] as const;
 
 const WritingListPage = () => {
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const list = useListParams({
     deferred: ['writing_type'],
     fields: {
@@ -46,8 +48,9 @@ const WritingListPage = () => {
       <WritingNavigation />
       <WritingToolbar
         activeFilterCount={list.filters.writing_type === undefined ? 0 : 1}
+        filtersOpen={filtersOpen}
         onApplyFilters={list.applyFilters}
-        onOpenFilters={list.resetFilters}
+        onCloseFilters={() => setFiltersOpen(false)}
         onQueryChange={(value) => {
           list.setQuery(value);
 
@@ -61,7 +64,14 @@ const WritingListPage = () => {
         }}
         onSearch={list.applyQuery}
         onSortChange={list.toggleSort}
-        onStatusChange={(value) => list.setQuick(value)}
+        onQuickFilterChange={(value) => list.setQuick(value)}
+        onToggleFilters={() => {
+          if (!filtersOpen) {
+            list.resetFilters();
+          }
+
+          setFiltersOpen((current) => !current);
+        }}
         query={list.query}
         searchLabel='Cari tulisan'
         sort={list.sort}
@@ -86,22 +96,14 @@ const WritingListPage = () => {
       {submissions.status === 'loading' ? <CollectionSkeleton rows={6} /> : null}
       {submissions.status === 'error' ? <ErrorState onRetry={submissions.retry} /> : null}
       {submissions.status === 'success' && submissions.data.length === 0 ? (
-        <ContentState
-          title={hasFilters ? 'Tidak ada tulisan yang cocok' : 'Belum ada tulisan'}
-          description={
-            hasFilters
-              ? 'Coba gunakan pencarian atau filter lain.'
-              : 'Mulai menulis bebas atau pilih prompt dari Hermes.'
-          }
-          action={
-            hasFilters ? (
-              <Button variant='secondary' onClick={list.clearFilters}>
-                Hapus filter
-              </Button>
-            ) : (
-              <ButtonLink label='Tulis bebas' to='/english/writing/new' />
-            )
-          }
+        <ListEmptyState
+          action={<ButtonLink label='Tulis bebas' to='/english/writing/new' />}
+          description='Mulai menulis bebas atau pilih prompt dari Hermes.'
+          filteredDescription='Coba gunakan pencarian atau filter lain.'
+          filteredTitle='Tidak ada tulisan yang cocok'
+          hasFilters={hasFilters}
+          onClearFilters={list.clearFilters}
+          title='Belum ada tulisan'
         />
       ) : null}
       {submissions.status === 'success' && submissions.data.length > 0 ? (

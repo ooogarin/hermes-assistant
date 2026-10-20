@@ -12,29 +12,29 @@ type NotesToolbarProps = {
   activeFilterCount: number;
   activeType?: NoteType;
   category: string;
-  from: string;
-  to: string;
-  source: string;
-  sort: 'newest' | 'oldest';
   dateRangeInvalid: boolean;
   filtersOpen: boolean;
-  onApply: () => void;
+  from: string;
+  onApplyFilters: () => void;
   onCategoryChange: (value: string) => void;
-  onFromChange: (value: string) => void;
-  onToChange: (value: string) => void;
-  onSourceChange: (value: string) => void;
-  onSortChange: () => void;
   onCloseFilters: () => void;
+  onFromChange: (value: string) => void;
+  onQuickFilterChange: (value?: NoteType) => void;
   onQueryChange: (value: string) => void;
-  onQuickTypeChange: (value?: NoteType) => void;
-  onReset: () => void;
+  onResetFilters: () => void;
   onSearch: () => void;
+  onSortChange: () => void;
+  onSourceChange: (value: string) => void;
   onTagChange: (value: string) => void;
+  onToChange: (value: string) => void;
   onToggleFilters: () => void;
   onTypeChange: (value?: NoteType) => void;
   query: string;
-  selectedType?: NoteType;
+  type?: NoteType;
+  source: string;
+  sort: 'newest' | 'oldest';
   tag: string;
+  to: string;
 };
 
 const noteTypeOptions: Array<{ label: string; value: NoteType }> = [
@@ -61,7 +61,7 @@ export const NotesToolbar = ({
   sort,
   dateRangeInvalid,
   filtersOpen,
-  onApply,
+  onApplyFilters,
   onCategoryChange,
   onFromChange,
   onToChange,
@@ -69,14 +69,14 @@ export const NotesToolbar = ({
   onSortChange,
   onCloseFilters,
   onQueryChange,
-  onQuickTypeChange,
-  onReset,
+  onQuickFilterChange,
+  onResetFilters,
   onSearch,
   onTagChange,
   onToggleFilters,
   onTypeChange,
   query,
-  selectedType,
+  type,
   tag,
 }: NotesToolbarProps) => {
   return (
@@ -108,7 +108,7 @@ export const NotesToolbar = ({
                 options={noteTypeOptions}
                 placeholder='Semua tipe'
                 searchPlaceholder='Cari tipe...'
-                value={selectedType ?? null}
+                value={type ?? null}
               />
             </Field>
             <TextField
@@ -138,10 +138,10 @@ export const NotesToolbar = ({
             />
           </div>
           <div className='mt-5 flex items-center justify-between gap-3'>
-            <Button variant='ghost' onClick={onReset}>
+            <Button variant='ghost' onClick={onResetFilters}>
               Reset
             </Button>
-            <Button disabled={dateRangeInvalid} onClick={onApply}>
+            <Button disabled={dateRangeInvalid} onClick={onApplyFilters}>
               Terapkan filter
             </Button>
           </div>
@@ -152,7 +152,7 @@ export const NotesToolbar = ({
 
       <FilterChipRow
         label='Filter tipe catatan'
-        onChange={onQuickTypeChange}
+        onChange={onQuickFilterChange}
         options={quickTypeOptions}
         value={activeType}
       />
