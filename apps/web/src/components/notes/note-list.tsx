@@ -45,7 +45,7 @@ export const NoteList = ({
               to={toDetail(note.code)}
             >
               <div
-                className={`${frozenColumn} border-l-4 px-4 py-5 group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-primary ${isSelected ? 'border-l-primary bg-primary-subtle' : 'border-l-transparent bg-surface group-hover:bg-surface-subtle'}`}
+                className={`${frozenColumn} border-l-4 px-4 py-5 transition-colors group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-primary ${isSelected ? 'border-l-primary bg-primary-subtle' : 'border-l-transparent bg-surface group-hover:bg-surface-subtle'}`}
               >
                 <h3 className='line-clamp-2 break-words text-sm font-semibold text-ink'>{note.title}</h3>
                 <p className='mt-1 line-clamp-3 break-words text-sm leading-6 text-ink-muted'>

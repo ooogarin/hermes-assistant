@@ -76,6 +76,18 @@ test('lists notes title first with all metadata, a short excerpt and tags, witho
   expect(row).toHaveTextContent('Knowledge');
 });
 
+test('changes the frozen column background together with the row', () => {
+  render(
+    <MemoryRouter>
+      <NoteList notes={[note]} toDetail={(code) => `/notes?preview=${code}`} />
+    </MemoryRouter>,
+  );
+  const row = screen.getByRole('link');
+
+  expect(row).toHaveClass('transition-colors');
+  expect(row.firstElementChild).toHaveClass('transition-colors');
+});
+
 test('offers keyboard access and overflow guidance only while the columns exceed the list width', () => {
   let width = 640;
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {

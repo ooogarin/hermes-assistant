@@ -6,7 +6,19 @@ export const scrollTableRowClassName =
   'group items-stretch bg-surface transition-colors hover:bg-surface-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary';
 
 export const scrollTableTitleClassName =
-  'border-l-4 border-l-transparent bg-surface px-4 py-5 group-hover:bg-surface-subtle group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-primary';
+  'border-l-4 border-l-transparent bg-surface px-4 py-5 transition-colors group-hover:bg-surface-subtle group-focus-visible:ring-2 group-focus-visible:ring-inset group-focus-visible:ring-primary';
+
+/**
+ * Shadow that marks the frozen column as raised over the scrolled columns.
+ *
+ * It is an overlay instead of a box shadow because a box shadow fades out at the
+ * edges of the element that carries it. Every row carries its own frozen cell, so
+ * a box shadow left a gap at every row border and the band read as separate
+ * segments. An overlay keeps the full height of the cell, so the bands of the
+ * rows meet exactly and the shadow stays even from top to bottom.
+ */
+const scrollTableFrozenShadowClassName =
+  'after:absolute after:inset-y-0 after:-right-4 after:w-4 after:pointer-events-none after:bg-gradient-to-r after:from-ink/10 after:to-transparent';
 
 type ScrollTableProps = {
   /** Renders the rows of the table. */
@@ -76,7 +88,7 @@ export const ScrollTable = ({
     };
   }, [measureOverflow]);
 
-  const frozenColumn = `sticky left-0 z-10 min-w-0 ${overflow.left ? 'shadow-[6px_0_10px_-6px_rgba(0,0,0,0.25)]' : ''}`;
+  const frozenColumn = `sticky left-0 z-10 min-w-0 ${overflow.left ? scrollTableFrozenShadowClassName : ''}`;
   const canScroll = overflow.left || overflow.right;
 
   return (

@@ -98,6 +98,18 @@ test('renders clickable title-first rows, separate source, and available tags wi
   expect(row.querySelectorAll('a')).toHaveLength(0);
 });
 
+test('changes the frozen column background together with the row', () => {
+  render(
+    <MemoryRouter>
+      <JunkList items={[item]} toDetail={(code) => `/junk?preview=${code}`} />
+    </MemoryRouter>,
+  );
+  const row = screen.getByRole('link');
+
+  expect(row).toHaveClass('transition-colors');
+  expect(row.firstElementChild).toHaveClass('transition-colors');
+});
+
 test('offers keyboard access and overflow guidance only while the columns exceed the list width', () => {
   let width = 640;
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
