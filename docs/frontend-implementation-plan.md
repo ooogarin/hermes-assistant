@@ -13,7 +13,7 @@ Completed foundation work:
 - Indonesian currency, number, percentage, date, and month formatting.
 - Initial buttons, selector, proportional bar, page header, skeleton, and shared content states.
 - Frontend unit/component test setup included in the repository-wide test command.
-- Finance daily and range reports plus manual batch create, edit, and confirmed delete flows.
+- Finance daily and range reports plus a manual batch create flow and a transaction edit page.
 - Notes list and detail with API-backed keyword, type, category, and tag filtering, direct detail routes, and responsive list/detail behavior.
 - Junk list, preview, and standalone detail with API-backed keyword, category, tag, and source-URL filtering plus safe nullable-title handling.
 - Grammar session list with API-backed search by session code, status chips, mode and level filters, ordering, and a bounded result list.
@@ -220,18 +220,20 @@ Add shared formatters for Indonesian dates, Rupiah, numbers, and percentages. Fo
 
 ### Phase 5 — Shared UI primitives
 
-Implement only primitives already required by designed screens:
+Implement only primitives already required by designed screens. The shared layer now holds:
 
-- `Button` and `IconButton`.
-- `TextField`, numeric field, and `Select`.
-- `SegmentedControl`, `FilterChip`, and `Tag`.
-- `PageHeader`, `Section`, and `MetadataList`.
-- `CollectionSurface` and lightweight `CollectionRow`.
-- Closable and expandable `DetailPane`.
-- `Skeleton`, `EmptyState`, `NoResultsState`, and `ErrorState`.
-- `Toast` and `ConfirmDialog`.
-- `SettingsLayout` and `SettingsSummary`.
+- `Button`, `ButtonLink`, and `IconButton`.
+- `Field`, `TextField`, `TextAreaField`, and `SelectField`.
+- `ChoiceDropdown`, `DatePicker`, and `TagInput`.
+- `FilterChip`, `FilterChipRow`, `FilterPopover`, and `Chip`.
+- `ScrollTable` and `SortToggle` for collections, `RecordActions` for a stored record, and `DetailPane` for one record.
+- `Skeleton`, `CollectionSkeleton`, `ContentState`, `ErrorState`, `ListEmptyState`, and `QueryError`.
+- `ConfirmationDialog`, `CopyButton`, `StatusPill`, and `ProgressBar`.
+- `SettingsLevelPicker`, `SettingsNumberField`, and `SettingsSummary` for the English settings.
+- `ContentForm` for a stored record, and the shared `useListParams` hook for the filters of a list.
 - Accessible proportional bar for report breakdowns.
+
+`SegmentedControl`, `Section`, `Toast`, and a separate settings layout were considered and not needed.
 
 Every interactive component must have an accessible name, keyboard behavior, visible focus, disabled behavior, and sufficient contrast. Critical actions or states must not depend on color or hover alone.
 
@@ -248,8 +250,8 @@ The Finance slice now includes:
 - Loading skeleton, empty state, recoverable error, and retry.
 - Responsive report layout.
 - Manual multi-transaction create using the API batch contract directly.
-- Changed-fields-only edit and confirmed soft deletion from Daily view.
-- Shared Finance transaction fields for batch create and single edit, plus the cross-feature confirmation dialog.
+- Changed-fields-only edit on the transaction page. The daily list stays read-only, so the page is reached by its address.
+- Shared Finance transaction fields for batch create and single edit.
 
 The slice validates routing, shell, API parsing, request cancellation, formatting, shared feedback states, and visual tokens before those abstractions are reused elsewhere.
 

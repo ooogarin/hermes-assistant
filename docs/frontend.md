@@ -40,9 +40,11 @@ Feature pages, hooks, schemas, and mapping remain inside `features/<feature>`. A
 
 Form controls use the shared primitives documented in [Frontend Component Foundation](frontend-components.md). `ChoiceDropdown` owns searchable single- and multi-choice behavior, `TagInput` stores tags as discrete removable values, and the common field controls own labels, helper/error messaging, focus treatment, and disabled states. Feature components compose these primitives while retaining domain validation and payload mapping. Free-form API filters remain text inputs rather than being constrained to an incomplete option list.
 
+Lists share the sideways scrolling table, the detail pane, the record actions, the failed request state, and one hook that keeps the filters in the browser URL.
+
 The desktop application sidebar can be expanded or reduced to an icon rail through its chevron button. It does not auto-expand or auto-hide on hover. Its state is retained in local browser storage, and the sidebar width and content offset transition together. The mobile drawer remains independent of this desktop preference.
 
-Finance Daily defaults to the current date and Range defaults to the current calendar month. Both show API-authoritative expense, income, net balance, and category breakdown. Daily also provides manual batch creation, correction, and confirmed deletion backed by the existing Finance contracts:
+Finance Daily defaults to the current date and Range defaults to the current calendar month. Both show API-authoritative expense, income, net balance, and category breakdown. Daily also provides manual batch creation backed by the existing Finance contracts:
 
 ```text
 GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
@@ -54,9 +56,9 @@ PATCH /api/v1/finance/transactions/:date/:dailyNumber
 DELETE /api/v1/finance/transactions/:date/:dailyNumber
 ```
 
-Create sends one to 100 transaction rows that share an explicit date, type, and source text. Create and edit reuse the same transaction-field component; edit keeps date, type, and source text immutable and sends changed fields only. Delete reuses the cross-feature confirmation dialog.
+Create sends one to 100 transaction rows that share an explicit date, type, and source text. Create and edit reuse the same transaction-field component; edit keeps date, type, and source text immutable and sends changed fields only. The daily list stays read-only, so correcting or deleting a stored transaction is not offered yet and the edit page is reached by its address only.
 
-Notes is read-only in this phase. Its list and detail routes use the API as the source of truth:
+The Notes list and detail routes use the API as the source of truth:
 
 ```text
 GET /api/v1/notes?q=<keyword>&type=<type>&category=<category>&tag=<tag>&source=<name-or-domain>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
@@ -84,7 +86,7 @@ POST  /api/v1/reading/materials/:code/submissions
 GET   /api/v1/reading/materials/:code/expected-answers
 ```
 
-The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` uses the paginated collection API for keyword search plus status, multi-level, and genre filters.
+The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` requests a bounded collection for keyword search plus status, multi-level, and genre filters, and shows no pagination.
 
 Writing reuses the same English settings primitive and provides known-code prompt, feedback, and corrected-text routes:
 

@@ -22,9 +22,11 @@ file. The rendered markup is unchanged.
 
 ## 4. Read the frontend documents again
 
-`docs/frontend.md` and `docs/frontend-screens.md` were written before the
-shared primitives existed. Check that the structure, the filter behaviour, and
-the described screens still match the application.
+**Done.** `docs/frontend.md` no longer claims that Notes is read-only, that the
+Finance daily list can correct or delete a stored transaction, or that the
+Reading list paginates. `docs/frontend-implementation-plan.md` no longer
+claims a confirmed delete flow for Finance. The screen specifications in
+`docs/frontend-screens/` were checked and still match the application.
 
 `docs/frontend-components.md` is up to date.
 
