@@ -16,10 +16,9 @@ is unchanged.
 
 ## 3. Split the grammar session page
 
-`features/grammar/session/page.tsx` is the largest page left. It holds the
-session, its questions, the answer grading, and the explanation drawer. Give
-each a component and keep the page as the composition. The drawer already has
-its own component in `components/grammar/grammar-explanation-drawer.tsx`.
+**Done.** `features/grammar/session/page.tsx` became the page, the workspace,
+the question panel, the question list, and the session details, each in its own
+file. The rendered markup is unchanged.
 
 ## 4. Read the frontend documents again
 
