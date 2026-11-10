@@ -4,7 +4,7 @@
 > Frontend integration with the independent submission API is implemented. Hermes runtime adaptation is pending.
 
 The [Writing submission contract](writing-submission-contract.md) defines exact API,
-validation, schema, and error details. The [redesign proposal](writing-submission-redesign-proposal.md)
+validation, schema, and error details. The [redesign proposal](../archive/proposals/writing-submission-redesign-proposal.md)
 records the agreed flows and scenarios.
 
 ## 1. Purpose and ownership

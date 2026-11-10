@@ -1,10 +1,10 @@
 # Hermes Frontend Implementation Plan
 
-> Status: Foundation, Finance, Notes, Junk, Reading, Writing, Grammar settings, and the Grammar session list implemented. This document plans the frontend foundation and screen delivery; it does not change domain behavior or API contracts.
+> Status (2026-11-10): Foundation, Finance, Notes, Junk, Reading, Writing, Grammar settings, and the known-code English workflows are implemented. General English and Ringkasan remain blocked by missing contracts, and production proxy verification is still pending. This document plans the frontend foundation and screen delivery; it does not change domain behavior or API contracts.
 
 ## Current progress
 
-Completed foundation work:
+Completed work:
 
 - Responsive application shell with a persistent collapsible desktop sidebar and keyboard-operable mobile drawer.
 - Route tree, active navigation, expandable English group, direct routes, and safe not-found state.
@@ -13,12 +13,15 @@ Completed foundation work:
 - Indonesian currency, number, percentage, date, and month formatting.
 - Initial buttons, selector, proportional bar, page header, skeleton, and shared content states.
 - Frontend unit/component test setup included in the repository-wide test command.
+- Personal web authentication gate, login/logout, session-expiry handling, and HttpOnly cookie requests.
 - Finance daily and range reports plus a manual batch create flow and a transaction edit page.
-- Notes list and detail with API-backed keyword, type, category, and tag filtering, direct detail routes, and responsive list/detail behavior.
-- Junk list, preview, and standalone detail with API-backed keyword, category, tag, and source-URL filtering plus safe nullable-title handling.
-- Grammar session list with API-backed search by session code, status chips, mode and level filters, ordering, and a bounded result list.
+- Notes list and detail with API-backed keyword, type, category, tag, source, date-range, and ordering filters, direct detail routes, and responsive list/detail behavior.
+- Junk list, preview, and standalone detail with API-backed keyword, category, tag, source-URL, source, date-range, and ordering filters plus safe nullable-title handling.
+- Reading settings and list plus known-code material, answer submission, and expected-answer review.
+- Writing settings, material list/detail, free and prompted draft submission, feedback, and corrected-text review.
+- Grammar settings, session list, known-code practice/exam workspace, explanation drawer, and report.
 
-Finance and Notes validate the current foundation against the existing API contracts. Notes supports keyword, type, category, and tag filters. Controls without API support (source, date range, and alternative ordering) stay visibly unavailable rather than applying incomplete client-side filtering.
+Finance and Notes validate the current foundation against the existing API contracts. Notes and Junk use the shared calendar picker for date ranges and support newest/oldest ordering; pagination stays disabled because their APIs return a bounded collection without pagination metadata.
 
 ## 1. Purpose
 
@@ -38,7 +41,7 @@ Use the following sources in this order when implementing a screen:
 
 The screen guide and module specification take precedence when an older visual reference contains a different navigation structure, label, or unsupported control. A visual mismatch that affects product behavior must be resolved in documentation before implementation.
 
-Before implementing Finance, add a Finance screen specification using the template in `docs/frontend-screens.md`. The current Finance description and visual references are not yet as explicit as the other module specifications.
+The Finance screen specification was added before implementation and should stay aligned with the implemented screen when behavior changes.
 
 ## 3. Scope and non-goals
 
@@ -63,7 +66,7 @@ Before implementing Finance, add a Finance screen specification using the templa
 - Browser-side financial totals, grading, learning evaluation, or other authoritative calculations.
 - Client-side filtering of a limited API result set presented as complete server-side filtering.
 - Browser-direct LLM calls or exposure of the internal API key.
-- Production deployment before the [personal web authentication boundary](auth-design.md) is implemented and verified.
+- Production deployment without the verified same-origin HTTPS proxy described in [frontend-deployment.md](../../frontend-deployment.md).
 - Screens or controls backed only by mock records when their collection API is missing.
 
 ## 4. Technical direction
@@ -155,7 +158,7 @@ Deliverable: screen documentation that is sufficient to implement without invent
 2. Add the selected icon library.
 3. Add frontend test configuration.
 4. Establish feature and shared-code directories.
-5. Keep the Vite proxy for local development. The [personal auth implementation](auth-design.md) removes bearer injection and forwards browser cookies instead.
+5. Keep the Vite proxy for local development. The [personal auth implementation](../../auth-design.md) removes bearer injection and forwards browser cookies instead.
 
 Proposed route tree:
 
@@ -267,7 +270,7 @@ Implement Notes and Junk together as separate features sharing proven list/detai
 - Safe external-link handling for Junk source URLs.
 - Manual create forms backed by the existing POST contracts, with one shared form per feature for create and edit.
 
-Do not enable unsupported date filters, old-to-new sorting, or pagination. Editing and confirmed deletion are implemented from the full-page detail routes using their existing API contracts.
+Notes and Junk use the shared calendar picker for date-range filtering and support newest/oldest ordering. Pagination stays disabled because their list APIs return a bounded collection without pagination metadata. Editing and confirmed deletion are implemented from the full-page detail routes using their existing API contracts.
 
 ### Phase 8 — English settings
 
@@ -275,15 +278,15 @@ Reading and Writing settings are implemented through one shared English-learning
 
 Implement settings in this order:
 
-1. Reading settings.
-2. Writing settings.
-3. Grammar settings. Implemented.
+1. Reading settings — implemented.
+2. Writing settings — implemented.
+3. Grammar settings — implemented.
 
 Use a shared settings pattern for load-before-edit, dirty-state detection, field and cross-field validation, pending state, unsaved-change confirmation, success toast, and synchronized read-only summary.
 
 ### Phase 9 — Known-code English workflows
 
-Reading and Grammar known-code workflows are implemented. Writing prompt, feedback, and corrected-text screens are implemented; browser-originated Writing submission remains blocked by its current request contract. Browser-originated Grammar grading remains owned by Hermes.
+Reading, Writing, and Grammar known-code workflows are implemented. The browser can save free writing and prompted drafts through `POST /api/v1/writing/submissions` without supplying estimates or analysis; analysis remains an Agent-only command. Browser-originated Grammar grading remains owned by Hermes.
 
 Implement screens that already have detail contracts:
 
@@ -295,16 +298,23 @@ These screens must support direct navigation with a known public code. They must
 
 ### Phase 10 — Backend-enabled screens
 
-Implement the following only after their missing contracts are designed and available:
+The original blockers are now split into completed and remaining work.
+
+Implemented:
+
+| Behavior | What changed |
+| --- | --- |
+| Writing draft submission | `POST /api/v1/writing/submissions` accepts `material_code` and `original_text` only; free writing and prompted drafts are saved from the browser, while analysis stays Agent-only. |
+| Advanced Notes filters and sorting | Type, source, date-range, and newest/oldest filters are implemented with API support. |
+| Advanced Junk filters and sorting | Source, date-range, and newest/oldest filters are implemented with API support. |
+
+Remaining work:
 
 | Screen or behavior | Current blocker |
 | --- | --- |
-| Writing draft submission | Current POST requires caller-authored estimated level and complete analysis |
 | General English Q&A | No authenticated browser conversation contract |
 | Save General English response to Notes | Save/preview payload and confirmation contract missing |
-| Advanced Notes filters and sorting | Type, source, date-range, and sort API support missing |
-| Advanced Junk filters and sorting | Date-range and sort API support missing |
-| Production frontend access | [Auth backend and FE](auth-design.md) implemented; production same-origin HTTPS proxy verification still pending |
+| Production frontend access | Auth and the [deployment guide](../../frontend-deployment.md) are implemented; production same-origin HTTPS proxy verification remains pending |
 | Ringkasan destination | Product content and data contract missing |
 
 ## 7. Testing and verification
@@ -357,7 +367,9 @@ Compare implemented screens with their visual references at minimum widths of ap
 | FE-09 | Reading known-code workflow |
 | FE-10 | Writing known-code workflow |
 | FE-11 | Grammar known-code workflow |
-| Later | Collection screens, General English, Ringkasan, and production proxy verification following the [personal auth design](auth-design.md) |
+| Later | General English, Ringkasan, and production proxy verification following the [personal auth design](../../auth-design.md) |
+
+FE-01 through FE-11 are implemented. The `Later` row now contains only the remaining blocked work.
 
 Each work item should be independently reviewable, preserve unrelated changes, include proportionate tests, and update affected documentation when a behavior or contract decision changes.
 

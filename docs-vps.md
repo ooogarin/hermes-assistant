@@ -1,21 +1,21 @@
 # Runbook Deploy Hermes ke Tencent VPS
 
-Runbook ini adalah acuan tunggal untuk **instalasi bersih** Hermes pada VPS Tencent
+Runbook ini adalah acuan untuk **instalasi bersih backend dan Hermes Agent** pada VPS Tencent
 Cloud CVM yang sudah ada. Targetnya Ubuntu 24.04 LTS, Mac M1 sebagai komputer
 operator, tanpa Docker, dan deployment manual lewat SSH + Git.
 
 Jalankan bagian secara berurutan. Jangan mencampur command lama dari chat, nama key
 lama (`tencent-hermes`), atau metode instalasi lain dengan runbook ini.
 
-Sebelum mulai, isi informasi non-rahasia dan lokasi secret pada
-`info-vps.txt` berdasarkan [template](info-vps.template.txt). File itu adalah catatan
-pribadi lokal; jangan commit atau tempelkan password/token ke chat.
+Sebelum mulai, isi informasi non-rahasia dan lokasi secret pada `info-vps.txt`.
+File itu adalah catatan pribadi lokal yang di-ignore Git; jangan commit atau
+tempelkan password/token ke chat.
 
 > **IP pada runbook ini:** `43.157.229.102`. Jika Tencent mengganti public IP VPS,
 > perbarui `info-vps.txt` dan nilai `HostName` pada konfigurasi SSH di Bagian 3
 > sebelum menjalankan command koneksi berikutnya.
 
-**Arsitektur akhir yang direkomendasikan:**
+**Arsitektur baseline Telegram-only:**
 
 ```text
 Telegram
@@ -29,16 +29,19 @@ Hermes Gateway + Hermes Agent (user hermes-agent)
 API Bun/Hono (user hermes) -> PostgreSQL (localhost)
 ```
 
-Hermes Agent, API, dan PostgreSQL berjalan di VPS yang sama. Karena itu, API tidak
-perlu dibuka ke internet untuk penggunaan Telegram. Nginx, domain, serta HTTPS hanya
-diperlukan jika kelak ada client lain yang harus mengakses API dari luar VPS.
+Hermes Agent, API, dan PostgreSQL berjalan di VPS yang sama. Untuk penggunaan
+Telegram saja, API tidak perlu dibuka ke internet. Frontend web memakai panduan
+terpisah: [frontend-deployment.md](docs/frontend-deployment.md) untuk Caddy, HTTPS,
+dan proxy `/api` same-origin, serta [auth-design.md](docs/auth-design.md) untuk
+autentikasi browser. API tetap bind ke `127.0.0.1:3000` dan tidak dibuka langsung
+ke internet.
 
 Arah akses remote pada runbook ini hanya **Mac → VPS**. VPS tidak diberi akses SSH
 masuk ke Mac dan Mac tidak perlu membuka port ke internet.
 
-`apps/web` belum dideploy sebagai frontend publik di panduan ini. Vite dev server
-tidak boleh dibuka ke internet; frontend production butuh desain autentikasi/BFF
-tersendiri, di luar cakupan dokumen ini.
+`apps/web` tidak di-deploy oleh runbook ini. Frontend production mengikuti
+[frontend-deployment.md](docs/frontend-deployment.md); autentikasi browser dijelaskan
+di [auth-design.md](docs/auth-design.md). Jangan membuka Vite dev server ke internet.
 
 **Aturan yang berlaku di semua langkah:**
 
@@ -662,8 +665,9 @@ Secret ini harus minimal 32 karakter, dan nilainya nanti harus **sama persis** d
 sama, gunakan `HERMES_API_BASE_URL=http://127.0.0.1:3000`. Jangan memakai domain
 publik kecuali Agent memang dipindahkan ke mesin lain.
 
-`API_PROXY_TARGET` milik Vite development dan tidak diperlukan untuk API production
-karena frontend publik tidak dideploy oleh runbook ini.
+`API_PROXY_TARGET` hanya milik Vite development. Pada production, frontend dan proxy
+`/api` ditangani Caddy sesuai [panduan frontend](docs/frontend-deployment.md);
+runbook ini tidak men-deploy frontend.
 
 ### Verifikasi koneksi PostgreSQL sebelum migration
 
@@ -792,6 +796,10 @@ Kalau API sempat kamu ubah/update `.env` di kemudian hari, jangan lupa
 Untuk target awal—Hermes dan API pada VPS yang sama—langsung lanjut ke Bagian 11.
 Tidak ada alasan membuka API ke internet. Gunakan bagian ini hanya jika ada client
 eksternal yang benar-benar membutuhkan endpoint API.
+
+Frontend publik memakai Caddy sesuai [panduan frontend](docs/frontend-deployment.md),
+bukan Nginx. Pilih salah satu reverse proxy untuk port `80`/`443`; jangan menjalankan
+Nginx dan Caddy bersamaan.
 
 Sebelum melanjutkan, buka TCP `80` dan `443` di Tencent Security Group lalu jalankan:
 

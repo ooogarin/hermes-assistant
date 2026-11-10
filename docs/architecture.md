@@ -114,7 +114,9 @@ Collections may include a `meta` object. Errors use a stable safe envelope:
 }
 ```
 
-Use `200` for successful reads/updates, `201` for creation, `204` for no response body, `400` for invalid input, `401`/`403` for authentication/authorization failures, `404` for not found, `409` for conflicts, `413` for oversized requests, `415` for unsupported media types, `429` for rate limits, and `500`/`503` for unexpected or unavailable dependencies. Public errors must not expose SQL, stack traces, secrets, or dependency internals.
+Use `200` for successful reads/updates, `201` for creation, `204` for no response body, `400` for invalid input, `401`/`403` for authentication/authorization failures, `404` for not found, `409` for conflicts, `413` for oversized requests, `415` for unsupported media types, `429` for rate limits, and `500`/`503` for unexpected or unavailable dependencies. Public errors must not expose SQL, stack traces, secrets, or dependency internals. Framework HTTP exceptions use the same envelope with a safe server-defined message; their raw message and response body are never forwarded.
+
+Paginate only when a collection needs it. Validate pagination limits and allow-list filter/sort fields before they reach SQL.
 
 ## Module boundary
 
