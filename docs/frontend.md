@@ -2,9 +2,9 @@
 
 ## Scope
 
-`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk, Reading, API-backed Writing workflows, and Grammar session-list and known-code workflows. The frontend does not own durable data, calculations, aggregation, analysis, or filtering rules; those remain in the API and PostgreSQL.
+`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk, Reading, Writing, and Grammar, plus the English settings and known-code workflows. The frontend does not own durable data, calculations, aggregation, analysis, or filtering rules; those remain in the API and PostgreSQL.
 
-The initial implementation deliberately uses React's built-in `useState` and `useEffect`, plus focused custom hooks such as `useFinanceReport`. It does not use a state-management library, UI kit, or chart library. Reusable UI is implemented as small Tailwind components in `src/components`.
+The initial implementation deliberately uses React's built-in `useState` and `useEffect`, plus focused custom hooks such as `useApiQuery` and `useListParams`. It does not use a state-management library, UI kit, or chart library. Reusable UI is implemented as small Tailwind components in `src/components`.
 
 ## Structure
 
@@ -51,18 +51,21 @@ GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
 GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
 GET /api/v1/finance/categories?type=expense|income
 POST /api/v1/finance/transactions
-GET /api/v1/finance/transactions/:date/:dailyNumber
-PATCH /api/v1/finance/transactions/:date/:dailyNumber
-DELETE /api/v1/finance/transactions/:date/:dailyNumber
+GET /api/v1/finance/transactions/:date/:daily_number
+PATCH /api/v1/finance/transactions/:date/:daily_number
+DELETE /api/v1/finance/transactions/:date/:daily_number
 ```
 
 Create sends one to 100 transaction rows that share an explicit date, type, and source text. Create and edit reuse the same transaction-field component; edit keeps date, type, and source text immutable and sends changed fields only. The daily list stays read-only, so correcting or deleting a stored transaction is not offered yet and the edit page is reached by its address only.
 
-The Notes list and detail routes use the API as the source of truth:
+Notes uses the API as the source of truth for its list, detail, and mutations:
 
 ```text
-GET /api/v1/notes?q=<keyword>&type=<type>&category=<category>&tag=<tag>&source=<name-or-domain>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
-GET /api/v1/notes/:code
+GET    /api/v1/notes?q=<keyword>&type=<type>&category=<category>&tag=<tag>&source=<name-or-domain>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
+POST   /api/v1/notes
+GET    /api/v1/notes/:code
+PATCH  /api/v1/notes/:code
+DELETE /api/v1/notes/:code
 ```
 
 Keyword, type, category, tag, source, date-range, and ordering filters are applied by the API. Notes uses the shared calendar picker for its optional date range. The list uses `/notes?preview=:code` for its supporting pane, while `/notes/:code` is a standalone detail page.
@@ -70,36 +73,44 @@ Keyword, type, category, tag, source, date-range, and ordering filters are appli
 Junk follows the same list, preview, and standalone-detail structure:
 
 ```text
-GET /api/v1/junk?q=<keyword>&category=<category>&tag=<tag>&source=<name-or-domain>&source_url=<url>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
-GET /api/v1/junk/:code
+GET    /api/v1/junk?q=<keyword>&category=<category>&tag=<tag>&source=<name-or-domain>&source_url=<url>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
+POST   /api/v1/junk
+GET    /api/v1/junk/:code
+PATCH  /api/v1/junk/:code
+DELETE /api/v1/junk/:code
 ```
 
 Keyword, category, tag, source, exact source-URL, date-range, and ordering filters are applied by the API. Junk uses the shared calendar picker for its optional date range. The list uses `/junk?preview=:code`; `/junk/:code` is the standalone detail page.
 
-Reading provides settings, direct known-code material, complete answer submission, and expected-answer review:
+Reading provides settings, a bounded material list, direct known-code material, partial answer saving, manual read status, and expected-answer review:
 
 ```text
 GET   /api/v1/reading/settings
 PATCH /api/v1/reading/settings
+GET   /api/v1/reading/materials?q=&reading_status=&levels=&genre=&limit=&sort=
 GET   /api/v1/reading/materials/:code
-POST  /api/v1/reading/materials/:code/submissions
+PATCH /api/v1/reading/materials/:code
+PATCH /api/v1/reading/materials/:code/answers
 GET   /api/v1/reading/materials/:code/expected-answers
 ```
 
-The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace requires every answer before submission and presents expected answers strictly as self-check content. `/english/reading` requests a bounded collection for keyword search plus status, multi-level, and genre filters, and shows no pagination.
+The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace saves any subset of answers, including clearing a saved answer, and keeps read status manual. Expected answers are presented strictly as self-check content. `/english/reading` requests a bounded collection for keyword search plus status, multi-level, and genre filters, and shows no pagination.
 
-Writing reuses the same English settings primitive and provides known-code prompt, feedback, and corrected-text routes:
+Writing reuses the same English settings primitive and provides a submission list backed by a paginated API, material list/detail, free and prompted draft submission, feedback, and corrected-text routes:
 
 ```text
 GET   /api/v1/writing/settings
 PATCH /api/v1/writing/settings
 GET   /api/v1/writing/materials?q=&status=&levels=&genre=&page=&limit=&sort=
 GET   /api/v1/writing/materials/:code
-GET   /api/v1/writing/materials/:code/submissions/:submissionNumber
-GET   /api/v1/writing/materials/:code/submissions/:submissionNumber/corrected-text
+GET   /api/v1/writing/submissions?q=&material_code=&writing_type=&analysis_status=&page=&limit=&sort=
+POST  /api/v1/writing/submissions
+GET   /api/v1/writing/submissions/:code
+PATCH /api/v1/writing/submissions/:code
+GET   /api/v1/writing/submissions/:code/corrected-text
 ```
 
-The prompt composer shows a non-authoritative live word count and preserves browser input. Its submission action remains unavailable because the current POST contract requires the caller to supply `estimatedLevel` and the complete authoritative analysis alongside `originalText`; the frontend does not fabricate those domain results. The Writing list uses its paginated API and routes reviewed materials directly to their latest feedback.
+The prompt composer shows a non-authoritative live word count and preserves browser input. The browser saves free writing and prompted drafts through `POST /api/v1/writing/submissions` using only `material_code` and `original_text`; estimates and analysis are not required at creation. Analysis remains an Agent-only command through `PATCH /api/v1/writing/submissions/:code/analysis`, and analyzed text is locked for editing. The submission edit page sends changed metadata fields and can change text only before analysis. The Writing list uses its paginated API and routes reviewed materials directly to their latest feedback.
 
 Grammar settings load and update the API-backed daily-practice defaults:
 
@@ -133,10 +144,10 @@ bun run dev:web
 
 The frontend has public `/login` outside `AppShell`, an auth-status check before mounting protected routes, and `Keluar` in the sidebar/mobile drawer. The [Login screen specification](frontend-screens/auth.md) defines fields, responsive behavior, accessible feedback, direct-link return, expiry, and retry. Browser API requests remain relative and carry only their JWT cookie; Vite does not inject the Agent key.
 
-Public deployment remains blocked until the production same-origin HTTPS proxy is verified with cookie and Origin forwarding. JWT expiry is fixed at 24 hours; logout clears the cookie without revoking a copied JWT. The exact deployment host remains open.
+Public deployment remains pending until the production same-origin HTTPS proxy is verified with cookie and Origin forwarding; [frontend-deployment.md](frontend-deployment.md) records the proposed host, Caddy configuration, and verification steps. JWT expiry is fixed at 24 hours; logout clears the cookie without revoking a copied JWT.
 
-Shared navigation, screen, state, and accessibility conventions are defined in [frontend-screens.md](frontend-screens.md). Module-specific screen specifications will be added only after the related API data is available.
+Shared navigation, screen, state, and accessibility conventions are defined in [frontend-screens.md](frontend-screens.md). Module-specific screen specifications live in [frontend-screens/](frontend-screens/) and remain the screen-level source of truth.
 
 Finance screen behavior is defined in [frontend-screens/finance.md](frontend-screens/finance.md).
 
-The implementation sequence and current backend blockers are tracked in [frontend-implementation-plan.md](frontend-implementation-plan.md).
+The [archived implementation plan](archive/plans/frontend-implementation-plan.md) records delivery history; remaining blocked work is described above.

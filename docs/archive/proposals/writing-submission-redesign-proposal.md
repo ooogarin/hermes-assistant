@@ -2,7 +2,7 @@
 
 > Date: 2026-10-03. Status: backend and frontend implemented; Hermes integration pending.
 > Migration 0011 has been applied by the user. The
-> [Writing submission contract](writing-submission-contract.md) defines the implemented
+> [Writing submission contract](../../feature-docs/writing-submission-contract.md) defines the implemented
 > schema, endpoint contracts, edit guards, and module ownership, and takes precedence
 > over this proposal. Frontend workflows are implemented; Hermes runtime instructions remain to be adapted.
 
@@ -344,7 +344,7 @@ and empty-table rollback.
 
 ## 11. Agreed decisions
 
-The [finalized contract](writing-submission-contract.md) provides exact rules and safe
+The [finalized contract](../../feature-docs/writing-submission-contract.md) provides exact rules and safe
 errors for the selected release scope.
 
 | Topic | Resolution |
