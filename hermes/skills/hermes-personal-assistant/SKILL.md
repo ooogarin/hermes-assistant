@@ -114,7 +114,7 @@ ${HERMES_SKILL_DIR}/scripts/api.sh GET /api/v1/notes --query limit 20
 For JSON requests, send a valid JSON document on standard input:
 
 ```bash
-printf '%s' '{"title":"Example","content":"Content","type":"fact","category":"english","tags":[]}' \
+printf '%s' '{"title":"Example","content_text":"Content","type":"fact","category":"english","tags":[]}' \
   | ${HERMES_SKILL_DIR}/scripts/api.sh POST /api/v1/notes
 ```
 
