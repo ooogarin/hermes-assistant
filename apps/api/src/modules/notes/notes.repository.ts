@@ -8,13 +8,97 @@ import type {
   UpdateNotePayload,
 } from './notes.types';
 
+// Advisory-lock namespace for daily note code allocation.
 const noteCodeLockNamespace = 314_159_265;
+
+export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]> => {
+  const database = getDatabaseClient();
+
+  const query = input.q ?? null;
+  const type = input.type ?? null;
+  const tag = input.tag ?? null;
+  const category = input.category ?? null;
+  const source = input.source ?? null;
+  const from = input.from ?? null;
+  const to = input.to ?? null;
+
+  const rows = await database<NoteRow[]>`
+    SELECT
+      code,
+      title,
+      content_text,
+      raw_text,
+      type,
+      category,
+      source_name,
+      source_url,
+      source_context,
+      source_reference,
+      tags,
+      created_at,
+      updated_at
+    FROM notes
+    WHERE deleted_at IS NULL
+      AND (
+        ${query}::TEXT IS NULL
+        OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT)
+        OR code = UPPER(${query}::TEXT)
+        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${query}::TEXT)) > 0
+        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${query}::TEXT)) > 0
+        OR STRPOS(LOWER(category), LOWER(${query}::TEXT)) > 0
+      )
+      AND (${type}::note_type IS NULL OR type = ${type}::note_type)
+      AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
+      AND (${category}::TEXT IS NULL OR category = ${category})
+      AND (
+        ${source}::TEXT IS NULL
+        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${source}::TEXT)) > 0
+        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${source}::TEXT)) > 0
+      )
+      AND (${from}::DATE IS NULL OR created_at >= (${from}::DATE AT TIME ZONE 'Asia/Jakarta'))
+      AND (${to}::DATE IS NULL OR created_at < ((${to}::DATE + 1) AT TIME ZONE 'Asia/Jakarta'))
+    ORDER BY
+      CASE WHEN ${input.sort}::TEXT = 'newest' THEN created_at END DESC,
+      CASE WHEN ${input.sort}::TEXT = 'oldest' THEN created_at END ASC,
+      code DESC
+    LIMIT ${input.limit}
+  `;
+
+  return rows;
+};
+
+export const getOneByCode = async (code: string): Promise<NoteRow | null> => {
+  const database = getDatabaseClient();
+
+  const [row] = await database<NoteRow[]>`
+    SELECT
+      code,
+      title,
+      content_text,
+      raw_text,
+      type,
+      category,
+      source_name,
+      source_url,
+      source_context,
+      source_reference,
+      tags,
+      created_at,
+      updated_at
+    FROM notes
+    WHERE code = ${code}
+      AND deleted_at IS NULL
+  `;
+
+  return row === undefined ? null : row;
+};
 
 export const getLastSequenceByDateForUpdate = async (
   dateKey: number,
   dateSegment: string,
   trx: DatabaseReservedConnection,
 ): Promise<NoteSequenceRow> => {
+  // Serialize daily MAX + 1 allocation; soft-deleted notes keep their codes reserved.
   await trx`
     SELECT
       pg_advisory_xact_lock(${noteCodeLockNamespace}::INTEGER, ${dateKey}::INTEGER)
@@ -74,87 +158,6 @@ export const insert = async (payload: InsertNotePayload, trx: DatabaseReservedCo
   }
 
   return row;
-};
-
-export const getOneByCode = async (code: string): Promise<NoteRow | null> => {
-  const database = getDatabaseClient();
-
-  const [row] = await database<NoteRow[]>`
-    SELECT
-      code,
-      title,
-      content_text,
-      raw_text,
-      type,
-      category,
-      source_name,
-      source_url,
-      source_context,
-      source_reference,
-      tags,
-      created_at,
-      updated_at
-    FROM notes
-    WHERE code = ${code}
-      AND deleted_at IS NULL
-  `;
-
-  return row === undefined ? null : row;
-};
-
-export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]> => {
-  const database = getDatabaseClient();
-  const query = input.q ?? null;
-  const type = input.type ?? null;
-  const tag = input.tag ?? null;
-  const category = input.category ?? null;
-  const source = input.source ?? null;
-  const from = input.from ?? null;
-  const to = input.to ?? null;
-
-  const rows = await database<NoteRow[]>`
-    SELECT
-      code,
-      title,
-      content_text,
-      raw_text,
-      type,
-      category,
-      source_name,
-      source_url,
-      source_context,
-      source_reference,
-      tags,
-      created_at,
-      updated_at
-    FROM notes
-    WHERE deleted_at IS NULL
-      AND (
-        ${query}::TEXT IS NULL
-        OR search_vector @@ websearch_to_tsquery('simple', ${query}::TEXT)
-        OR code = UPPER(${query}::TEXT)
-        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${query}::TEXT)) > 0
-        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${query}::TEXT)) > 0
-        OR STRPOS(LOWER(category), LOWER(${query}::TEXT)) > 0
-      )
-      AND (${type}::note_type IS NULL OR type = ${type}::note_type)
-      AND (${tag}::TEXT IS NULL OR ${tag} = ANY(tags))
-      AND (${category}::TEXT IS NULL OR category = ${category})
-      AND (
-        ${source}::TEXT IS NULL
-        OR STRPOS(LOWER(COALESCE(source_name, '')), LOWER(${source}::TEXT)) > 0
-        OR STRPOS(LOWER(COALESCE(source_url, '')), LOWER(${source}::TEXT)) > 0
-      )
-      AND (${from}::DATE IS NULL OR created_at >= (${from}::DATE AT TIME ZONE 'Asia/Jakarta'))
-      AND (${to}::DATE IS NULL OR created_at < ((${to}::DATE + 1) AT TIME ZONE 'Asia/Jakarta'))
-    ORDER BY
-      CASE WHEN ${input.sort}::TEXT = 'newest' THEN created_at END DESC,
-      CASE WHEN ${input.sort}::TEXT = 'oldest' THEN created_at END ASC,
-      code DESC
-    LIMIT ${input.limit}
-  `;
-
-  return rows;
 };
 
 export const updateOneByCode = async (code: string, input: UpdateNotePayload): Promise<NoteRow | null> => {

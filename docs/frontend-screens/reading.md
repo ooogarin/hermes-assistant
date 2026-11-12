@@ -1,6 +1,6 @@
 # Reading Screens
 
-> Status: The approved Reading redesign is implemented. Reference: [Reading list and detail](../frontend-design/reading-approved.png). Read the shared [Frontend Screen Guide](../frontend-screens.md) and [Reading feature design](../feature-docs/reading-feature-design.md) for domain rules.
+> Status: The approved Reading redesign is implemented. Reference: [Reading list and detail](../frontend-design/reading-approved.png). Read the shared [Frontend Guide](../frontend.md#screen-conventions) and [Reading feature design](../feature-docs/reading-feature-design.md) for domain rules.
 
 ## List — `/english/reading`
 

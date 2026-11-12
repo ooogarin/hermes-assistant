@@ -16,7 +16,7 @@ The owner enters one static password to open Hermes. There is no username, email
 
 ## Visual baseline
 
-Follow the existing [Frontend Screen Guide](../frontend-screens.md), tokens, `Field`/`Input`, `Button`, and functional Lucide icons:
+Follow the existing [Frontend Guide](../frontend.md#screen-conventions), tokens, `Field`/`Input`, `Button`, and functional Lucide icons:
 
 | Token / element | Treatment |
 | --- | --- |

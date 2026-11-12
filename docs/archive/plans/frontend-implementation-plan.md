@@ -35,7 +35,7 @@ Use the following sources in this order when implementing a screen:
 
 1. The applicable document in `docs/feature-docs/` for domain behavior.
 2. `docs/frontend-screens/<module>.md` for screen behavior, routes, states, and API availability.
-3. `docs/frontend-screens.md` for shared navigation, layout, content, accessibility, and responsive conventions.
+3. `docs/frontend.md` for shared navigation, layout, content, accessibility, and responsive conventions.
 4. The matching image in `docs/frontend-design/` for visual composition.
 5. `docs/frontend.md`, `docs/architecture.md`, and `docs/coding-conventions.md` for technical boundaries.
 
@@ -204,7 +204,7 @@ Implement:
 - Route-level not-found handling.
 - Navigation confirmation for settings forms with unsaved changes.
 
-The shell must preserve the product navigation defined in `docs/frontend-screens.md`; module list, detail, report, and settings screens are not separate global navigation items.
+The shell must preserve the product navigation defined in `docs/frontend.md`; module list, detail, report, and settings screens are not separate global navigation items.
 
 ### Phase 4 — Core API and formatting layer
 

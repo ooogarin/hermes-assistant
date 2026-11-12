@@ -23,7 +23,7 @@ coverage/
 .vscode/*.local
 
 # Local deployment notes
-.docs-vps
+docs-vps.md
 info-vps.txt
 
 # Design references and generated QA screenshots

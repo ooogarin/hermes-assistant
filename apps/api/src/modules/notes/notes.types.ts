@@ -34,9 +34,9 @@ export type Note = {
 };
 
 export type NotesService = {
-  create: (input: CreateNoteRequest) => Promise<Note>;
-  getDetail: (input: NoteReferenceRequest) => Promise<Note>;
   list: (input: ListNotesRequest) => Promise<Note[]>;
+  getDetail: (input: NoteReferenceRequest) => Promise<Note>;
+  create: (input: CreateNoteRequest) => Promise<Note>;
   update: (reference: NoteReferenceRequest, input: UpdateNoteRequest) => Promise<Note>;
   remove: (input: NoteReferenceRequest) => Promise<void>;
 };

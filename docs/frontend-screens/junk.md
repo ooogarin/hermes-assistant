@@ -1,6 +1,6 @@
 # Junk Screen List
 
-> Status: Create, list, detail, edit, and delete confirmation implemented. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Junk screens.
+> Status: Create, list, detail, edit, and delete confirmation implemented. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Guide](../frontend.md#screen-conventions) with this document before implementing Junk screens.
 
 ## Scope
 

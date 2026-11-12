@@ -6,12 +6,12 @@ import type { Context } from 'hono';
 import type { AppEnv } from '../../core/http/app-env';
 import type { NoteReferenceRequest } from './notes.types';
 
-export const create = async (context: Context<AppEnv>) => {
-  const input = getBody(context, createNoteSchema);
+export const list = async (context: Context<AppEnv>) => {
+  const query = getQuery(context, searchNotesSchema);
 
-  const result = await notesService.create(input);
+  const result = await notesService.list(query);
 
-  return successResponse({ context, data: result, statusCode: 201 });
+  return successResponse({ context, data: { items: result } });
 };
 
 export const getDetail = async (context: Context<AppEnv>) => {
@@ -23,12 +23,12 @@ export const getDetail = async (context: Context<AppEnv>) => {
   return successResponse({ context, data: result });
 };
 
-export const list = async (context: Context<AppEnv>) => {
-  const query = getQuery(context, searchNotesSchema);
+export const create = async (context: Context<AppEnv>) => {
+  const input = getBody(context, createNoteSchema);
 
-  const result = await notesService.list(query);
+  const result = await notesService.create(input);
 
-  return successResponse({ context, data: { items: result } });
+  return successResponse({ context, data: result, statusCode: 201 });
 };
 
 export const update = async (context: Context<AppEnv>) => {
