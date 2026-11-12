@@ -18,6 +18,34 @@ import type {
   UpdateNoteRequest,
 } from './notes.types';
 
+export const list = async (input: ListNotesRequest): Promise<Note[]> => {
+  const query: ListNotesRepositoryQuery = {
+    q: input.q,
+    type: input.type,
+    tag: input.tag,
+    category: input.category,
+    source: input.source,
+    from: input.from,
+    to: input.to,
+    sort: input.sort,
+    limit: input.limit,
+  };
+
+  const rows = await notesRepository.getAll(query);
+
+  return rows.map(toNote);
+};
+
+export const getDetail = async ({ code }: NoteReferenceRequest): Promise<Note> => {
+  const noteRow = await notesRepository.getOneByCode(code);
+
+  if (noteRow === null) {
+    throw noteNotFound();
+  }
+
+  return toNote(noteRow);
+};
+
 export const create = async (input: CreateNoteRequest): Promise<Note> => {
   let trx: DatabaseReservedConnection | undefined;
 
@@ -62,35 +90,8 @@ export const create = async (input: CreateNoteRequest): Promise<Note> => {
   }
 };
 
-export const getDetail = async ({ code }: NoteReferenceRequest): Promise<Note> => {
-  const noteRow = await notesRepository.getOneByCode(code);
-
-  if (noteRow === null) {
-    throw noteNotFound();
-  }
-
-  return toNote(noteRow);
-};
-
-export const list = async (input: ListNotesRequest): Promise<Note[]> => {
-  const query: ListNotesRepositoryQuery = {
-    q: input.q,
-    type: input.type,
-    tag: input.tag,
-    category: input.category,
-    source: input.source,
-    from: input.from,
-    to: input.to,
-    sort: input.sort,
-    limit: input.limit,
-  };
-
-  const rows = await notesRepository.getAll(query);
-
-  return rows.map(toNote);
-};
-
 export const update = async ({ code }: NoteReferenceRequest, input: UpdateNoteRequest): Promise<Note> => {
+  // raw_text is immutable after creation, so it is not part of the update payload.
   const payload: UpdateNotePayload = {
     title: input.title,
     content_text: input.content_text,

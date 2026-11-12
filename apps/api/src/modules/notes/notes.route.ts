@@ -7,9 +7,9 @@ import type { AppEnv } from '../../core/http/app-env';
 export const createNotesRoutes = () => {
   const route = new Hono<AppEnv>();
 
-  route.post('/', appValidator('json', createNoteSchema), notesHandler.create);
   route.get('/', appValidator('query', searchNotesSchema), notesHandler.list);
   route.get('/:code', appValidator('param', noteCodeSchema), notesHandler.getDetail);
+  route.post('/', appValidator('json', createNoteSchema), notesHandler.create);
   route.patch(
     '/:code',
     appValidator('param', noteCodeSchema),
