@@ -81,7 +81,7 @@ cp .env.test.example .env.test
 bun run test:integration
 ```
 
-The integration test helper resets its database schema before each test and accepts only database names ending in `_test`.
+The integration test helper resets its database schema before each test and accepts only database names ending in `_test`. The command fails immediately when `TEST_DATABASE_URL` is missing or invalid instead of skipping the database suite.
 
 ## Documentation
 
