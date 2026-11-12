@@ -1,25 +1,41 @@
 ---
 name: postman-request
-description: Create or update Hermes Postman collection requests for backend endpoints when the user explicitly asks to add, sync, or refresh Postman requests. Do not use for backend implementation alone or for non-Postman API documentation.
+description: Create or update Postman collection requests for backend endpoints when the user explicitly asks to add, sync, or refresh Postman requests. Do not use for backend implementation alone or for non-Postman API documentation.
 ---
 
-# Hermes Postman Requests
+# Postman Requests
 
-Create or update Postman requests for Hermes endpoints while preserving the established Postman presentation style and the backend's actual HTTP contract.
+Create or update Postman requests for the project's endpoints while preserving the established Postman presentation style and the backend's actual HTTP contract.
+
+## Project binding
+
+This skill is reusable across projects. Set this section for the current repository; the rest of the document uses the binding terms.
+
+| Item | This repository |
+| --- | --- |
+| API prefix | `/api/v1` |
+| Application entry | `apps/api/src/app.ts` |
+| Contract documents | `docs/architecture.md` (HTTP boundary), `docs/coding-conventions.md`, and the matching file in `docs/feature-docs/` |
+| Postman environment | `Hermes` |
+| Collection | The one collection that clearly belongs to this project |
+| Folder root | `V1 - API` |
+| Authentication variable | `INTERNAL_API_KEY` |
+
+For another repository, copy this skill and replace the binding table. Keep the workflow sections unchanged.
 
 ## Authority and scope
 
-- Handle application endpoints mounted below `/api/v1` in `src/app.ts`.
+- Handle application endpoints mounted below the project's API prefix in the application entry.
 - Skip `/health`, `/health/ready`, test-only routes, webhooks, cron entrypoints, and unrelated routes unless the user explicitly includes them.
-- Treat the composed Hono route, its Zod validators, `docs/api-conventions.md`, and the matching feature document as the contract source of truth.
+- Treat the composed Hono route, its Zod validators, the architecture HTTP boundary, the coding conventions, and the matching feature document as the contract source of truth.
 - Use an existing request only as a presentation template. Never let an older Postman request override the current method, path, parameter names, accepted fields, or validation rules.
-- Do not use Guestpedia workspace IDs, collection IDs, folders, domains, tokens, or `/v2` routing assumptions.
+- Do not reuse unrelated workspace IDs, collection IDs, folders, domains, tokens, or routing assumptions from another project.
 
 Read [references/request-style.md](references/request-style.md) before constructing or modifying requests.
 
-## Hermes Postman conventions
+## Postman conventions
 
-- Use the Postman environment named `Hermes` for `DOMAIN` and `INTERNAL_API_KEY`. Do not add collection-level environment variables that duplicate those values, and never place a real secret in the collection.
+- Use the Postman environment named in the Project binding for `DOMAIN` and the authentication variable. Do not add collection-level environment variables that duplicate those values, and never place a real secret in the collection.
 - Put shared authentication on the nearest supported parent folder. Requests must not define their own auth or headers. Raw JSON bodies rely on Postman's generated content type header.
 - For every request body you create or modify, put the payload in Postman's Body as raw JSON. Store a syntactically valid JSON document, not a JavaScript object, and set the raw language to JSON when the mutation tool exposes that option. Map this to the tool's raw-body fields (for example, `dataMode: "raw"` and `rawModeData`). Never put a body payload in query parameters, headers, form-data, or URL-encoded fields. Leave Body empty when the endpoint has no request body; do not invent one.
 - Treat request descriptions as documentation. Do not create or edit documentation pages, documentation sections, request descriptions, saved examples, test scripts, pre-request scripts, or standalone helper scripts unless the user explicitly asks for those artifacts. A request to add, sync, refresh, or clean Postman requests does not by itself authorize docs or scripts.
@@ -27,26 +43,26 @@ Read [references/request-style.md](references/request-style.md) before construct
 
 ## Preflight
 
-1. Derive the endpoint set from the current task or the user-specified diff. Compose each full path from the mount in `src/app.ts` and its module-relative route. Record method, full path, module, validator, request body, query parameters, and path parameters exactly once.
+1. Derive the endpoint set from the current task or the user-specified diff. Compose each full path from the mount in the application entry and its module-relative route. Record method, full path, module, validator, request body, query parameters, and path parameters exactly once.
 2. Confirm that Postman collection read and request create/update tools are available. If they are unavailable, report the missing capability and stop without fabricating a successful sync.
-3. Resolve the target from a workspace or collection the user named. Otherwise, search accessible Postman collections for one clearly belonging to Hermes and use it only when the match is unique. If none or more than one match, ask the user for the collection; never guess.
-4. Fetch a minimal collection model first and locate the destination folder. Prefer the collection's established structure. For a new collection, use `V1 - API` › `<Module>` and add a resource subfolder when a module contains multiple resource families.
-5. Fetch one full reference request from the destination folder, or the closest sibling folder when it is empty. Match its query presentation and raw-body formatting where those choices do not conflict with the Hermes contract. Do not carry over docs or test sections.
+3. Resolve the target from a workspace or collection the user named. Otherwise, search accessible Postman collections for the one identified in the Project binding and use it only when the match is unique. If none or more than one match, ask the user for the collection; never guess.
+4. Fetch a minimal collection model first and locate the destination folder. Prefer the collection's established structure. For a new collection, use the folder root from the Project binding, then `<Module>`, and add a resource subfolder when a module contains multiple resource families.
+5. Fetch one full reference request from the destination folder, or the closest sibling folder when it is empty. Match its query presentation and raw-body formatting where those choices do not conflict with the backend contract. Do not carry over docs or test sections.
 
 If the initiating request explicitly says to add, update, refresh, or sync Postman, it authorizes the matching request mutations. Otherwise, present the planned changes and obtain authorization before the first external mutation.
 
 ## Folder selection
 
-Map `/api/v1/<module>/...` to `V1 - API` › `<Module in Title Case>` unless the collection already has an unambiguous equivalent folder.
+Map the API prefix's `<module>` segment to the folder root's `<Module in Title Case>` unless the collection already has an unambiguous equivalent folder.
 
 When a module has multiple independently named resources, keep action-first request names by using resource subfolders. For example:
 
 ```text
 V1 - API
-└── Finance
-    ├── Transactions
-    ├── Categories
-    └── Summary
+└── <Module>
+    ├── <Resource>
+    ├── <Another Resource>
+    └── <Summary or Report>
 ```
 
 Do not create or reorganize folders unless the available Postman tool supports that operation and the user's request authorizes it. If the required folder does not exist and cannot be created safely, ask the user to create or identify it.
