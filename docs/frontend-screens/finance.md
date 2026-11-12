@@ -227,10 +227,3 @@ Deferred until an explicit, non-hover action placement is selected for the trans
 ```text
 DELETE /api/v1/finance/transactions/:date/:dailyNumber
 ```
-
-## Implementation order
-
-1. Daily and Range views.
-2. Shared transaction fields, batch-create form, and category loading.
-3. Create and edit routes.
-4. Select an explicit action placement before reconnecting confirmed deletion to Daily view.

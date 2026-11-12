@@ -99,7 +99,3 @@ Place a `Keluar` action with the Lucide `LogOut` icon at the bottom of the expan
 - Link field errors with `aria-describedby` and `aria-invalid`. Announce failures through a controlled `role="alert"`; announce checking/success through a polite status region.
 - Keep keyboard order predictable: input → masking toggle → submit. Visible focus follows existing emerald token treatment. Respect reduced-motion preferences and avoid decorative animation.
 - Session notices never show a private record title, query result, or other fetched content.
-
-## Definition of done for implementation
-
-Login, reload, expired JWT, direct link, logout, and retry work through the real API with cookie authentication. Anonymous reads/writes remain blocked even when the route guard is bypassed. The Vite and production proxies inject no bearer key. Selected desktop/mobile visuals follow the Hermes tokens, and keyboard/password-manager flows work. No browser credential is stored outside the HttpOnly cookie.

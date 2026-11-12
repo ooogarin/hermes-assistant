@@ -1,34 +1,62 @@
 ---
-name: hermes-backend-modules
-description: Write or modify production code for Hermes API domain modules built with Bun, Hono, Zod, native bun:sql, and PostgreSQL. Use when implementing features, fixes, migrations, or API behavior under apps/api/src/modules or apps/api/migrations; do not use for review-only, cleanup-only, test-only, documentation-only, Hermes Agent, Telegram, frontend, or deployment work.
+name: backend-domain-modules
+description: Write or modify production code for Bun, Hono, Zod, native bun:sql, and PostgreSQL backend modules. Use when implementing features, fixes, migrations, or API behavior in the project's module or migration directories; do not use for review-only, cleanup-only, test-only, documentation-only, agent-runtime, frontend, or deployment work.
 ---
 
-# Hermes Backend Modules
+# Backend Domain Modules
 
 Work from the repository root. Preserve unrelated changes and keep the change as small as the requested behavior allows.
 
 ## Scope
 
-Use this skill only when the task requires writing or changing production backend code in `apps/api/src/modules/`, directly related API shared or core code, or matching migrations in `apps/api/migrations/`.
+Use this skill only when the task requires writing or changing production backend code in the project's module root, directly related API shared or core code, or matching migrations. The Project binding section maps these terms to the current repository.
 
 Tests may be part of completing a production-code change, but documentation and auxiliary scripts are opt-in. Do not create or edit docs or standalone scripts unless the user explicitly asks, even when behavior, schema, or API changes. Report any related docs that may now be stale. This does not prevent changing production source or migrations required by the requested feature. Do not use this skill for code review, general cleanup, test-only work, documentation-only work, or work outside the backend module boundary.
 
+## Project binding
+
+This skill is reusable across projects with the same stack. Set this section for the current repository; the rest of the document uses the binding terms.
+
+| Item | This repository |
+| --- | --- |
+| API root | `apps/api` |
+| Module root | `apps/api/src/modules/` |
+| Migration root | `apps/api/migrations/` |
+| Reference module | `notes` (the documented reference implementation) |
+| Required docs | `AGENTS.md`, `docs/architecture.md`, `docs/coding-conventions.md`, and the matching file in `docs/feature-docs/` |
+| Commands | `bun run fix -- <paths>`, `bun run verify`, `bun run test:integration` |
+| Enforced checks | `apps/api/tests/module-contract.test.ts` |
+| Integration database | `TEST_DATABASE_URL`; the database name must end in `_test` |
+
+### Project-specific invariants
+
+These belong to this repository. Change them deliberately, not by generalization, when the skill is reused elsewhere.
+
+- Use `getJakartaDateCodeParts` for Jakarta-scoped code dates and `toIsoTimestamp` for database timestamps.
+- Public code prefixes are `NT`, `JK`, `RD`, `GR`, `WR`, and `WS`.
+- Keep soft-deleted codes and Finance daily numbers reserved.
+- Writing submissions use their `WS-...` code as identity; the schema has no `submission_number`.
+- Use `countWords` for Reading and Writing word counts.
+- Reserve `transaction` for Finance domain values, and name PostgreSQL transaction executors `trx`.
+
+For another repository, copy this skill and replace the binding table and this list. Do not replace the actual paths, commands, or domain codes while working in this repository.
+
 ## Read before editing
 
-Read `AGENTS.md`, then the relevant repository documents:
+Read the project's repository instructions, then:
 
-1. `docs/architecture.md`
-2. `docs/coding-conventions.md`
-3. `docs/api-conventions.md`
-4. Only the matching file in `docs/feature-docs/`
+1. the architecture document,
+2. the coding conventions,
+3. the HTTP boundary or API conventions section,
+4. only the matching feature design in the feature-docs directory.
 
 Treat the feature document as the source of truth for domain behavior. Do not infer missing behavior from another feature. If the requested behavior is not decided there, identify it as an open decision instead of silently inventing it.
 
-## Use Finance as the implementation baseline
+## Use the reference module
 
-Use `src/modules/finance/` to calibrate file responsibilities and code style, while preserving intentional differences documented for another domain.
+Use the module named in the Project binding to calibrate file responsibilities and code style, while preserving intentional differences documented for another domain.
 
-Every full module normally lives under `apps/api/src/modules/<module>/` and contains:
+Every full module normally lives under `<module root>/<module>/` and contains:
 
 ```text
 <module>.route.ts
@@ -52,21 +80,17 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 - Services own business rules, target resolution, workflows, and transaction boundaries. They never receive Hono context.
 - Repositories are the only domain files allowed to access the database. Use parameterized raw SQL and explicit selected columns.
 - Types files own reusable request, service, repository payload, and row contracts. Keep those groups visibly separated.
-- Keep independently maintained subfeatures in nested folders such as `apps/api/src/modules/reading/reading-setting/`. Parent routes mount child routes, and parent services call child services rather than child repositories; follow `docs/architecture.md` for established module layouts.
+- Keep independently maintained subfeatures in `<module>/<module>-<submodule>/`. Parent routes mount child routes, and parent services call child services rather than child repositories; follow the architecture document for established module layouts.
 
-## Preserve repository invariants
+## Preserve backend invariants
 
 - The backend and PostgreSQL are authoritative; do not move calculations or durable state into a caller.
 - Use `snake_case` for every API/service data field: request JSON, query/path parameter names, service/domain types, response JSON, and PostgreSQL. Keep ordinary TypeScript function and local-variable names idiomatic `camelCase`. The shared response boundary defensively preserves `snake_case`.
 - Return stable, safe `AppError` codes for expected failures.
-- Keep soft-deleted rows out of ordinary reads and never reuse user-facing codes or Finance daily numbers.
-- Use `getJakartaDateCodeParts` for Jakarta-scoped code dates and `toIsoTimestamp` for database timestamps.
-- Use `countWords` for Reading and Writing word counts.
-- Name PostgreSQL transaction executor variables and parameters `trx`; reserve `transaction` for Finance domain values.
+- Keep soft-deleted rows out of ordinary reads and never reuse user-facing codes or allocated sequence numbers.
+- Use the project's date, timestamp, and word-count helpers from the Project binding.
 - Generate daily codes inside a transaction with the module's PostgreSQL advisory-lock namespace.
-- Serialize scoped `MAX + 1` allocation, such as Finance daily numbers or Writing
-  submission codes, before inserting. Writing submissions use their `WS-...` code as
-  identity; the schema has no `submission_number` field.
+- Serialize scoped `MAX + 1` allocation, such as daily numbers or submission codes, before inserting. The feature document defines the identity and sequence rules.
 - For PATCH SQL, distinguish an omitted field from an explicit nullable value.
 - Open a service transaction only for dependent writes. Pass the same reserved connection to every participating repository operation, clear the local reference before commit, and preserve the original error if rollback fails.
 - If commit fails, attempt rollback before releasing the connection and preserve the original commit error.
@@ -74,7 +98,7 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 
 ## Migrations
 
-- Put migrations in `apps/api/migrations/`, name them `<four-digit-sequence>_<description>.ts`, and export `up` and `down`.
+- Put migrations in the migration root, name them `<four-digit-sequence>_<description>.ts`, and export `up` and `down`.
 - Use readable multiline raw SQL with explicit constraints and indexes.
 - Do not edit a migration known to have been applied. Add a new migration instead.
 - Keep database constraints aligned with service validation when the invariant must survive all write paths.
@@ -84,21 +108,22 @@ route -> validator -> handler -> service -> repository -> PostgreSQL
 
 Add tests proportional to the production-code change:
 
+- Repository contract tests where the project provides them; they enforce repository transaction signatures, database access, SQL placement, and strict request schemas.
 - Service tests for business rules and stable domain errors.
 - API tests for authentication, validation, HTTP adaptation, status codes, and response envelopes. Stub the service rather than the repository.
 - PostgreSQL integration tests for repository SQL, migrations, transactions, locks, generated numbers, search, and soft delete.
 - Full HTTP-to-PostgreSQL tests when a change depends on interaction across all layers.
 
-Use the existing fixtures and database helper. Integration tests must use `TEST_DATABASE_URL`, and the database name must end in `_test`. Never weaken that safeguard.
+Use the existing fixtures and database helper. Integration tests must use the Project binding's test database, and the database name must end in `_test`. Never weaken that safeguard.
 
 Bun module mocks can leak across test files in one process. Keep service-rule tests isolated through the repository's existing test script rather than making tests depend on file order.
 
 ## Finish cleanly
 
-1. Run `bun run fix -- <changed paths>`.
+1. Run the Project binding's fix command on the changed paths.
 2. Run the relevant focused tests while iterating.
-3. Run `bun run verify` before handoff.
-4. Run `bun run test:integration` when a safe PostgreSQL test database is configured.
+3. Run the Project binding's verify command before handoff.
+4. Run the integration command when a safe PostgreSQL test database is configured.
 5. Run `git diff --check` and inspect the final diff for unrelated changes.
 6. Do not update docs unless explicitly requested. When behavior, schema, API, or an error contract changes, identify the related doc paths that may need updates in the final report.
 

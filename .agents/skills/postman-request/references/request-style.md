@@ -1,6 +1,6 @@
-# Hermes Postman Request Style
+# Postman Request Style
 
-Use these rules to preserve the Guestpedia-inspired Postman style while representing the Hermes API contract accurately.
+Use these rules to preserve the collection's established Postman style while representing the API contract accurately.
 
 ## Request names and ordering
 
@@ -11,14 +11,14 @@ Use these rules to preserve the Guestpedia-inspired Postman style while represen
 
 ## URLs and parameters
 
-- Use `{{DOMAIN}}` as the host and keep the complete Hermes route, for example `{{DOMAIN}}/api/v1/notes/:code`.
+- Use `{{DOMAIN}}` as the host and keep the complete route below the API prefix from the Project binding.
 - Preserve every path parameter name from the Hono route. Do not rename `:code`, `:date`, `:daily_number`, or another meaningful parameter to `:id`.
 - Give path variables realistic sample values in Postman's path-variable data, not as literal replacements in the URL.
 - Include supported query parameters with editable realistic values. Required parameters come first. When supported, order pagination controls as `page` then `limit`; do not add either parameter if its Zod validator does not define it.
 - Represent each query parameter once. When the Postman tool accepts both a URL and a `queryParams` field, follow its schema so parameters are not duplicated.
 - Do not invent filters, sorting, pagination, or defaults that are absent from the route validator.
 
-Examples:
+Repository examples:
 
 ```text
 {{DOMAIN}}/api/v1/notes?q=advisory&tag=postgres&category=Tech%2FProgramming&limit=20
@@ -29,7 +29,7 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 
 ## Authentication and headers
 
-- Hermes application endpoints use inherited Bearer authentication with `{{INTERNAL_API_KEY}}` from the Postman environment named `Hermes`.
+- Application endpoints use inherited Bearer authentication with the authentication variable from the Project binding, stored in the named Postman environment.
 - Put Bearer auth on the nearest supported parent folder. Do not add request-level auth, `Authorization`, or other shared headers. Raw JSON bodies rely on Postman's automatic `Content-Type` handling.
 - If folder auth is not supported by the available MCP mutation, use the nearest supported parent scope and report the limitation rather than duplicating auth on requests.
 - Public health endpoints carry no auth when the user explicitly asks to include them.
@@ -40,7 +40,7 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 - Every request body you create or adjust must be stored in Postman's Body as raw JSON. Keep the payload as syntactically valid JSON text; do not leave it as a JavaScript object or put it in query parameters, headers, form-data, or URL-encoded fields.
 - With Postman MCP mutation tools, use their raw-body fields (for example, `dataMode: "raw"` and `rawModeData`) and set the raw language to JSON when the tool exposes that option. Do not assume the tool accepts a native `body` object; follow its actual schema.
 - Leave Body empty for endpoints that do not accept a body. Do not invent a payload to fill the Body tab.
-- Use Hermes `snake_case` field names exactly as defined by the Zod schema.
+- Use the API's `snake_case` field names exactly as defined by the Zod schema.
 - Use realistic but unmistakably sample values. IDs and codes must match the validated shape.
 - Use one or two items in arrays and nested collections.
 - Include useful optional fields or omit them. Use explicit `null` only when the endpoint accepts it and the example intentionally demonstrates clearing a nullable value.
@@ -49,7 +49,7 @@ Suggested path-variable values for the second example are `2026-09-05` and `1`.
 
 ## Documentation and scripts
 
-Hermes collections do not need documentation sections, request descriptions, saved response examples, test scripts, or pre-request scripts. Leave them empty unless the user explicitly requests them.
+Collections do not need documentation sections, request descriptions, saved response examples, test scripts, or pre-request scripts. Leave them empty unless the user explicitly requests them.
 
 If documentation is explicitly requested, use a concise verb-object sentence such as:
 
@@ -61,19 +61,9 @@ If documentation is explicitly requested, use a concise verb-object sentence suc
 
 Do not include setup instructions such as “Set the variable first” in documentation.
 
-## Golden examples
+## Repository examples
 
-Use these only when no suitable Hermes request exists in the target or sibling folder. The current backend route and validators always take precedence.
-
-### Get All
-
-```json
-{
-  "name": "Get All",
-  "method": "GET",
-  "url": "{{DOMAIN}}/api/v1/notes?q=advisory&tag=postgres&category=Tech%2FProgramming&limit=20"
-}
-```
+Use these only when no suitable request exists in the target or sibling folder. The examples below use this repository's Notes resource and public code format; replace them with the current project's resources. The current backend route and validators always take precedence.
 
 ### Get One
 
@@ -100,37 +90,9 @@ Use these only when no suitable Hermes request exists in the target or sibling f
 }
 ```
 
-### Update
-
-```json
-{
-  "name": "Update",
-  "method": "PATCH",
-  "url": "{{DOMAIN}}/api/v1/notes/:code",
-  "pathVariables": {
-    "code": "NT-20260905-001"
-  },
-  "dataMode": "raw",
-  "rawModeData": "{\n  \"title\": \"PostgreSQL advisory lock patterns\",\n  \"content_text\": \"Transaction-level advisory locks coordinate application work.\",\n  \"tags\": [\"postgres\", \"concurrency\"]\n}"
-}
-```
-
-### Delete
-
-```json
-{
-  "name": "Delete",
-  "method": "DELETE",
-  "url": "{{DOMAIN}}/api/v1/notes/:code",
-  "pathVariables": {
-    "code": "NT-20260905-001"
-  }
-}
-```
-
 ## Pre-mutation checklist
 
-- The method and composed path match `src/app.ts` plus the module route.
+- The method and composed path match the application entry plus the module route.
 - Body, query, and path fields match the applied Zod validators.
 - Request JSON uses `snake_case` and realistic sample literals.
 - URL uses `{{DOMAIN}}`; dynamic segments retain their original names.

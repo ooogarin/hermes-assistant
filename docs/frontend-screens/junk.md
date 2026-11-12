@@ -209,11 +209,3 @@ DELETE /api/v1/junk/:code
 ```
 
 The underlying domain uses soft deletion. The interface should describe the user-visible outcome without exposing database details.
-
-## Implementation order
-
-1. Application shell and reusable list/detail primitives, including the closable and expandable detail pane.
-2. SCR-JUNK-001 with explicit search submission, quick category filters, supported advanced filters, default newest ordering, and shared states.
-3. SCR-JUNK-002 with safe source rendering, safe null-title handling, pane/full-page behavior, and not-found state.
-4. SCR-JUNK-003 and SCR-JUNK-004 with changed-field PATCH payloads and the shared confirmation dialog.
-5. SCR-JUNK-005 using the same feature form as edit and the existing POST contract.
