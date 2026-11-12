@@ -202,11 +202,3 @@ DELETE /api/v1/notes/:code
 ```
 
 The underlying domain uses soft deletion. The interface should describe the user-visible outcome without exposing database details.
-
-## Implementation order
-
-1. Application shell and reusable list/detail primitives, including the closable and expandable detail pane.
-2. SCR-NOTE-001 with explicit search submission, quick type filters, supported advanced filters, default newest ordering, and shared states.
-3. SCR-NOTE-002 with safe metadata rendering, pane/full-page behavior, and not-found state.
-4. SCR-NOTE-003 and SCR-NOTE-004 with changed-field PATCH payloads and the shared confirmation dialog.
-5. SCR-NOTE-005 using the same feature form as edit and the existing POST contract.

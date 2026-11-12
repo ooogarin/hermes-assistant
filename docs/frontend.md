@@ -309,100 +309,19 @@ Current specifications are [Finance](frontend-screens/finance.md), [Notes](front
 
 ## Feature behavior
 
-### Finance
+Each area keeps its behavior in two focused documents. This guide owns the shared structure, components, and screen conventions; it does not repeat endpoint or workflow detail.
 
-Finance Daily defaults to the current date and Range defaults to the current calendar month. Both show API-authoritative expense, income, net balance, and category breakdown. Daily also provides manual batch creation backed by the existing Finance contracts:
+| Area | Screen specification | Domain design |
+| --- | --- | --- |
+| Finance | [Finance](frontend-screens/finance.md) | [Finance design](feature-docs/finance-feature-design.md) |
+| Notes | [Notes](frontend-screens/notes.md) | [Notes design](feature-docs/notes-feature-design.md) |
+| Junk | [Junk](frontend-screens/junk.md) | [Junk design](feature-docs/junk-feature-design.md) |
+| Reading | [Reading](frontend-screens/reading.md) | [Reading design](feature-docs/reading-feature-design.md) |
+| Writing | [Writing](frontend-screens/writing.md) | [Writing design](feature-docs/writing-feature-design.md), [submission contract](feature-docs/writing-submission-contract.md) |
+| Grammar | [Grammar](frontend-screens/grammar.md) | [Grammar design](feature-docs/grammar-feature-design.md) |
+| Auth | [Auth](frontend-screens/auth.md) | [Auth design](auth-design.md) |
 
-```text
-GET /api/v1/finance/summary?from=YYYY-MM-DD&to=YYYY-MM-DD&mode=net
-GET /api/v1/finance/summary/daily?from=YYYY-MM-DD&to=YYYY-MM-DD
-GET /api/v1/finance/categories?type=expense|income
-POST /api/v1/finance/transactions
-GET /api/v1/finance/transactions/:date/:daily_number
-PATCH /api/v1/finance/transactions/:date/:daily_number
-DELETE /api/v1/finance/transactions/:date/:daily_number
-```
-
-Create sends one to 100 transaction rows that share an explicit date, type, and source text. Create and edit reuse the same transaction-field component; edit keeps date, type, and source text immutable and sends changed fields only. The daily list stays read-only, so correcting or deleting a stored transaction is not offered yet and the edit page is reached by its address only.
-
-### Notes
-
-Notes uses the API as the source of truth for its list, detail, and mutations:
-
-```text
-GET    /api/v1/notes?q=<keyword>&type=<type>&category=<category>&tag=<tag>&source=<name-or-domain>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
-POST   /api/v1/notes
-GET    /api/v1/notes/:code
-PATCH  /api/v1/notes/:code
-DELETE /api/v1/notes/:code
-```
-
-Keyword, type, category, tag, source, date-range, and ordering filters are applied by the API. Notes uses the shared calendar picker for its optional date range. The list uses `/notes?preview=:code` for its supporting pane, while `/notes/:code` is a standalone detail page.
-
-### Junk
-
-Junk follows the same list, preview, and standalone-detail structure:
-
-```text
-GET    /api/v1/junk?q=<keyword>&category=<category>&tag=<tag>&source=<name-or-domain>&source_url=<url>&from=<date>&to=<date>&sort=<newest|oldest>&limit=100
-POST   /api/v1/junk
-GET    /api/v1/junk/:code
-PATCH  /api/v1/junk/:code
-DELETE /api/v1/junk/:code
-```
-
-Keyword, category, tag, source, exact source-URL, date-range, and ordering filters are applied by the API. Junk uses the shared calendar picker for its optional date range. The list uses `/junk?preview=:code`; `/junk/:code` is the standalone detail page.
-
-### Reading
-
-Reading provides settings, a bounded material list, direct known-code material, partial answer saving, manual read status, and expected-answer review:
-
-```text
-GET   /api/v1/reading/settings
-PATCH /api/v1/reading/settings
-GET   /api/v1/reading/materials?q=&reading_status=&levels=&genre=&limit=&sort=
-GET   /api/v1/reading/materials/:code
-PATCH /api/v1/reading/materials/:code
-PATCH /api/v1/reading/materials/:code/answers
-GET   /api/v1/reading/materials/:code/expected-answers
-```
-
-The settings form validates positive integers and `minimum ≤ target ≤ maksimum`, protects unsaved edits from its back action, and synchronizes the saved summary. The material workspace saves any subset of answers, including clearing a saved answer, and keeps read status manual. Expected answers are presented strictly as self-check content. `/english/reading` requests a bounded collection for keyword search plus status, multi-level, and genre filters, and shows no pagination.
-
-### Writing
-
-Writing reuses the same English settings primitive and provides a submission list backed by a paginated API, material list/detail, free and prompted draft submission, feedback, and corrected-text routes:
-
-```text
-GET   /api/v1/writing/settings
-PATCH /api/v1/writing/settings
-GET   /api/v1/writing/materials?q=&status=&levels=&genre=&page=&limit=&sort=
-GET   /api/v1/writing/materials/:code
-GET   /api/v1/writing/submissions?q=&material_code=&writing_type=&analysis_status=&page=&limit=&sort=
-POST  /api/v1/writing/submissions
-GET   /api/v1/writing/submissions/:code
-PATCH /api/v1/writing/submissions/:code
-GET   /api/v1/writing/submissions/:code/corrected-text
-```
-
-The prompt composer shows a non-authoritative live word count and preserves browser input. The browser saves free writing and prompted drafts through `POST /api/v1/writing/submissions` using only `material_code` and `original_text`; estimates and analysis are not required at creation. Analysis remains an Agent-only command through `PATCH /api/v1/writing/submissions/:code/analysis`, and analyzed text is locked for editing. The submission edit page sends changed metadata fields and can change text only before analysis. The Writing list uses its paginated API and routes reviewed materials directly to their latest feedback.
-
-### Grammar
-
-Grammar settings load and update the API-backed daily-practice defaults:
-
-```text
-GET   /api/v1/grammar/settings
-PATCH /api/v1/grammar/settings
-```
-
-The form sends only changed fields, validates a daily question count from 1 through 100, protects unsaved edits, and preserves an existing non-CEFR level until the user selects a supported CEFR value. `/english/grammar` lists sessions with API-backed search by session code, status chips, mode and level filters, newest/oldest ordering, and a bounded result list, and exposes the settings entry point.
-
-Known Grammar session routes are read-only: they display session questions, saved answers, stored feedback, and completed reports. Explanations open in a collapsible drawer inside the question card: a completed exam reads the explanation embedded in the session response, while practice reads the single-question explanation endpoint on first open and caches it in the workspace. Answering, practice grading, and final exam evaluation are performed through Hermes because those commands require authoritative results; the browser does not save answers or infer correctness.
-
-### Personal content forms
-
-Notes and Junk support manual creation, detail-derived editing, and deletion from their full-page detail routes. Create and edit share one form per feature; both retain immutable/internal fields outside browser forms, use changed-fields-only PATCH requests, show deletion through one shared confirmation dialog, and return a short navigation notice after successful writes.
+The screen specifications remain the source of truth for screen behavior. The feature designs remain the source of truth for domain behavior.
 
 ## Local development and API key safety
 
