@@ -1,6 +1,6 @@
 # Writing Screen List
 
-> Status: Implemented against the independent submission API. Analysis is requested only through a direct Telegram command; the web CTA is inactive. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document.
+> Status: Implemented against the independent submission API. Analysis is requested only through a direct Telegram command; the web CTA is inactive. Visual references: [Writing list](../frontend-design/writing-list.png), [Writing prompt](../frontend-design/writing-insert.png), [Writing feedback](../frontend-design/writing-result.png), and [Writing settings](../frontend-design/writing-setting.png). Read [Frontend Guide](../frontend.md#screen-conventions) with this document.
 
 ## Scope
 

@@ -33,7 +33,7 @@ agents.
 `Service Info` is intentionally not a conversational skill topic. Reserve it for bot
 status or cron delivery.
 
-`docs-vps.md` and the feature-design documents are human operating/design documents;
+The local VPS runbook and the feature-design documents are human operating/design documents;
 Hermes does not automatically read them at runtime. The runtime contract comes from
 `~/.hermes/config.yaml`, the installed `SKILL.md` files and their references,
 `SOUL.md`, and approved memory. Keep behavior-critical rules in those runtime files

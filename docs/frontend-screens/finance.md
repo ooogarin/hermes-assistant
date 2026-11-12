@@ -1,6 +1,6 @@
 # Finance Screen List
 
-> Status: Finance daily, range, create, and edit flows are implemented. Read [Frontend Screen Guide](../frontend-screens.md) with this document before changing Finance screens.
+> Status: Finance daily, range, create, and edit flows are implemented. Read [Frontend Guide](../frontend.md#screen-conventions) with this document before changing Finance screens.
 
 ## Scope
 

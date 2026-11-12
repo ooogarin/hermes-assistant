@@ -1,6 +1,6 @@
 # Grammar Screen List
 
-> Status: Settings, session list, and known-code workflows implemented. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Screen Guide](../frontend-screens.md) with this document before implementing Grammar screens.
+> Status: Settings, session list, and known-code workflows implemented. Visual references: [Grammar list](../frontend-design/grammar-list.png) and [Grammar settings](../frontend-design/grammar-setting.png). Read [Frontend Guide](../frontend.md#screen-conventions) with this document before implementing Grammar screens.
 
 ## Scope
 
