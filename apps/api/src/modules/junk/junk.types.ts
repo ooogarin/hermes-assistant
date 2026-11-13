@@ -30,6 +30,8 @@ export type JunkService = {
   create: (input: CreateJunkRequest) => Promise<JunkItem>;
   getDetail: (input: JunkReferenceRequest) => Promise<JunkItem>;
   list: (input: ListJunkRequest) => Promise<JunkItem[]>;
+  listCategories: () => Promise<string[]>;
+  listTagVocabulary: () => Promise<string[]>;
   update: (reference: JunkReferenceRequest, input: UpdateJunkRequest) => Promise<JunkItem>;
   remove: (input: JunkReferenceRequest) => Promise<void>;
 };
@@ -85,4 +87,13 @@ export type JunkItemRow = {
 
 export type JunkSequenceRow = {
   sequence: number;
+};
+
+export type JunkCategoryRow = {
+  category: string;
+};
+
+export type JunkTagRow = {
+  tag: string;
+  usage_count: number;
 };

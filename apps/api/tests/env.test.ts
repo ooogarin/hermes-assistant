@@ -24,6 +24,7 @@ test('loads validated environment with defaults', () => {
     logLevel: 'info',
     readinessTimeoutMs: 2_000,
     webAuth: testWebAuth,
+    ai: null,
   });
 });
 
@@ -52,6 +53,78 @@ test('rejects a non-PostgreSQL database URL', () => {
 
 test('rejects a short internal API key', () => {
   expect(() => loadEnvironment({ ...validEnvironment, INTERNAL_API_KEY: 'too-short' })).toThrow('INTERNAL_API_KEY');
+});
+
+test('loads an optional AI configuration only when all settings are present', () => {
+  expect(
+    loadEnvironment({
+      ...validEnvironment,
+      AI_BASE_URL: 'https://api.deepseek.com/v1',
+      AI_API_KEY: 'test-ai-key',
+      AI_MODEL: 'deepseek-chat',
+    }).ai,
+  ).toEqual({
+    base_url: 'https://api.deepseek.com/v1',
+    api_key: 'test-ai-key',
+    model: 'deepseek-chat',
+    max_tokens: 4_096,
+    temperature: 0,
+    timeout_ms: 30_000,
+  });
+});
+
+test('rejects a partial AI configuration and names every missing setting', () => {
+  const completeAiEnvironment = {
+    ...validEnvironment,
+    AI_BASE_URL: 'https://api.deepseek.com/v1',
+    AI_API_KEY: 'test-ai-key',
+    AI_MODEL: 'deepseek-chat',
+  };
+
+  for (const key of ['AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL']) {
+    try {
+      loadEnvironment({ ...completeAiEnvironment, [key]: undefined });
+      throw new Error('Expected invalid configuration');
+    } catch (error) {
+      expect(error).toBeInstanceOf(EnvironmentConfigurationError);
+      expect((error as EnvironmentConfigurationError).invalidKeys).toContain(key);
+    }
+  }
+});
+
+test('accepts only HTTPS or loopback HTTP AI base URLs without credentials', () => {
+  const aiEnvironment = {
+    ...validEnvironment,
+    AI_API_KEY: 'test-ai-key',
+    AI_MODEL: 'deepseek-chat',
+  };
+
+  for (const baseUrl of [
+    'https://api.openai.com/v1',
+    'http://localhost:11434/v1',
+    'http://127.0.0.1:11434/v1',
+    'http://[::1]:11434/v1',
+  ]) {
+    expect(loadEnvironment({ ...aiEnvironment, AI_BASE_URL: baseUrl }).ai?.base_url).toBe(baseUrl);
+  }
+
+  for (const baseUrl of [
+    'http://api.openai.com/v1',
+    'https://owner:secret@api.openai.com/v1',
+    'ftp://api.openai.com/v1',
+    'not a URL',
+  ]) {
+    expect(() => loadEnvironment({ ...aiEnvironment, AI_BASE_URL: baseUrl })).toThrow('AI_BASE_URL');
+  }
+});
+
+test('rejects an out-of-range AI timeout, temperature, or output budget', () => {
+  expect(() => loadEnvironment({ ...validEnvironment, AI_TIMEOUT_MS: '500' })).toThrow('AI_TIMEOUT_MS');
+  expect(() => loadEnvironment({ ...validEnvironment, AI_TIMEOUT_MS: '60000' })).toThrow('AI_TIMEOUT_MS');
+  expect(() => loadEnvironment({ ...validEnvironment, AI_TEMPERATURE: '-0.1' })).toThrow('AI_TEMPERATURE');
+  expect(() => loadEnvironment({ ...validEnvironment, AI_TEMPERATURE: '2.5' })).toThrow('AI_TEMPERATURE');
+  expect(() => loadEnvironment({ ...validEnvironment, AI_MAX_TOKENS: '32' })).toThrow('AI_MAX_TOKENS');
+  expect(() => loadEnvironment({ ...validEnvironment, AI_MAX_TOKENS: '40000' })).toThrow('AI_MAX_TOKENS');
 });
 
 test('rejects the documented placeholder API key in production', () => {

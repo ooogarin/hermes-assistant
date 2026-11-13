@@ -151,6 +151,7 @@ describe.skipIf(!hasTestDatabaseUrl)('Domain modules PostgreSQL integration', ()
 
     expect(first.code).toMatch(/^JK-\d{8}-001$/);
     expect(second.code).toMatch(/^JK-\d{8}-002$/);
+    expect(await junkService.listTagVocabulary()).toEqual(['learning', 'programming', 'rust']);
     expect((await junkService.list({ q: 'ownership', sort: 'newest', limit: 20 })).map(({ code }) => code)).toEqual([
       first.code,
     ]);

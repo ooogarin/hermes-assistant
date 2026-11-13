@@ -1,4 +1,5 @@
 import { createApp } from './app';
+import { createAiClient } from './core/ai/ai-client';
 import { loadEnvironment } from './core/config/env';
 import { configureDatabaseClient, createDatabaseClient } from './core/database/client';
 import { isDatabaseReady } from './core/database/health.repository';
@@ -10,16 +11,34 @@ await configureLogging(environment);
 
 const database = createDatabaseClient(environment.databaseUrl);
 configureDatabaseClient(database);
+const aiClient = environment.ai === null ? null : createAiClient(environment.ai);
+
+if (environment.ai !== null) {
+  appLogger.info(
+    'AI capture enabled: model={model} temperature={temperature} maxTokens={maxTokens} timeoutMs={timeoutMs} [baseUrl={baseUrl}]',
+    {
+      baseUrl: environment.ai.base_url,
+      maxTokens: environment.ai.max_tokens,
+      model: environment.ai.model,
+      temperature: environment.ai.temperature,
+      timeoutMs: environment.ai.timeout_ms,
+    },
+  );
+}
+
 const app = createApp({
   internalApiKey: environment.internalApiKey,
   isDatabaseReady: () => isDatabaseReady(database),
   readinessTimeoutMs: environment.readinessTimeoutMs,
   webAuth: environment.webAuth,
+  aiClient,
 });
 
 const server = Bun.serve({
   fetch: app.fetch,
   hostname: environment.host,
+  // The default 10-second idle timeout is shorter than a possible AI request.
+  idleTimeout: 60,
   port: environment.port,
 });
 

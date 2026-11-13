@@ -93,3 +93,15 @@ export const requireAgent: MiddlewareHandler<AppEnv> = async (context, next) => 
 
   await next();
 };
+
+export const requireBrowser: MiddlewareHandler<AppEnv> = async (context, next) => {
+  if (context.get('auth_mode') !== 'browser') {
+    return failureResponse({
+      context,
+      error: { code: 'FORBIDDEN', message: 'Browser authentication required', details: null },
+      statusCode: 403,
+    });
+  }
+
+  await next();
+};

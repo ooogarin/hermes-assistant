@@ -12,6 +12,7 @@ import { createJunkRoutes } from './modules/junk/junk.route';
 import { createNotesRoutes } from './modules/notes/notes.route';
 import { createReadingRoutes } from './modules/reading/reading.route';
 import { createWritingRoutes } from './modules/writing/writing.route';
+import type { AiClient } from './core/ai/ai.types';
 import type { AuthDependencies, AuthResources, WebAuthConfiguration } from './core/auth/auth.types';
 import type { AppEnv } from './core/http/app-env';
 
@@ -21,6 +22,7 @@ export type CreateAppOptions = {
   readinessTimeoutMs?: number;
   webAuth: WebAuthConfiguration;
   authDependencies?: AuthDependencies;
+  aiClient?: AiClient | null;
 };
 
 const checkDatabaseReadiness = async (check: () => Promise<boolean>, timeoutMs: number): Promise<boolean> => {
@@ -44,6 +46,7 @@ export const createApp = ({
   readinessTimeoutMs = 2_000,
   webAuth,
   authDependencies = {},
+  aiClient = null,
 }: CreateAppOptions) => {
   const app = new Hono<AppEnv>();
   const resources: AuthResources = {
@@ -55,6 +58,11 @@ export const createApp = ({
 
   app.use('*', requestId());
   app.use('*', requestContextMiddleware);
+  app.use('*', async (context, next) => {
+    context.set('ai_client', aiClient);
+
+    await next();
+  });
   app.use('/api/*', createAuthMiddleware(internalApiKey, resources));
 
   app.onError(errorHandler);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AiConfiguration } from '../ai/ai.types';
 import type { WebAuthConfiguration } from '../auth/auth.types';
 
 const logLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
@@ -41,6 +42,24 @@ const passwordHashSchema = z
     }
   }, 'Must be a valid Argon2id password hash with supported parameters.');
 
+const aiBaseUrlSchema = z.url().refine((value) => {
+  try {
+    const url = new URL(value);
+    const hasCredentials = url.username !== '' || url.password !== '';
+
+    if (hasCredentials) {
+      return false;
+    }
+
+    return (
+      url.protocol === 'https:' ||
+      (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
+    );
+  } catch {
+    return false;
+  }
+}, 'Must be an HTTPS URL or a loopback HTTP URL.');
+
 const webOriginSchema = z.url().refine((value) => {
   try {
     const url = new URL(value);
@@ -74,6 +93,12 @@ const environmentSchema = databaseEnvironmentSchema
     WEB_AUTH_PASSWORD_HASH: passwordHashSchema,
     WEB_AUTH_ORIGIN: webOriginSchema,
     WEB_AUTH_JWT_SECRET: z.string().regex(/^[a-f0-9]{64}$/, 'Must be 32 random bytes encoded as lowercase hex.'),
+    AI_BASE_URL: aiBaseUrlSchema.optional(),
+    AI_API_KEY: z.string().trim().min(1).max(512).optional(),
+    AI_MODEL: z.string().trim().min(1).max(100).optional(),
+    AI_MAX_TOKENS: z.coerce.number().int().min(64).max(32_000).default(4_096),
+    AI_TEMPERATURE: z.coerce.number().min(0).max(2).default(0),
+    AI_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(45_000).default(30_000),
   })
   .superRefine((value, context) => {
     const usesProductionPlaceholder =
@@ -91,6 +116,23 @@ const environmentSchema = databaseEnvironmentSchema
 
     if (requiresHttpsOrigin) {
       context.addIssue({ code: 'custom', message: 'HTTPS is required.', path: ['WEB_AUTH_ORIGIN'] });
+    }
+
+    const aiConfigurationKeys = ['AI_BASE_URL', 'AI_API_KEY', 'AI_MODEL'] as const;
+    const configuredAiKeys = aiConfigurationKeys.filter((key) => value[key] !== undefined);
+    const hasPartialAiConfiguration =
+      configuredAiKeys.length > 0 && configuredAiKeys.length < aiConfigurationKeys.length;
+
+    if (hasPartialAiConfiguration) {
+      for (const key of aiConfigurationKeys) {
+        if (value[key] === undefined) {
+          context.addIssue({
+            code: 'custom',
+            message: 'AI configuration requires AI_BASE_URL, AI_API_KEY, and AI_MODEL together.',
+            path: [key],
+          });
+        }
+      }
     }
   });
 
@@ -116,6 +158,7 @@ type Environment = DatabaseEnvironment & {
   internalApiKey: string;
   readinessTimeoutMs: number;
   webAuth: WebAuthConfiguration;
+  ai: AiConfiguration | null;
 };
 
 const parseEnvironment = <T>(schema: z.ZodType<T>, values: Record<string, string | undefined>): T => {
@@ -142,6 +185,28 @@ export const loadDatabaseEnvironment = (values: Record<string, string | undefine
   };
 };
 
+const toAiConfiguration = (data: {
+  AI_BASE_URL?: string;
+  AI_API_KEY?: string;
+  AI_MODEL?: string;
+  AI_MAX_TOKENS: number;
+  AI_TEMPERATURE: number;
+  AI_TIMEOUT_MS: number;
+}): AiConfiguration | null => {
+  if (data.AI_BASE_URL === undefined || data.AI_API_KEY === undefined || data.AI_MODEL === undefined) {
+    return null;
+  }
+
+  return {
+    base_url: data.AI_BASE_URL,
+    api_key: data.AI_API_KEY,
+    model: data.AI_MODEL,
+    max_tokens: data.AI_MAX_TOKENS,
+    temperature: data.AI_TEMPERATURE,
+    timeout_ms: data.AI_TIMEOUT_MS,
+  };
+};
+
 export const loadEnvironment = (values: Record<string, string | undefined>): Environment => {
   const data = parseEnvironment(environmentSchema, values);
 
@@ -159,5 +224,6 @@ export const loadEnvironment = (values: Record<string, string | undefined>): Env
       jwt_secret: data.WEB_AUTH_JWT_SECRET,
       secure_cookie: data.WEB_AUTH_ORIGIN.startsWith('https://'),
     },
+    ai: toAiConfiguration(data),
   };
 };

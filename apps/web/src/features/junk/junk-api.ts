@@ -38,13 +38,21 @@ export type JunkListFilters = {
   to?: string;
   sort?: 'newest' | 'oldest';
 };
-export type CreateJunkInput = Pick<
-  JunkItem,
-  'category' | 'contentText' | 'sourceUrl' | 'sourceName' | 'tags' | 'title'
->;
-export type UpdateJunkInput = Partial<CreateJunkInput>;
+type JunkMetadataInput = Pick<JunkItem, 'category' | 'contentText' | 'sourceUrl' | 'sourceName' | 'tags' | 'title'>;
+export type CreateJunkInput = JunkMetadataInput & {
+  rawText?: string | null;
+};
+export type UpdateJunkInput = Partial<JunkMetadataInput>;
 
-const toPayload = ({ contentText, sourceUrl, sourceName, ...input }: UpdateJunkInput) => ({
+const toCreatePayload = ({ contentText, rawText, sourceUrl, sourceName, ...input }: CreateJunkInput) => ({
+  ...input,
+  content_text: contentText,
+  source_url: sourceUrl,
+  source_name: sourceName,
+  ...(rawText === undefined ? {} : { raw_text: rawText }),
+});
+
+const toUpdatePayload = ({ contentText, sourceUrl, sourceName, ...input }: UpdateJunkInput) => ({
   ...input,
   content_text: contentText,
   source_url: sourceUrl,
@@ -71,11 +79,17 @@ export const getJunkItems = (filters: JunkListFilters, signal?: AbortSignal): Pr
 export const getJunkItem = (code: string, signal?: AbortSignal): Promise<JunkItem> =>
   apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, junkItemSchema, { signal });
 
+export const createJunkItemWithAi = (text: string): Promise<JunkItem> =>
+  apiRequest('/api/v1/junk/ai', junkItemSchema, { body: { text }, method: 'POST' });
+
 export const createJunkItem = (input: CreateJunkInput): Promise<JunkItem> =>
-  apiRequest('/api/v1/junk', junkItemSchema, { body: toPayload(input), method: 'POST' });
+  apiRequest('/api/v1/junk', junkItemSchema, { body: toCreatePayload(input), method: 'POST' });
 
 export const updateJunkItem = (code: string, input: UpdateJunkInput): Promise<JunkItem> =>
-  apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, junkItemSchema, { body: toPayload(input), method: 'PATCH' });
+  apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, junkItemSchema, {
+    body: toUpdatePayload(input),
+    method: 'PATCH',
+  });
 
 export const deleteJunkItem = (code: string): Promise<void> =>
   apiRequest(`/api/v1/junk/${encodeURIComponent(code)}`, z.undefined(), { method: 'DELETE' });

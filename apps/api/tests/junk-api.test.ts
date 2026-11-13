@@ -28,6 +28,8 @@ const createJunkServiceStub = (overrides: Partial<JunkService> = {}): JunkServic
   create: async (input: CreateJunkRequest) => ({ ...junkItem, ...input }),
   getDetail: async () => junkItem,
   list: async () => [junkItem],
+  listCategories: async () => ['article', 'music'],
+  listTagVocabulary: async () => ['rust', 'programming'],
   update: async (_reference: JunkReferenceRequest, input: UpdateJunkRequest) => ({ ...junkItem, ...input }),
   remove: async () => {},
   ...overrides,
@@ -39,6 +41,8 @@ mock.module('../src/modules/junk/junk.service', () => ({
   create: (input: CreateJunkRequest) => activeJunkService.create(input),
   getDetail: (request: JunkReferenceRequest) => activeJunkService.getDetail(request),
   list: (input: ListJunkRequest) => activeJunkService.list(input),
+  listCategories: () => activeJunkService.listCategories(),
+  listTagVocabulary: () => activeJunkService.listTagVocabulary(),
   update: (request: JunkReferenceRequest, input: UpdateJunkRequest) => activeJunkService.update(request, input),
   remove: (request: JunkReferenceRequest) => activeJunkService.remove(request),
 }));

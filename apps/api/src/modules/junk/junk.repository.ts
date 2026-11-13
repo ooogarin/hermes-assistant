@@ -2,8 +2,10 @@ import { getDatabaseClient } from '../../core/database/client';
 import type { DatabaseReservedConnection } from '../../core/database/database.types';
 import type {
   InsertJunkPayload,
+  JunkCategoryRow,
   JunkItemRow,
   JunkSequenceRow,
+  JunkTagRow,
   ListJunkRepositoryQuery,
   UpdateJunkPayload,
 } from './junk.types';
@@ -143,6 +145,39 @@ export const getAll = async (input: ListJunkRepositoryQuery): Promise<JunkItemRo
   `;
 
   return rows;
+};
+
+export const getAllCategories = async (): Promise<JunkCategoryRow[]> => {
+  const database = getDatabaseClient();
+
+  return await database<JunkCategoryRow[]>`
+    SELECT DISTINCT
+      category
+    FROM junk_items
+    WHERE deleted_at IS NULL
+    ORDER BY
+      category ASC
+    LIMIT 50
+  `;
+};
+
+export const getFrequentTags = async (limit: number): Promise<JunkTagRow[]> => {
+  const database = getDatabaseClient();
+
+  return await database<JunkTagRow[]>`
+    SELECT
+      item_tag.tag AS tag,
+      COUNT(*)::INTEGER AS usage_count
+    FROM junk_items
+    CROSS JOIN LATERAL UNNEST(tags) AS item_tag(tag)
+    WHERE deleted_at IS NULL
+    GROUP BY
+      item_tag.tag
+    ORDER BY
+      usage_count DESC,
+      item_tag.tag ASC
+    LIMIT ${limit}
+  `;
 };
 
 export const updateOneByCode = async (code: string, input: UpdateJunkPayload): Promise<JunkItemRow | null> => {

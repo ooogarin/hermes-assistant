@@ -88,6 +88,18 @@ export const list = async (input: ListJunkRequest): Promise<JunkItem[]> => {
   return rows.map(toJunkItem);
 };
 
+export const listCategories = async (): Promise<string[]> => {
+  const rows = await junkRepository.getAllCategories();
+
+  return rows.map((row) => row.category);
+};
+
+export const listTagVocabulary = async (): Promise<string[]> => {
+  const rows = await junkRepository.getFrequentTags(50);
+
+  return rows.map((row) => row.tag);
+};
+
 export const update = async ({ code }: JunkReferenceRequest, input: UpdateJunkRequest): Promise<JunkItem> => {
   const current = await junkRepository.getOneByCode(code);
 
