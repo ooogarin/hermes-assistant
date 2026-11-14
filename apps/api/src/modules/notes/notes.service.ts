@@ -36,6 +36,18 @@ export const list = async (input: ListNotesRequest): Promise<Note[]> => {
   return rows.map(toNote);
 };
 
+export const listCategories = async (): Promise<string[]> => {
+  const rows = await notesRepository.getAllCategories();
+
+  return rows.map((row) => row.category);
+};
+
+export const listTagVocabulary = async (): Promise<string[]> => {
+  const rows = await notesRepository.getFrequentTags(50);
+
+  return rows.map((row) => row.tag);
+};
+
 export const getDetail = async ({ code }: NoteReferenceRequest): Promise<Note> => {
   const noteRow = await notesRepository.getOneByCode(code);
 

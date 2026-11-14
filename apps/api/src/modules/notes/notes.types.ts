@@ -5,7 +5,7 @@ export const noteTypes = ['fact', 'personal', 'news', 'quote', 'idea', 'reminder
 
 // ==========[ Request contracts ]==========================================================================================
 
-type NoteType = (typeof noteTypes)[number];
+export type NoteType = (typeof noteTypes)[number];
 
 export type CreateNoteRequest = z.infer<typeof createNoteSchema>;
 export type UpdateNoteRequest = z.infer<typeof updateNoteSchema>;
@@ -35,6 +35,8 @@ export type Note = {
 
 export type NotesService = {
   list: (input: ListNotesRequest) => Promise<Note[]>;
+  listCategories: () => Promise<string[]>;
+  listTagVocabulary: () => Promise<string[]>;
   getDetail: (input: NoteReferenceRequest) => Promise<Note>;
   create: (input: CreateNoteRequest) => Promise<Note>;
   update: (reference: NoteReferenceRequest, input: UpdateNoteRequest) => Promise<Note>;
@@ -101,4 +103,13 @@ export type NoteRow = {
 
 export type NoteSequenceRow = {
   sequence: number;
+};
+
+export type NoteCategoryRow = {
+  category: string;
+};
+
+export type NoteTagRow = {
+  tag: string;
+  usage_count: number;
 };

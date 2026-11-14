@@ -31,6 +31,8 @@ const createNotesServiceStub = (overrides: Partial<NotesService> = {}): NotesSer
   create: async (input: CreateNoteRequest) => ({ ...note, ...input }),
   getDetail: async () => note,
   list: async () => [note],
+  listCategories: async () => [note.category],
+  listTagVocabulary: async () => note.tags,
   update: async (_request: NoteReferenceRequest, input: UpdateNoteRequest) => ({ ...note, ...input }),
   remove: async () => {},
   ...overrides,
@@ -42,6 +44,8 @@ mock.module('../src/modules/notes/notes.service', () => ({
   create: (input: CreateNoteRequest) => activeNotesService.create(input),
   getDetail: (request: NoteReferenceRequest) => activeNotesService.getDetail(request),
   list: (input: ListNotesRequest) => activeNotesService.list(input),
+  listCategories: () => activeNotesService.listCategories(),
+  listTagVocabulary: () => activeNotesService.listTagVocabulary(),
   update: (request: NoteReferenceRequest, input: UpdateNoteRequest) => activeNotesService.update(request, input),
   remove: (request: NoteReferenceRequest) => activeNotesService.remove(request),
 }));

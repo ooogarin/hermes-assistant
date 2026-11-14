@@ -1,5 +1,9 @@
+import { aiInvalidResponseError, aiNotConfiguredError, aiUnavailableError } from '../../../core/ai/ai-errors';
 import { AppError } from '../../../core/errors/app-error';
 import { fetchLinkMetadata } from '../../../core/link/link-metadata';
+import { extractSourceUrl } from '../../../core/link/source-url';
+import { normalizeLimitedTags } from '../../../shared/text/taxonomy';
+import { trimToNull } from '../../../shared/text/text';
 import * as junkService from '../junk.service';
 import { createJunkSchema } from '../junk.validator';
 import { junkCategorySuggestions, normalizeJunkCategory } from '../junk-category';
@@ -8,15 +12,6 @@ import type { AiClient } from '../../../core/ai/ai.types';
 import type { LinkMetadata } from '../../../core/link/link-metadata.types';
 import type { CreateJunkRequest, JunkItem } from '../junk.types';
 import type { AiJunkMetadata, JunkAiCreateRequest } from './junk-ai.types';
-
-const aiNotConfiguredError = (): AppError =>
-  new AppError({ code: 'AI_NOT_CONFIGURED', statusCode: 503, message: 'AI feature is not configured.' });
-
-const aiUnavailableError = (): AppError =>
-  new AppError({ code: 'AI_UNAVAILABLE', statusCode: 503, message: 'AI service is unavailable.' });
-
-const aiInvalidResponseError = (): AppError =>
-  new AppError({ code: 'AI_INVALID_RESPONSE', statusCode: 503, message: 'AI response could not be used.' });
 
 const buildSystemPrompt = (
   categories: string[],
@@ -51,48 +46,6 @@ const buildSystemPrompt = (
   ].join('\n');
 };
 
-const normalizeNullableText = (value: string | null): string | null => {
-  if (value === null) {
-    return null;
-  }
-
-  const trimmed = value.trim();
-
-  return trimmed.length === 0 ? null : trimmed;
-};
-
-const maximumTags = 6;
-
-const normalizeTags = (tags: string[]): string[] => {
-  const normalizedTags = tags
-    .map((tag) => tag.trim().toLowerCase())
-    .filter((tag) => tag.length > 0 && tag.length <= 64);
-
-  return [...new Set(normalizedTags)].slice(0, maximumTags);
-};
-
-const trailingUrlPunctuation = /[.,;:!?)\]}'"”’>]+$/;
-
-const extractSourceUrl = (rawText: string): string | null => {
-  const urlPattern = /\bhttps?:\/\/[^\s<>"'`]+/gi;
-
-  for (const match of rawText.matchAll(urlPattern)) {
-    const candidate = match[0].replace(trailingUrlPunctuation, '');
-
-    if (!URL.canParse(candidate)) {
-      continue;
-    }
-
-    const protocol = new URL(candidate).protocol;
-
-    if (protocol === 'http:' || protocol === 'https:') {
-      return candidate;
-    }
-  }
-
-  return null;
-};
-
 const composeCreateRequest = (
   rawText: string,
   aiMetadata: AiJunkMetadata,
@@ -100,13 +53,13 @@ const composeCreateRequest = (
   sourceUrl: string | null,
   linkMetadata: LinkMetadata | null,
 ): CreateJunkRequest => ({
-  title: normalizeNullableText(aiMetadata.title) ?? linkMetadata?.title ?? null,
+  title: trimToNull(aiMetadata.title) ?? linkMetadata?.title ?? null,
   category: normalizeJunkCategory(aiMetadata.category, categories),
   raw_text: rawText,
-  content_text: normalizeNullableText(aiMetadata.content_text) ?? linkMetadata?.description ?? null,
+  content_text: trimToNull(aiMetadata.content_text) ?? linkMetadata?.description ?? null,
   source_url: sourceUrl,
-  source_name: normalizeNullableText(aiMetadata.source_name) ?? linkMetadata?.site_name ?? linkMetadata?.author ?? null,
-  tags: normalizeTags(aiMetadata.tags),
+  source_name: trimToNull(aiMetadata.source_name) ?? linkMetadata?.site_name ?? linkMetadata?.author ?? null,
+  tags: normalizeLimitedTags(aiMetadata.tags, 6),
 });
 
 export const createWithAi = async (input: JunkAiCreateRequest, client: AiClient | null): Promise<JunkItem> => {

@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, test, vi } from 'vitest';
+import { describeAiCaptureError } from '../../lib/api/ai-capture-error';
 import { ApiError } from '../../lib/api/api-error';
 import JunkCreatePage from './create/page';
-import { describeJunkAiError } from './junk-display';
 
 const createdItemWire = {
   code: 'JK-20261114-001',
@@ -154,37 +154,44 @@ test('shows a retryable message when the AI provider fails', async () => {
 
 test('maps safe AI error codes to Indonesian copy', () => {
   expect(
-    describeJunkAiError(
+    describeAiCaptureError(
       new ApiError({ code: 'AI_NOT_CONFIGURED', message: 'AI feature is not configured.', status: 503 }),
+      'Junk',
     ),
   ).toBe('Fitur AI belum dikonfigurasi di server.');
   expect(
-    describeJunkAiError(
+    describeAiCaptureError(
       new ApiError({ code: 'AI_AUTH_FAILED', message: 'AI credentials were rejected.', status: 503 }),
+      'Junk',
     ),
   ).toBe('Kredensial AI ditolak. Periksa AI_API_KEY di server.');
   expect(
-    describeJunkAiError(
+    describeAiCaptureError(
       new ApiError({
         code: 'AI_CONFIGURATION_ERROR',
         message: 'AI provider rejected the request configuration.',
         status: 503,
       }),
+      'Junk',
     ),
   ).toBe('Konfigurasi AI tidak cocok. Periksa AI_BASE_URL dan AI_MODEL.');
   expect(
-    describeJunkAiError(
+    describeAiCaptureError(
       new ApiError({ code: 'AI_RATE_LIMITED', message: 'AI provider rate limit reached.', status: 503 }),
+      'Junk',
     ),
   ).toBe('AI sedang membatasi permintaan. Coba lagi sebentar lagi.');
   expect(
-    describeJunkAiError(new ApiError({ code: 'AI_UNAVAILABLE', message: 'AI service is unavailable.', status: 503 })),
+    describeAiCaptureError(
+      new ApiError({ code: 'AI_UNAVAILABLE', message: 'AI service is unavailable.', status: 503 }),
+      'Junk',
+    ),
   ).toBe('Junk belum bisa disimpan dengan AI. Coba lagi.');
-  expect(describeJunkAiError(new ApiError({ code: 'AI_INVALID_RESPONSE', message: 'Invalid.', status: 503 }))).toBe(
-    'Junk belum bisa disimpan dengan AI. Coba lagi.',
-  );
-  expect(describeJunkAiError(new ApiError({ code: 'VALIDATION_ERROR', message: 'Invalid.', status: 400 }))).toBe(
-    'Pesan belum bisa diproses. Periksa panjang teks.',
-  );
-  expect(describeJunkAiError(new Error('boom'))).toBe('Junk belum bisa disimpan dengan AI. Coba lagi.');
+  expect(
+    describeAiCaptureError(new ApiError({ code: 'AI_INVALID_RESPONSE', message: 'Invalid.', status: 503 }), 'Junk'),
+  ).toBe('Junk belum bisa disimpan dengan AI. Coba lagi.');
+  expect(
+    describeAiCaptureError(new ApiError({ code: 'VALIDATION_ERROR', message: 'Invalid.', status: 400 }), 'Junk'),
+  ).toBe('Pesan belum bisa diproses. Periksa panjang teks.');
+  expect(describeAiCaptureError(new Error('boom'), 'Junk')).toBe('Junk belum bisa disimpan dengan AI. Coba lagi.');
 });
