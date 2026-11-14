@@ -1,6 +1,13 @@
 import { z } from 'zod';
-import { AppError } from '../errors/app-error';
 import { appLogger } from '../logging/logger';
+import {
+  aiAuthFailedError,
+  aiConfigurationError,
+  aiInvalidResponseError,
+  aiRateLimitedError,
+  aiUnavailableError,
+} from './ai-errors';
+import type { AppError } from '../errors/app-error';
 import type { AiClient, AiClientDependencies, AiConfiguration, AiFailure, AiFetch, AiJsonRequest } from './ai.types';
 
 const providerResponseSchema = z.object({
@@ -10,25 +17,6 @@ const providerResponseSchema = z.object({
 const maximumContentLength = 200_000;
 const maximumProviderMessageLength = 300;
 const secretPattern = /\b(?:sk|pk|api)[-_][A-Za-z0-9_*.-]{6,}\b/gi;
-
-const aiUnavailableError = (): AppError =>
-  new AppError({ code: 'AI_UNAVAILABLE', statusCode: 503, message: 'AI service is unavailable.' });
-
-const aiAuthFailedError = (): AppError =>
-  new AppError({ code: 'AI_AUTH_FAILED', statusCode: 503, message: 'AI credentials were rejected.' });
-
-const aiRateLimitedError = (): AppError =>
-  new AppError({ code: 'AI_RATE_LIMITED', statusCode: 503, message: 'AI provider rate limit reached.' });
-
-const aiConfigurationError = (): AppError =>
-  new AppError({
-    code: 'AI_CONFIGURATION_ERROR',
-    statusCode: 503,
-    message: 'AI provider rejected the request configuration.',
-  });
-
-const aiInvalidResponseError = (): AppError =>
-  new AppError({ code: 'AI_INVALID_RESPONSE', statusCode: 503, message: 'AI response could not be used.' });
 
 const providerErrorForStatus = (status: number): AppError => {
   if (status === 401 || status === 403) {

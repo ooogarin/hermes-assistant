@@ -80,6 +80,9 @@ const toPayload = ({ contentText, sourceName, sourceUrl, rawText, ...input }: Pa
   raw_text: rawText,
 });
 
+export const createNoteWithAi = (text: string): Promise<Note> =>
+  apiRequest('/api/v1/notes/ai', noteSchema, { body: { text }, method: 'POST' });
+
 export const createNote = (input: CreateNoteInput): Promise<Note> =>
   apiRequest('/api/v1/notes', noteSchema, { body: toPayload(input), method: 'POST' });
 

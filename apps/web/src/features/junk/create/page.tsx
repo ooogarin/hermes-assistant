@@ -1,17 +1,17 @@
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { JunkAiCapture } from '../../../components/junk/junk-ai-capture';
-import { JunkCaptureModeSwitch } from '../../../components/junk/junk-capture-mode';
 import { JunkForm } from '../../../components/junk/junk-form';
+import { AiCapture } from '../../../components/personal-content/ai-capture';
+import { CaptureModeSwitch } from '../../../components/personal-content/capture-mode-switch';
+import { describeAiCaptureError } from '../../../lib/api/ai-capture-error';
 import { createJunkItem, createJunkItemWithAi } from '../junk-api';
-import { describeJunkAiError } from '../junk-display';
-import type { JunkCaptureMode } from '../../../components/junk/junk-capture-mode';
 import type { JunkFormValues } from '../../../components/junk/junk-form';
+import type { CaptureMode } from '../../../components/personal-content/capture-mode-switch';
 
 const JunkCreatePage = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<JunkCaptureMode>('manual');
+  const [mode, setMode] = useState<CaptureMode>('manual');
   const [text, setText] = useState('');
   const [savingWithAi, setSavingWithAi] = useState(false);
   const [aiError, setAiError] = useState<string>();
@@ -31,7 +31,7 @@ const JunkCreatePage = () => {
       const item = await createJunkItemWithAi(text);
       navigate(`/junk/${item.code}`, { replace: true, state: { notice: 'Junk berhasil dibuat.' } });
     } catch (error) {
-      setAiError(describeJunkAiError(error));
+      setAiError(describeAiCaptureError(error, 'Junk'));
       setSavingWithAi(false);
     }
   };
@@ -44,11 +44,20 @@ const JunkCreatePage = () => {
       <header className='mt-7 border-b border-border pb-7'>
         <h1 className='text-3xl font-semibold tracking-tight text-ink sm:text-4xl'>Tambah Junk</h1>
       </header>
-      <JunkCaptureModeSwitch mode={mode} onChange={setMode} />
+      <CaptureModeSwitch ariaLabel='Jalur input Junk' mode={mode} onChange={setMode} />
       {mode === 'manual' ? (
         <JunkForm cancelTo='/junk' onSubmit={saveManual} submitLabel='Simpan Junk' />
       ) : (
-        <JunkAiCapture error={aiError} onChangeText={setText} onSave={saveWithAi} saving={savingWithAi} text={text} />
+        <AiCapture
+          description='Tulis pesan bebas. AI akan menyusun field Junk lalu langsung menyimpannya. Koreksi bisa dilakukan di halaman detail setelah item tersimpan.'
+          error={aiError}
+          helper='Contoh: artikel bagus soal rust https://blog.example.com/rust'
+          label='Pesan'
+          onChangeText={setText}
+          onSave={saveWithAi}
+          saving={savingWithAi}
+          text={text}
+        />
       )}
     </div>
   );

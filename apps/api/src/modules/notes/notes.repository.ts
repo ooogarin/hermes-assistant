@@ -3,8 +3,10 @@ import type { DatabaseReservedConnection } from '../../core/database/database.ty
 import type {
   InsertNotePayload,
   ListNotesRepositoryQuery,
+  NoteCategoryRow,
   NoteRow,
   NoteSequenceRow,
+  NoteTagRow,
   UpdateNotePayload,
 } from './notes.types';
 
@@ -65,6 +67,39 @@ export const getAll = async (input: ListNotesRepositoryQuery): Promise<NoteRow[]
   `;
 
   return rows;
+};
+
+export const getAllCategories = async (): Promise<NoteCategoryRow[]> => {
+  const database = getDatabaseClient();
+
+  return await database<NoteCategoryRow[]>`
+    SELECT DISTINCT
+      category
+    FROM notes
+    WHERE deleted_at IS NULL
+    ORDER BY
+      category ASC
+    LIMIT 50
+  `;
+};
+
+export const getFrequentTags = async (limit: number): Promise<NoteTagRow[]> => {
+  const database = getDatabaseClient();
+
+  return await database<NoteTagRow[]>`
+    SELECT
+      note_tag.tag AS tag,
+      COUNT(*)::INTEGER AS usage_count
+    FROM notes
+    CROSS JOIN LATERAL UNNEST(tags) AS note_tag(tag)
+    WHERE deleted_at IS NULL
+    GROUP BY
+      note_tag.tag
+    ORDER BY
+      usage_count DESC,
+      note_tag.tag ASC
+    LIMIT ${limit}
+  `;
 };
 
 export const getOneByCode = async (code: string): Promise<NoteRow | null> => {
