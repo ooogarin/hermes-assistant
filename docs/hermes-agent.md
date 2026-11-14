@@ -66,6 +66,8 @@ Configure the Hermes gateway and map the group topics in Hermes. The API does no
 
 Topic choice is authoritative for Notes versus Junk. The skill may semantically route structured English requests, but it must not silently move data between the Notes and Junk domains.
 
+Junk has three create paths: Telegram through Hermes, manual browser entry, and optional browser AI capture. The Telegram path stays with Hermes and `POST /api/v1/junk`, keeping its own metadata suggestions, user-provided titles, and soft-text categories. The AI endpoint `POST /api/v1/junk/ai` is browser-only: it requires a browser JWT and rejects the Agent bearer key with `403`, so it is not part of the skill contract.
+
 General, Speaking, and Listening are intentionally lightweight, non-persistent topics.
 They must not create API data, scores, transcripts, vocabulary records, files, cron
 jobs, or background work from ordinary Q&A. A future structured Speaking or Listening

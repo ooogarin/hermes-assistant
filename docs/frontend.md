@@ -2,7 +2,7 @@
 
 ## Scope
 
-`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk, Reading, Writing, and Grammar, plus the English settings and known-code workflows. The frontend is a read-oriented workspace for reviewing reports, saved information, and English-learning material. Durable data, calculations, aggregation, analysis, and filtering rules remain in the API and PostgreSQL.
+`apps/web` is a React and Tailwind CSS application for Hermes reports and focused correction workflows. Implemented vertical slices include Finance, Notes, Junk (manual and optional AI-assisted capture), Reading, Writing, and Grammar, plus the English settings and known-code workflows. The frontend is a read-oriented workspace for reviewing reports, saved information, and English-learning material. Durable data, calculations, aggregation, analysis, and filtering rules remain in the API and PostgreSQL.
 
 The initial implementation deliberately uses React's built-in `useState` and `useEffect`, plus focused custom hooks such as `useApiQuery` and `useListParams`. It does not use a state-management library, UI kit, or chart library. Reusable UI is implemented as small Tailwind components in `src/components`.
 
@@ -335,6 +335,8 @@ bun run dev:web
 `apps/web/vite.config.ts` loads `.env` from the workspace root. It forwards relative `/api` requests to `API_PROXY_TARGET` (default `http://127.0.0.1:3000`) without adding an Agent bearer credential. Browser requests use the HttpOnly JWT cookie.
 
 `INTERNAL_API_KEY` is an internal service credential, not a browser credential. Never prefix it with `VITE_`, interpolate it into frontend source, place it in local storage, or send it from browser code. The Vite proxy is for local development only.
+
+Optional AI-assisted Junk capture is configured only on the API with `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` (plus the `AI_MAX_TOKENS`, `AI_TEMPERATURE`, and `AI_TIMEOUT_MS` settings). The browser never receives those values; it calls `POST /api/v1/junk/ai` with the session cookie and shows safe copy when the server has no AI configuration. Unset AI variables keep the endpoint disabled while the manual Junk form keeps working.
 
 ## Personal web authentication
 

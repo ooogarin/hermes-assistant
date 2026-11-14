@@ -196,9 +196,11 @@ WEB_AUTH_ORIGIN=https://hermes-project.ooogarin.my.id
 
 Environment API juga membutuhkan `DATABASE_URL`, `INTERNAL_API_KEY`, `WEB_AUTH_PASSWORD_HASH`, dan `WEB_AUTH_JWT_SECRET`. Pertahankan nilai yang sudah benar pada backend. Deployment frontend tidak mengharuskan mengganti kredensial Agent atau signing secret.
 
+Jalur AI opsional untuk Junk hanya aktif jika `AI_BASE_URL`, `AI_API_KEY`, dan `AI_MODEL` diisi bersama. `AI_MAX_TOKENS`, `AI_TEMPERATURE`, dan `AI_TIMEOUT_MS` memakai default. Tanpa ketiga nilai tersebut, endpoint AI mengembalikan 503 dan form Junk manual tetap berfungsi. Nilai contoh base URL tiap provider ada di [`.env.example`](../.env.example).
+
 Jika pengaturan auth belum ada, ikuti [konfigurasi auth](auth-design.md#server-configuration) dan [setup repo](../README.md#local-setup). Hash password harus Argon2id yang valid; signing secret harus 64 karakter hex lowercase. Pada file dotenv Bun, setiap `$` literal dalam hash harus di-escape sebagai `\$`, termasuk jika nilai dibungkus tanda kutip. Environment variable langsung dari secret manager memakai hash asli tanpa escape dotenv.
 
-Jangan memasukkan kredensial tersebut ke variabel `VITE_*`, Caddyfile, kode frontend, atau hasil build. Caddy tidak perlu mengetahui password, JWT secret, atau Agent API key.
+Jangan memasukkan kredensial tersebut ke variabel `VITE_*`, Caddyfile, kode frontend, atau hasil build. Caddy tidak perlu mengetahui password, JWT secret, Agent API key, atau AI API key.
 
 Script API repo membaca `.env` di root workspace. Service produksi bisa menggunakan environment dari sumber lain, sehingga perubahan harus dilakukan pada sumber yang benar-benar dibaca proses API. Hindari menampilkan seluruh `.env` atau environment process ke terminal/chat.
 
