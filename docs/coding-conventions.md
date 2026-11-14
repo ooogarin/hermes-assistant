@@ -86,6 +86,9 @@ The Notes frontend follows the same reference. `apps/web/src/features/notes/note
 - Never forward framework exception messages or response bodies directly to clients.
 - Accept only `postgres:` or `postgresql:` database URLs. Internal API keys must be trimmed, contain at least 32 characters, and must not use the documented placeholder in production.
 - API startup also validates the required web password hash, exact allowed Origin, and JWT signing secret described in [auth-design.md](auth-design.md). Keep browser credentials independent of the Agent key; do not bypass auth in development. Database-only migration settings remain independent of browser auth.
+- Optional external integrations validate their complete configuration at startup; one AI client is constructed in `core/` and injected into the app. An unset optional integration makes its route return a typed `503` instead of failing the whole API.
+- Keep outbound HTTP in `core/` behind an injectable `fetch` (and a DNS lookup for link fetching) so tests never depend on the network. Treat fetched content as untrusted input, enforce URL/host, redirect, timeout, and response-size limits, and degrade to `null` when optional metadata is unavailable.
+- Map provider failures to safe typed `AppError` codes. Never log API keys, prompts, request bodies, provider response bodies, or fetched page content, and never forward provider messages or response bodies to clients.
 - Use LogTape for structured logs with safe context and request ID. Never log credentials, connection strings, sensitive bodies, SQL parameters, or client-visible stack traces.
 - Unit-test service behavior. Integration-test routes, repositories, migrations, and transactions where PostgreSQL/Hono behavior matters.
 - Tests must be deterministic and use an isolated test database.

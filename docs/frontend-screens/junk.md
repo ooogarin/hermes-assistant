@@ -1,10 +1,10 @@
 # Junk Screen List
 
-> Status: Create, list, detail, edit, and delete confirmation implemented. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Guide](../frontend.md#screen-conventions) with this document before implementing Junk screens.
+> Status: Create (manual and optional AI-assisted), list, detail, edit, and delete confirmation implemented. Visual reference: [Junk list design](../frontend-design/junk-list.png). Read [Frontend Guide](../frontend.md#screen-conventions) with this document before implementing Junk screens.
 
 ## Scope
 
-Junk is a searchable archive for low-friction external finds: articles, videos, music, quotes, posts, tools, and other items worth keeping but not formal Notes. Hermes/Telegram remains the primary assisted capture flow, while the browser also supports deliberate manual creation.
+Junk is a searchable archive for low-friction external finds: articles, videos, music, quotes, posts, tools, and other items worth keeping but not formal Notes. Hermes/Telegram remains the primary assisted capture flow, while the browser also supports deliberate manual creation and an optional AI-assisted free-text mode.
 
 The implementation includes create, list, detail, edit, and confirmed deletion. Preserved raw input remains read-only and hidden from browser forms.
 
@@ -14,7 +14,7 @@ The implementation includes create, list, detail, edit, and confirmed deletion. 
 /junk
 ├── ?preview=:code  Supporting preview over the list context
 ├── SCR-JUNK-001  Junk list, search, filter, and sorter
-├── /new  SCR-JUNK-005  Create Junk item
+├── /new  SCR-JUNK-005  Create Junk item (manual or AI-assisted)
 └── /junk/:code
     ├── SCR-JUNK-002  Full-page Junk detail
     ├── SCR-JUNK-003  Edit junk item
@@ -34,16 +34,50 @@ Proposed web routes are frontend navigation only. They do not alter the REST API
 ## SCR-JUNK-005 — Create Junk item
 
 **Purpose**
-Create a deliberate manual archive item without replacing the assisted Hermes capture flow.
+Create a deliberate archive item without replacing the assisted Hermes capture flow. The screen offers a manual form and an optional AI-assisted free-text mode.
 
-- Reuses the same feature form as edit for optional title, category, description, source URL, optional source name (maximum 200 characters), and tags.
-- Omits `rawText`, preserving its meaning as original Hermes input rather than synthesizing it in the browser.
-- Validates category, URL, field limits, and tags before POST; protects unsaved input.
-- On success, navigates to the generated item detail and shows a short confirmation.
+**Entry points**
+
+- `Tambah Junk` from the Junk list header.
+- A direct link to `/junk/new`.
+
+**UI composition**
+
+- The header stays `Tambah Junk`. A two-option mode switch sits below it: `Manual` and `Dengan AI`. Manual is selected on load, and the AI option carries a sparkle icon.
+- Manual mode reuses the same feature form as edit for optional title, category, description, source URL, optional source name (maximum 200 characters), and tags.
+- Manual mode omits `rawText`, preserving its meaning as original Hermes input rather than synthesizing it in the browser.
+- Manual mode validates category, URL, field limits, and tags before POST; protects unsaved input.
+- AI mode replaces the form with one `Pesan` textarea (maximum 20,000 characters), an example helper, and a single `Simpan dengan AI` action. The action is disabled while the trimmed message is empty and shows a pending label during the request.
+- AI mode has no title, category, source, or tag fields and no review step. The API composes the item and stores it immediately. The free-text message stays in the field if the request fails, including when the server has no AI configuration.
+- On success, both modes navigate to the generated item detail and show a short confirmation.
+- Switching modes keeps the AI message text; the manual form owns its own draft state while mounted.
+
+**Data contract**
 
 ```text
 POST /api/v1/junk
+POST /api/v1/junk/ai
+Body for /ai: { "text": "<free-form message>" }
 ```
+
+- The AI endpoint is browser-only and returns the created item with the same response shape as manual create.
+- AI failures map to safe Indonesian copy: `AI_NOT_CONFIGURED` → the server has no AI configuration; `AI_AUTH_FAILED` → check `AI_API_KEY`; `AI_CONFIGURATION_ERROR` → check `AI_BASE_URL` and `AI_MODEL`; `AI_RATE_LIMITED` → try again shortly; `AI_UNAVAILABLE` or `AI_INVALID_RESPONSE` → generic retry; `VALIDATION_ERROR` → check the text length.
+- The copy names configuration variables but never exposes a provider response, key value, base URL, or model identifier.
+
+**States**
+
+| State | Behavior |
+| --- | --- |
+| Manual | Render the existing Junk form; save through `POST /api/v1/junk`. |
+| AI idle | Render the message field and disabled save action while the message is blank. |
+| AI pending | Disable the field and action; show the pending label. |
+| AI error | Keep the message, show safe copy, and re-enable the action for retry. |
+| Success | Navigate to the item detail with a short confirmation. |
+
+**Out of scope**
+
+- An AI review or edit-before-save step, provider/model selection, streaming output, or background retry.
+- Calling the AI provider directly from the browser; only the API calls the configured provider.
 
 ## SCR-JUNK-001 — Junk list, search, filter, and sorter
 

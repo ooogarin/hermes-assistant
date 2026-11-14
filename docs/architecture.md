@@ -15,8 +15,9 @@ Hermes is a Bun workspace. `apps/api` is a modular monolith with one Bun applica
 | Queries and migrations | Parameterized raw SQL; TypeScript `up`/`down` migrations |
 | Logging and code quality | LogTape and Biome |
 | Web frontend | React, Vite, and Tailwind CSS |
+| Optional external services | OpenAI-compatible AI provider for browser Junk capture; server-side link metadata fetch |
 
-ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. [Personal web authentication](auth-design.md) is implemented in the API and frontend; deployment verification remains pending.
+ORMs/query builders, microservices, Kubernetes, queues, caches, external search, object storage, and MCP are deferred until a concrete need exists. [Personal web authentication](auth-design.md) is implemented in the API and frontend; deployment verification remains pending. AI-assisted Junk capture is optional and browser-only, and it does not change the Telegram-Agent capture path.
 
 ## Key decisions
 
@@ -25,7 +26,7 @@ ORMs/query builders, microservices, Kubernetes, queues, caches, external search,
 - Hermes runtime behavior lives in `hermes/skills`; `.agents/skills` is reserved for repository code-writing guidance.
 - Modules communicate through explicit services/use cases, never another module's repository.
 - The Notes module is the reference implementation for a personal-content module. `apps/api/tests/module-contract.test.ts` enforces the module rules that hold everywhere: repository transaction signatures, database access, SQL placement, and strict request schemas.
-- `app.ts` builds an importable Hono app; `index.ts` owns startup and shutdown.
+- `app.ts` builds an importable Hono app; `index.ts` owns startup and shutdown. The optional AI client is built there from complete configuration and injected into the app; no route used by the Hermes Agent calls it.
 - Use one database client/pool and let services define transaction boundaries with explicit `BEGIN`, `COMMIT`, and `ROLLBACK` helpers.
 - Keep the client, migration runner, and readiness query in `core/database`; repositories remain the only domain-layer database callers.
 - Use LogTape for structured application and request logging.
@@ -70,6 +71,8 @@ No Telegram adapter, webhook, or scheduler runs inside this API.
 
 Browser requests use relative `/api` URLs with the HttpOnly JWT cookie. The Vite development server forwards them to the API without adding an Agent bearer credential. The internal API key must never be exposed through a `VITE_*` variable, browser storage, source code, or frontend API client.
 
+The optional AI-assisted Junk capture walks the same layers as any other browser write. Its service extracts the URL from the message, reads public link metadata through `core/link`, asks the configured AI client in `core/ai` for metadata, then creates the item through the existing Junk service. The outbound calls sit inside the service step and never become a new layer between the route and the handler.
+
 [Personal Web Authentication Design](auth-design.md) defines the implemented API boundary: one static browser password hash and JWT signing secret in ENV, a signed 24-hour JWT in an HttpOnly cookie, and centralized JWT middleware alongside existing Agent bearer authentication. No user table, RBAC, or auth migration is required. Cookie-authenticated browser writes require an exact allowed Origin. JWTs remain valid across restarts when the signing secret stays the same. API startup validates required web-auth settings; database-only migrations do not require them.
 
 The frontend now gates private routes on JWT status, offers login/logout, and removes Vite bearer injection. Public deployment still requires production same-origin HTTPS proxy verification, including cookie and Origin forwarding.
@@ -87,6 +90,7 @@ Liveness does not depend on PostgreSQL; readiness may use a lightweight database
 - Use ISO 8601 dates/timestamps and UUID strings for public identifiers unless a feature design explicitly defines a user-facing code or another identifier.
 - Authenticate application routes with `Authorization: Bearer <INTERNAL_API_KEY>` for the Agent or a valid browser JWT cookie. A supplied invalid bearer credential cannot fall back to a cookie. `GET /health` and `GET /health/ready` are public.
 - `POST /api/v1/auth/login` and `POST /api/v1/auth/logout` are exact authentication exemptions with mandatory browser Origin checks. `GET /api/v1/auth/status` requires a browser JWT; an Agent key alone does not satisfy it. Full contracts are in [auth-design.md](auth-design.md).
+- `POST /api/v1/junk/ai` is browser-only, requires the allowed Origin, and returns `403` for an Agent bearer key. Its contract is in [junk-feature-design.md](feature-docs/junk-feature-design.md#16-mvp-api-contract).
 - Set `Cache-Control: private, no-store` on every `/api/*` response, including errors.
 
 Successful responses use:
@@ -117,6 +121,15 @@ Collections may include a `meta` object. Errors use a stable safe envelope:
 Use `200` for successful reads/updates, `201` for creation, `204` for no response body, `400` for invalid input, `401`/`403` for authentication/authorization failures, `404` for not found, `409` for conflicts, `413` for oversized requests, `415` for unsupported media types, `429` for rate limits, and `500`/`503` for unexpected or unavailable dependencies. Public errors must not expose SQL, stack traces, secrets, or dependency internals. Framework HTTP exceptions use the same envelope with a safe server-defined message; their raw message and response body are never forwarded.
 
 Paginate only when a collection needs it. Validate pagination limits and allow-list filter/sort fields before they reach SQL.
+
+## External integrations
+
+Outbound HTTP is isolated in `core/` and is optional. It must never be reachable from a route that the Hermes Agent calls.
+
+- `core/ai/ai-client.ts` calls an OpenAI-compatible `chat/completions` endpoint with JSON response mode. It exists only when `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` are all set; a partial configuration fails startup validation. `AI_MAX_TOKENS` (4096), `AI_TEMPERATURE` (0), and `AI_TIMEOUT_MS` (30000) have validated defaults. The base URL must be HTTPS, or loopback HTTP for local development, and must not embed credentials. The API key stays in the server process; it is never returned to the browser or placed in a `VITE_*` variable.
+- `core/link/link-metadata.ts` reads YouTube oEmbed or page OpenGraph/JSON-LD facts for the URL in a Junk message. It accepts only HTTP(S) on ports 80/443, rejects credentials in the URL and loopback, private, link-local, or `.local` hosts and resolved addresses, follows at most three redirects within a four-second budget, and reads only the document head up to 512 KiB. Any failure returns `null`, so capture still succeeds without metadata. It does not download or archive the linked file.
+- Both integrations use timeouts. `Bun.serve` sets a 60-second idle timeout so a slow AI call is not cut off by the default 10 seconds.
+- Expected AI failures are typed `AppError`s with status `503`: `AI_NOT_CONFIGURED`, `AI_UNAVAILABLE`, `AI_AUTH_FAILED`, `AI_RATE_LIMITED`, `AI_CONFIGURATION_ERROR`, and `AI_INVALID_RESPONSE`. Provider messages are sanitized, never forwarded to clients, and only safe failure metadata is logged; the API key, prompt, and full provider response body are never logged.
 
 ## Module boundary
 
@@ -155,4 +168,5 @@ Every repository chooses the connection signature from actual callers. Methods u
 - Authenticate application routes with centralized bearer/JWT middleware. Only explicit health endpoints and the exact login/logout method/path pairs are exempt from prior authentication.
 - The personal browser boundary is defined in [auth-design.md](auth-design.md). Cookie writes, login, and logout require an exact configured Origin; auth status requires a valid JWT cookie. Password verification has attempt/concurrency limits. The existing Agent credential and domain layer boundaries remain unchanged.
 - Keep public errors safe and stable; internal detail belongs in logs only. The public envelope and status mapping are defined in the HTTP boundary above.
+- Treat AI prompts and fetched page metadata as untrusted data. The AI system prompt forbids following instructions found in them, AI output is parsed as data against a strict schema, the server alone extracts `source_url` from the original message, and link fetching blocks private and loopback destinations.
 - Validation, parameterized SQL, and logging rules are defined in [coding-conventions.md](coding-conventions.md).

@@ -2,7 +2,7 @@
 
 This document focuses on the Junk feature in Hermes. Junk is a lightweight archive for interesting, funny, useful, or nice-to-have external content that the user wants to keep searchable.
 
-> Status: MVP design. The MVP uses direct REST API calls, not MCP.
+> Status: MVP design. The MVP uses direct REST API calls, not MCP. Capture is available from Telegram through Hermes and from the browser through the manual form or the optional AI-assisted mode.
 
 ---
 
@@ -59,6 +59,13 @@ Principle:
 - Hermes does not ask for confirmation before saving by default.
 - Corrections happen after saving if the user wants to adjust metadata/content.
 
+The browser offers two deliberate create paths:
+
+- Manual entry sends the same metadata fields as the Telegram flow through `POST /api/v1/junk`.
+- The optional AI-assisted mode sends the free-form message through `POST /api/v1/junk/ai`. The API extracts the URL, reads public link metadata, asks the configured AI provider for metadata, and creates the item immediately through the same Junk service. There is no review step; corrections happen on the detail page.
+
+The AI-assisted endpoint is browser-only. Hermes never calls it and continues to extract metadata itself.
+
 ---
 
 ## 4. Code
@@ -83,20 +90,20 @@ Rules:
 
 ## 5. Title
 
-Unlike Notes, Junk titles are user-provided, not AI-generated.
+Junk titles may be user-provided or suggested by the optional browser AI capture. The Telegram/Hermes path still stores only a user-provided title and never invents a fallback.
 
 Reason:
 
 - For memes, links, posts, and other found content, the user's own title is often the easiest way to remember the item.
-- AI-generated titles may become generic and less personal.
+- The Telegram path therefore keeps user-provided titles and leaves them empty rather than inventing a generic one. The browser AI path only suggests a title grounded in the content and link metadata.
 
 Rules:
 
 - `title` is nullable.
 - At least one of `title`, `raw_text`, `content_text`, or `source_url` must be present. Category alone is insufficient.
-- If the user provides a title/caption, Hermes stores it as `title`.
-- If the user does not provide a title, Hermes leaves `title = null`.
-- Hermes should not auto-generate a fallback title for MVP.
+- On Telegram, a user-provided title/caption becomes `title`; otherwise Hermes leaves `title = null`.
+- On the browser AI path, the AI proposes a concise title in the language of the message, grounded in the message and fetched link metadata, with a 300-character limit. When the AI returns null, the server uses the fetched link title when available. The AI is told not to invent facts and never to use the request text itself as the title.
+- No generic fallback title is generated for the Telegram path.
 
 ---
 
@@ -124,6 +131,8 @@ tool
 reference
 ```
 
+The canonical category vocabulary for the browser AI path, aligned with the Telegram Junk suggestions, is `article`, `image`, `meme`, `music`, `quote`, `reference`, `tool`, and `video`, defined in `apps/api/src/modules/junk/junk-category.ts`. The browser AI prompt receives this list, up to 50 existing archive categories, and common aliases such as `artikel` → `article`, `gambar` → `image`, `kutipan` → `quote`, `lagu` → `music`, and `memes` → `meme`. An AI suggestion maps to an alias, then a canonical value, then an existing category; otherwise it stays as a normalized lowercase new category. The Telegram path keeps suggesting its own soft-text category.
+
 ---
 
 ## 7. Content Text
@@ -144,6 +153,8 @@ The browser derives list previews from `content_text` (normalized whitespace, at
 - visible text from shared content when available;
 - URL title or short summary when available;
 - Hermes' short description of what the URL/content is about.
+
+In the browser AI path, the AI writes `content_text` from the message and fetched link metadata, in the language of the message, with a 20,000-character limit. The prompt forbids describing the request itself (`Pesan berisi tautan...` or `the user asks...`). When the AI returns null, the server falls back to the fetched link description; with no metadata and no description, the field stays null.
 
 Examples:
 
@@ -186,7 +197,9 @@ Rules:
 
 - If the user shares a link, store it in `source_url`.
 - `source_name` is an optional natural display label, such as “YouTube” or a publication name. Keep the real URL in `source_url` for opening/copying; the name is not a second URL.
-- The browser uses a supplied name first, then a recognized platform name, then the hostname without `www.`. Unknown hostnames retain their domain suffix to avoid misidentification. No external metadata fetch is performed.
+- The browser list and detail use a supplied name first, then a recognized platform name, then the hostname without `www.`. Unknown hostnames retain their domain suffix to avoid misidentification. Those screens do not fetch external metadata.
+- The browser AI path stores only the first HTTP(S) URL that appears in the user message. An AI-proposed `source_url` is ignored, and `raw_text` stays exactly as sent.
+- The server fetches public link metadata only for the optional AI capture path, to ground the title and description. The fetched page is not stored, downloaded, or archived.
 - If the link points to music, video, article, post, or other external content, store only the URL and extracted/searchable text.
 - Do not download files from external links.
 - Do not support uploaded audio/music files in MVP.
@@ -288,6 +301,8 @@ Flow:
 Telegram -> Hermes -> REST API -> PostgreSQL
 ```
 
+The optional browser AI path is an API workflow, not a Hermes flow. The API extracts the first HTTP(S) URL from the message, reads public link metadata, calls the configured AI provider, validates the returned JSON, and composes the same create payload the Telegram path uses. The browser never receives the provider credential.
+
 ---
 
 ## 12. Database Schema
@@ -319,6 +334,8 @@ CREATE INDEX idx_junk_items_tags ON junk_items USING GIN(tags);
 ```
 
 GIN indexes are enough for personal-scale PostgreSQL search. No external search engine is needed for MVP.
+
+AI-assisted capture adds no column, index, or migration. It writes through the existing `junk_items` schema.
 
 ---
 
@@ -375,8 +392,9 @@ These are intentionally not included in MVP:
 - direct uploaded image/video/audio storage;
 - local media file paths;
 - media metadata such as `media_type`, `mime_type`, and `file_size`;
-- automatic link archiving/download;
+- automatic link archiving or file download (AI capture reads public metadata only);
 - automatic Notes vs Junk classification;
+- an AI review or edit step before saving;
 - pinning, resurfacing, or related-item linking.
 
 MVP focuses on saving, classifying, and searching lightweight URL/text-based junk items.
@@ -390,26 +408,28 @@ MVP focuses on saving, classifying, and searching lightweight URL/text-based jun
 | Telegram topic           | Junk                                                                                                 |
 | Difference from Notes    | Manual routing by Telegram topic, not AI classification                                              |
 | Code                     | Unique `code`, e.g. `JK-20260726-001`, used as stable Telegram/FE reference                          |
-| Title                    | User-provided and nullable; no AI fallback title                                                     |
+| Title                    | Nullable; user-provided on Telegram, AI-suggested from the message and link metadata on the browser AI path; no generic fallback |
 | Category                 | Soft text category; no enum/category table in MVP                                                    |
+| Category vocabulary      | Canonical suggestions and aliases shared with the browser AI prompt                                  |
 | Tags                     | Dynamic granular `text[]`                                                                            |
 | `raw_text`               | Original user text exactly as sent; preserved for audit/debugging                                    |
 | `content_text`           | Searchable representation from caption, quote, URL title/summary, or Hermes description              |
 | URL handling             | Store `source_url`; do not download external files                                                   |
+| Browser AI capture       | Optional; browser-only; sends free text once and inserts immediately with no review step             |
 | Uploaded media           | Not supported in MVP                                                                                 |
 | Media metadata           | No `media_type`, `mime_type`, or `file_size` in MVP                                                  |
 | Audio/music              | URL only; no uploaded audio/music support                                                            |
 | Confirmation before save | None by default; save first, correct later                                                           |
 | Correction behavior      | Same as Notes: prefer `code`, otherwise latest item or keyword search with confirmation if ambiguous |
 | Search                   | Full-text keyword search + tag filtering                                                             |
-| Direct API               | Hermes sends cleaned parameters to REST API; API persists PostgreSQL                                 |
+| Direct API               | Hermes or the browser sends cleaned parameters to the REST API; the browser AI path sends free text; API persists PostgreSQL |
 | Delete behavior          | Soft delete using `deleted_at`                                                                       |
 
 ---
 
 ## 16. MVP API Contract
 
-The Junk API is mounted below `/api/v1/junk` and requires the internal bearer token.
+The Junk API is mounted below `/api/v1/junk`. Item CRUD accepts the Agent bearer token or a valid browser JWT, and browser writes require the allowed Origin. AI-assisted create requires a browser JWT.
 
 Request bodies and every response field use `snake_case` recursively.
 
@@ -424,7 +444,26 @@ Migration `0008_add_junk_source_name.ts` adds the nullable column and length/non
 | `GET` | `/api/v1/junk/:code` | Fetch one active junk item. |
 | `PATCH` | `/api/v1/junk/:code` | Update supplied fields. A `tags` payload replaces the full tag list. `raw_text` is preserved and cannot be changed. |
 | `DELETE` | `/api/v1/junk/:code` | Soft delete a junk item. |
+| `POST` | `/api/v1/junk/ai` | Browser-only AI-assisted create. The API extracts the URL, reads link metadata, asks the configured AI provider for metadata, and stores the item immediately. |
 
 Codes are generated atomically by the backend in the format `JK-YYYYMMDD-###`, using the `Asia/Jakarta` calendar date. The daily suffix is sequential and codes are never reused.
 
 The `search_vector` uses PostgreSQL's `simple` text-search configuration over title, content text, category, and tags. A row trigger refreshes it on insert and whenever one of those source fields changes. Code, category, and the source name/URL are also matched as case-insensitive substrings through the list query. `raw_text` preserves input whitespace exactly and only HTTP(S) source URLs are accepted. Migration `0009_align_notes_junk_schema.ts` adds the minimum-content database constraint without changing existing rows; it will fail if an existing item has only a category and no title, raw text, content text, or source URL.
+
+### AI-assisted create
+
+`POST /api/v1/junk/ai` accepts one strict body:
+
+```json
+{
+  "text": "artikel bagus soal rust https://blog.example.com/rust"
+}
+```
+
+`text` must not be blank after trimming and is limited to 20,000 characters; its original whitespace is preserved in `raw_text`. The request requires a browser JWT with the allowed Origin; an Agent bearer key receives `403`, and a missing session receives `401`. A successful response is `201` with the same item shape as `POST /api/v1/junk`.
+
+The endpoint extracts the first HTTP(S) URL from `text`, fetches public link metadata when a URL exists, and asks the configured AI provider for `title`, `category`, `content_text`, `source_url`, `source_name`, and `tags`. The prompt also receives the 50 most-used tags so related items reuse existing tags. The server uses the AI values for `title`, `category`, `content_text`, and `source_name` when present; it always sets `source_url` from the message, preserves `raw_text` exactly, and ignores `source_url` in the AI output. Missing AI values fall back to the fetched title, description, site name, or author; the rest become `null` or `[]`.
+
+`category` maps through the shared vocabulary and aliases, then an existing archive category. `tags` are trimmed, lowercased, deduplicated, limited to 64 characters each, and capped at six; invalid entries are dropped rather than failing the item. The composed payload is validated with the normal create schema and stored through the same Junk service as the Telegram path. AI output that cannot form a valid item, or that does not match the metadata schema, returns `AI_INVALID_RESPONSE`.
+
+AI is optional and is enabled only when `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` are set together; `AI_MAX_TOKENS`, `AI_TEMPERATURE`, and `AI_TIMEOUT_MS` have defaults. Provider failures return the safe `503` codes `AI_NOT_CONFIGURED`, `AI_UNAVAILABLE`, `AI_AUTH_FAILED`, `AI_RATE_LIMITED`, `AI_CONFIGURATION_ERROR`, or `AI_INVALID_RESPONSE`. Link metadata failure is not an error; capture proceeds without it. No schema migration accompanies AI capture.
